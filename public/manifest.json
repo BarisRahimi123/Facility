@@ -1,0 +1,16 @@
+{
+  "name": "facilityCore",
+  "short_name": "facilityCore",
+  "description": "Modern Facility Management",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+} 

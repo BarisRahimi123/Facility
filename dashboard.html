@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Fieldwire</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    :root {
+      --primary-color: #0056b3;
+      --primary-dark: #004494;
+      --secondary-color: #f8f9fa;
+      --text-color: #333;
+      --border-color: #e0e0e0;
+      --success-color: #28a745;
+      --warning-color: #ffc107;
+      --danger-color: #dc3545;
+      --info-color: #17a2b8;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.6;
+      color: var(--text-color);
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .container {
+      width: 95%;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 15px;
+    }
+    
+    /* Header and Navigation */
+    header {
+      background-color: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+    }
+    
+    .logo {
+      height: 40px;
+    }
+    
+    .main-nav {
+      display: flex;
+      align-items: center;
+    }
+    
+    .nav-links {
+      display: flex;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .nav-links li {
+      margin: 0 15px;
+    }
+    
+    .nav-links a {
+      color: var(--text-color);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 8px 0;
+      position: relative;
+    }
+    
+    .nav-links a:hover {
+      color: var(--primary-color);
+    }
+    
+    .nav-links a.active {
+      color: var(--primary-color);
+    }
+    
+    .nav-links a.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--primary-color);
+    }
+    
+    .user-menu {
+      display: flex;
+      align-items: center;
+    }
+    
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: var(--primary-color);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      margin-left: 15px;
+      cursor: pointer;
+    }
+    
+    .notification-icon {
+      position: relative;
+      margin-right: 20px;
+      cursor: pointer;
+    }
+    
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: var(--danger-color);
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* Main Content */
+    .main-content {
+      padding: 30px 0;
+    }
+    
+    .page-title {
+      margin-bottom: 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .page-title h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .btn {
+      display: inline-block;
+      background-color: var(--primary-color);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .btn:hover {
+      background-color: var(--primary-dark);
+    }
+    
+    .btn-outline {
+      background-color: transparent;
+      border: 1px solid var(--primary-color);
+      color: var(--primary-color);
+    }
+    
+    .btn-outline:hover {
+      background-color: var(--primary-color);
+      color: white;
+    }
+    
+    /* Dashboard Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .dashboard-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      padding: 20px;
+    }
+    
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-color);
+    }
+    
+    .card-action {
+      color: var(--primary-color);
+      font-size: 14px;
+      text-decoration: none;
+    }
+    
+    /* Projects Section */
+    .projects-section {
+      margin-bottom: 30px;
+    }
+    
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    
+    .project-card {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    
+    .project-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .project-image {
+      width: 100%;
+      height: 160px;
+      object-fit: cover;
+    }
+    
+    .project-info {
+      padding: 20px;
+    }
+    
+    .project-name {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 10px 0;
+      color: var(--text-color);
+    }
+    
+    .project-address {
+      color: #666;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+    
+    .project-stats {
+      display: flex;
+      justify-content: space-between;
+      border-top: 1px solid var(--border-color);
+      padding-top: 15px;
+      font-size: 14px;
+    }
+    
+    .stat {
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-weight: 600;
+      color: var(--primary-color);
+      font-size: 16px;
+    }
+    
+    .stat-label {
+      color: #666;
+      font-size: 12px;
+    }
+    
+    /* Tasks Section */
+    .tasks-section {
+      margin-bottom: 30px;
+    }
+    
+    .task-list {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    
+    .task-item {
+      display: flex;
+      align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .task-item:last-child {
+      border-bottom: none;
+    }
+    
+    .task-status {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 15px;
+    }
+    
+    .status-pending {
+      background-color: var(--warning-color);
+    }
+    
+    .status-in-progress {
+      background-color: var(--info-color);
+    }
+    
+    .status-completed {
+      background-color: var(--success-color);
+    }
+    
+    .status-overdue {
+      background-color: var(--danger-color);
+    }
+    
+    .task-details {
+      flex: 1;
+    }
+    
+    .task-title {
+      font-weight: 500;
+      margin: 0 0 5px 0;
+    }
+    
+    .task-meta {
+      display: flex;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .task-project {
+      margin-right: 15px;
+    }
+    
+    .task-due-date {
+      margin-right: 15px;
+    }
+    
+    .task-assignee {
+      display: flex;
+      align-items: center;
+    }
+    
+    .assignee-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background-color: #ddd;
+      margin-right: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    /* Activity Feed */
+    .activity-feed {
+      margin-bottom: 30px;
+    }
+    
+    .activity-list {
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      padding: 20px;
+    }
+    
+    .activity-item {
+      display: flex;
+      margin-bottom: 20px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .activity-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    
+    .activity-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: #ddd;
+      margin-right: 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #666;
+    }
+    
+    .activity-content {
+      flex: 1;
+    }
+    
+    .activity-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    
+    .activity-user {
+      font-weight: 500;
+    }
+    
+    .activity-time {
+      font-size: 12px;
+      color: #666;
+    }
+    
+    .activity-text {
+      margin: 0;
+      font-size: 14px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 992px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .nav-links {
+        display: none;
+      }
+      
+      .mobile-menu-toggle {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-container">
+      <img src="images/fieldwire-logo.png" alt="Fieldwire Logo" class="logo" onerror="this.src='https://www.fieldwire.com/wp-content/themes/fieldwire/images/logo.svg'; this.onerror=null;">
+      
+      <nav class="main-nav">
+        <ul class="nav-links">
+          <li><a href="dashboard.html" class="active">Dashboard</a></li>
+          <li><a href="projects.html">Projects</a></li>
+          <li><a href="tasks.html">Tasks</a></li>
+          <li><a href="plans.html">Plans</a></li>
+          <li><a href="reports.html">Reports</a></li>
+        </ul>
+      </nav>
+      
+      <div class="user-menu">
+        <div class="notification-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="notification-badge">3</span>
+        </div>
+        <div class="user-avatar">JD</div>
+      </div>
+    </div>
+  </header>
+  
+  <main class="main-content">
+    <div class="container">
+      <div class="page-title">
+        <h1>Dashboard</h1>
+        <a href="projects.html" class="btn">+ New Project</a>
+      </div>
+      
+      <div class="dashboard-grid">
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h2 class="card-title">Active Projects</h2>
+            <a href="projects.html" class="card-action">View All</a>
+          </div>
+          <div class="card-content">
+            <div class="stat">
+              <div class="stat-value">12</div>
+              <div class="stat-label">Total Projects</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h2 class="card-title">Tasks Overview</h2>
+            <a href="tasks.html" class="card-action">View All</a>
+          </div>
+          <div class="card-content">
+            <div style="display: flex; justify-content: space-between;">
+              <div class="stat">
+                <div class="stat-value">48</div>
+                <div class="stat-label">Total</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">15</div>
+                <div class="stat-label">Pending</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">24</div>
+                <div class="stat-label">In Progress</div>
+              </div>
+              <div class="stat">
+                <div class="stat-value">9</div>
+                <div class="stat-label">Completed</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="dashboard-card">
+          <div class="card-header">
+            <h2 class="card-title">Team Activity</h2>
+            <a href="#" class="card-action">This Week</a>
+          </div>
+          <div class="card-content">
+            <div class="stat">
+              <div class="stat-value">87%</div>
+              <div class="stat-label">Task Completion Rate</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <section class="projects-section">
+        <div class="section-header">
+          <h2>Recent Projects</h2>
+        </div>
+        <div class="projects-grid">
+          <div class="project-card">
+            <img src="images/project1.jpg" alt="Office Tower Construction" class="project-image" onerror="this.src='images/placeholder.jpg'; this.onerror=null;">
+            <div class="project-info">
+              <h3 class="project-name">Office Tower Construction</h3>
+              <p class="project-address">123 Business Ave, New York, NY 10001</p>
+              <div class="project-stats">
+                <div class="stat">
+                  <div class="stat-value">24</div>
+                  <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">18</div>
+                  <div class="stat-label">Plans</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">85%</div>
+                  <div class="stat-label">Progress</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="project-card">
+            <img src="images/project2.jpg" alt="Residential Complex" class="project-image" onerror="this.src='images/placeholder.jpg'; this.onerror=null;">
+            <div class="project-info">
+              <h3 class="project-name">Residential Complex</h3>
+              <p class="project-address">456 Park Avenue, Chicago, IL 60007</p>
+              <div class="project-stats">
+                <div class="stat">
+                  <div class="stat-value">32</div>
+                  <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">24</div>
+                  <div class="stat-label">Plans</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">62%</div>
+                  <div class="stat-label">Progress</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="project-card">
+            <img src="images/project3.jpg" alt="Hospital Renovation" class="project-image" onerror="this.src='images/placeholder.jpg'; this.onerror=null;">
+            <div class="project-info">
+              <h3 class="project-name">Hospital Renovation</h3>
+              <p class="project-address">789 Medical Center Blvd, Boston, MA 02110</p>
+              <div class="project-stats">
+                <div class="stat">
+                  <div class="stat-value">18</div>
+                  <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">12</div>
+                  <div class="stat-label">Plans</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">45%</div>
+                  <div class="stat-label">Progress</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="project-card">
+            <img src="images/project4.jpg" alt="Shopping Mall" class="project-image" onerror="this.src='images/placeholder.jpg'; this.onerror=null;">
+            <div class="project-info">
+              <h3 class="project-name">Shopping Mall</h3>
+              <p class="project-address">101 Retail Way, Dallas, TX 75001</p>
+              <div class="project-stats">
+                <div class="stat">
+                  <div class="stat-value">42</div>
+                  <div class="stat-label">Tasks</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">28</div>
+                  <div class="stat-label">Plans</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">30%</div>
+                  <div class="stat-label">Progress</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="tasks-section">
+        <div class="section-header">
+          <h2>My Tasks</h2>
+        </div>
+        <div class="task-list">
+          <div class="task-item">
+            <div class="task-status status-in-progress"></div>
+            <div class="task-details">
+              <h3 class="task-title">Review structural drawings for Office Tower</h3>
+              <div class="task-meta">
+                <span class="task-project">Office Tower Construction</span>
+                <span class="task-due-date">Due: Today</span>
+                <span class="task-assignee">
+                  <div class="assignee-avatar">JD</div>
+                  You
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="task-item">
+            <div class="task-status status-pending"></div>
+            <div class="task-details">
+              <h3 class="task-title">Coordinate with electrical contractor</h3>
+              <div class="task-meta">
+                <span class="task-project">Hospital Renovation</span>
+                <span class="task-due-date">Due: Tomorrow</span>
+                <span class="task-assignee">
+                  <div class="assignee-avatar">JD</div>
+                  You
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="task-item">
+            <div class="task-status status-overdue"></div>
+            <div class="task-details">
+              <h3 class="task-title">Submit permit application for Shopping Mall</h3>
+              <div class="task-meta">
+                <span class="task-project">Shopping Mall</span>
+                <span class="task-due-date">Due: Yesterday</span>
+                <span class="task-assignee">
+                  <div class="assignee-avatar">JD</div>
+                  You
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="task-item">
+            <div class="task-status status-completed"></div>
+            <div class="task-details">
+              <h3 class="task-title">Finalize floor plans for Residential Complex</h3>
+              <div class="task-meta">
+                <span class="task-project">Residential Complex</span>
+                <span class="task-due-date">Completed: 2 days ago</span>
+                <span class="task-assignee">
+                  <div class="assignee-avatar">JD</div>
+                  You
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="activity-feed">
+        <div class="section-header">
+          <h2>Recent Activity</h2>
+        </div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="activity-avatar">SM</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <span class="activity-user">Sarah Miller</span>
+                <span class="activity-time">10 minutes ago</span>
+              </div>
+              <p class="activity-text">Added new task "Install drywall on 3rd floor" to <strong>Office Tower Construction</strong></p>
+            </div>
+          </div>
+          
+          <div class="activity-item">
+            <div class="activity-avatar">RJ</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <span class="activity-user">Robert Johnson</span>
+                <span class="activity-time">1 hour ago</span>
+              </div>
+              <p class="activity-text">Uploaded 5 new photos to <strong>Hospital Renovation</strong></p>
+            </div>
+          </div>
+          
+          <div class="activity-item">
+            <div class="activity-avatar">JD</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <span class="activity-user">You</span>
+                <span class="activity-time">3 hours ago</span>
+              </div>
+              <p class="activity-text">Completed task "Finalize floor plans" in <strong>Residential Complex</strong></p>
+            </div>
+          </div>
+          
+          <div class="activity-item">
+            <div class="activity-avatar">EC</div>
+            <div class="activity-content">
+              <div class="activity-header">
+                <span class="activity-user">Emily Chen</span>
+                <span class="activity-time">Yesterday</span>
+              </div>
+              <p class="activity-text">Added new plan version to <strong>Shopping Mall</strong></p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+  
+  <footer>
+    <div class="container">
+      <p>&copy; 2023 Fieldwire. All rights reserved.</p>
+    </div>
+  </footer>
+  
+  <script>
+    // Sample JavaScript for future functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Dashboard loaded');
+      
+      // Add event listeners for notifications
+      const notificationIcon = document.querySelector('.notification-icon');
+      if (notificationIcon) {
+        notificationIcon.addEventListener('click', function() {
+          alert('Notifications panel would open here');
+        });
+      }
+      
+      // Add event listeners for user menu
+      const userAvatar = document.querySelector('.user-avatar');
+      if (userAvatar) {
+        userAvatar.addEventListener('click', function() {
+          alert('User menu would open here');
+        });
+      }
+      
+      // Add event listeners for project cards
+      const projectCards = document.querySelectorAll('.project-card');
+      projectCards.forEach(card => {
+        card.addEventListener('click', function() {
+          const projectName = this.querySelector('.project-name').textContent;
+          window.location.href = `project-details.html?name=${encodeURIComponent(projectName)}`;
+        });
+      });
+      
+      // Add event listeners for task items
+      const taskItems = document.querySelectorAll('.task-item');
+      taskItems.forEach(task => {
+        task.addEventListener('click', function() {
+          const taskTitle = this.querySelector('.task-title').textContent;
+          alert(`Task details for: ${taskTitle}`);
+        });
+      });
+    });
+  </script>
+</body>
+</html> 

@@ -1,0 +1,26 @@
+
+> fieldwire-temp@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.1.7
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.117:3000
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · turbo
+     · optimizeCss
+     · scrollRestoration
+
+ ✓ Starting...
+ ✓ Ready in 948ms
+ ✓ Compiled /src/middleware in 113ms (168 modules)
+ ○ Compiling /profile ...
+ ✓ Compiled /profile in 1286ms (894 modules)
+ GET /profile 200 in 1469ms
+ ✓ Compiled /auth/sign-in in 178ms (905 modules)
+Supabase URL configured: true
+Supabase Anon Key configured: true
+Initializing Supabase client...
+Testing Supabase connection...
+ GET /auth/sign-in 200 in 342ms
+Supabase client initialized successfully in 205ms

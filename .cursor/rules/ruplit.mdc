@@ -1,0 +1,49 @@
+---
+description: use this
+globs: 
+alwaysApply: false
+---
+When to Use Different MCP Servers
+For a first-time no-code developer, here's a guide on when to use each of the MCP servers you've installed:
+Sequential Thinking
+
+Use when you need to break down complex problems into smaller, manageable steps
+Ideal for planning your project structure before implementation
+Helpful when you're stuck and need to work through a problem methodically
+Great for documenting your thought process for future reference
+
+GitHub
+
+Use for version control and storing your project code
+When collaborating with others on the same project
+When you need to track changes to your code over time
+For backing up your project safely
+When you want to share your code with others or contribute to open source
+
+Brave Search
+
+Use when researching solutions to specific problems
+When looking for code examples or tutorials
+For finding libraries or tools that might help with your project
+When you need to understand concepts or technical terms
+For discovering best practices in your area of development
+
+Supabase MCP Server
+
+Use when you need a database for your project
+When you want to store and retrieve user data
+For implementing authentication features
+When you need real-time data functionality
+For API development without writing backend code
+When you need to store files or media
+
+Puppeteer
+
+Use for web scraping when you need to collect data from websites
+For automating browser-based tasks
+When testing web applications
+For generating screenshots or PDFs of web pages
+When you need to interact with websites programmatically
+For creating bots that can navigate and interact with web interfaces
+
+Would you like more specific guidance on how to get started with any of these tools?

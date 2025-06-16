@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  vector:
+    image: public.ecr.aws/supabase/vector:0.28.1-alpine
+    container_name: supabase_vector
+    restart: always
+    environment:
+      - SUPABASE_URL=https://ahntaamtsypranvnofxy.supabase.co
+      - SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+
+    ports:
+      - "54321:54321"
+    command: tail -f /dev/null  # Prevents the container from stopping
