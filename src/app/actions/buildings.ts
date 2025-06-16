@@ -10,16 +10,22 @@ import { revalidatePath } from 'next/cache';
 import { BuildingTypes } from '@/types/building';
 
 // Create a Supabase client with the service role key for server-side operations
-const serviceRoleClient = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+const getServiceRoleClient = () => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.warn('Missing Supabase environment variables, using mock data');
+    return null;
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
-  }
-);
+  });
+};
 
 // Mock data for buildings
 const mockBuildings: Building[] = [
@@ -290,7 +296,12 @@ export async function createBuilding(formData: FormData): Promise<void> {
     try {
       console.log('Attempting to create building in database...');
       
-      const { data, error } = await serviceRoleClient
+      const client = getServiceRoleClient();
+      if (!client) {
+        throw new Error('Supabase client not initialized');
+      }
+      
+      const { data, error } = await client
         .from('buildings')
         .insert([buildingData])
         .select()

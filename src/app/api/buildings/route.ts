@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getBuildings } from '@/app/actions/buildings';
+import { withSupabase } from '@/lib/supabase/admin-client';
+import { mockBuildings } from '@/lib/mock-data';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const facilityId = searchParams.get('facilityId');
     
-    // Get all buildings
-    const allBuildings = await getBuildings();
+    // Get all buildings using the withSupabase helper
+    const allBuildings = await withSupabase(
+      async (client) => {
+        const { data, error } = await client
+          .from('buildings')
+          .select('*');
+          
+        if (error) throw error;
+        return data;
+      },
+      mockBuildings // Fallback mock data
+    );
     
     // Filter by facility ID if provided
     if (facilityId) {
