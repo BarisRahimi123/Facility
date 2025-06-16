@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MapPin, Calendar, Users, Building2, AlertTriangle, Square, Plus, Activity, FileText, Wrench, Home, TrendingUp, Clock, ArrowRight, Grid3X3, List, LayoutGrid, Edit2, Trash2 } from 'lucide-react';
+import MaintenanceCalendar from '@/components/facility/MaintenanceCalendar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { BuildingService } from '@/lib/services/building.service';
@@ -692,20 +693,7 @@ export default function FacilityOverviewPage() {
           </TabsContent>
           
           <TabsContent value="maintenance">
-            <Card className="bg-gray-900/50 border-gray-800">
-              <CardHeader className="border-b border-gray-800">
-                <CardTitle className="text-lg font-semibold text-white">Maintenance</CardTitle>
-                <CardDescription className="text-gray-400">
-                  Track maintenance history and upcoming tasks
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="py-16">
-                <div className="text-center">
-                  <Wrench className="mx-auto h-12 w-12 text-gray-600" />
-                  <p className="text-gray-400 mt-4">Maintenance tracking coming soon</p>
-                </div>
-              </CardContent>
-            </Card>
+            <MaintenanceCalendar facilityId={facilityId} />
           </TabsContent>
           
           <TabsContent value="documents" className="space-y-6">

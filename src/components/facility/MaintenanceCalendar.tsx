@@ -1,205 +1,210 @@
 'use client';
 
-import { useState } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { FacilitySystem } from '@/types/facility';
+import { useState, useEffect } from 'react';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-
-interface MaintenanceCalendarProps {
-  systems: FacilitySystem[];
-  onScheduleMaintenance: (systemId: string) => void;
-}
+import { Calendar, List, Grid2X2 } from 'lucide-react';
 
 interface MaintenanceEvent {
   id: string;
   title: string;
-  date: Date;
-  system: FacilitySystem;
+  start: string;
+  end?: string;
+  allDay: boolean;
+  backgroundColor?: string;
+  borderColor?: string;
+  textColor?: string;
+  extendedProps: {
+    description: string;
+    status: string;
+    type: string;
+    system: string;
+  };
 }
 
-export default function MaintenanceCalendar({
-  systems,
-  onScheduleMaintenance
-}: MaintenanceCalendarProps) {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+interface MaintenanceCalendarProps {
+  facilityId: string;
+}
 
-  // Get the first day of the current month
-  const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+export default function MaintenanceCalendar({ facilityId }: MaintenanceCalendarProps) {
+  const [view, setView] = useState<'dayGridMonth' | 'timeGridWeek' | 'listWeek'>('dayGridMonth');
+  const [events, setEvents] = useState<MaintenanceEvent[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Get maintenance events for the current month
-  const maintenanceEvents: MaintenanceEvent[] = systems
-    .filter(system => {
-      const nextMaintenance = new Date(system.next_maintenance);
-      return nextMaintenance >= firstDayOfMonth && nextMaintenance <= lastDayOfMonth;
-    })
-    .map(system => ({
-      id: system.id,
-      title: `${system.name} Maintenance`,
-      date: new Date(system.next_maintenance),
-      system
-    }));
+  useEffect(() => {
+    fetchMaintenanceSchedules();
+  }, [facilityId]);
 
-  // Calendar navigation
-  const previousMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
-  };
+  const fetchMaintenanceSchedules = async () => {
+    try {
+      const response = await fetch(`/api/facilities/${facilityId}/maintenance`);
+      const data = await response.json();
+      
+      // Transform maintenance schedules into calendar events
+      const calendarEvents = data.map((schedule: any) => ({
+        id: schedule.id,
+        title: schedule.title,
+        start: schedule.next_maintenance_date,
+        allDay: true,
+        backgroundColor: getStatusColor(schedule.status),
+        borderColor: getStatusColor(schedule.status),
+        textColor: '#ffffff',
+        extendedProps: {
+          description: schedule.description,
+          status: schedule.status,
+          type: schedule.maintenance_type,
+          system: schedule.system_name
+        }
+      }));
 
-  const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
-  };
-
-  // Get calendar grid data
-  const getDaysInMonth = () => {
-    const days = [];
-    const firstDay = firstDayOfMonth.getDay();
-    const totalDays = lastDayOfMonth.getDate();
-
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDay; i++) {
-      days.push(null);
+      setEvents(calendarEvents);
+    } catch (error) {
+      console.error('Error fetching maintenance schedules:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Add days of the month
-    for (let i = 1; i <= totalDays; i++) {
-      days.push(new Date(currentDate.getFullYear(), currentDate.getMonth(), i));
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'pending':
+        return '#8b5cf6'; // Purple
+      case 'in-progress':
+        return '#3b82f6'; // Blue
+      case 'completed':
+        return '#10b981'; // Green
+      case 'overdue':
+        return '#ef4444'; // Red
+      case 'cancelled':
+        return '#6b7280'; // Gray
+      default:
+        return '#8b5cf6'; // Default purple
     }
-
-    return days;
   };
 
-  const getEventsForDate = (date: Date) => {
-    return maintenanceEvents.filter(event => 
-      event.date.getDate() === date.getDate() &&
-      event.date.getMonth() === date.getMonth() &&
-      event.date.getFullYear() === date.getFullYear()
-    );
+  const handleEventClick = (info: any) => {
+    // Show event details in a modal or tooltip
+    console.log('Event clicked:', info.event);
   };
-
-  const days = getDaysInMonth();
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      {/* Calendar Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-5 h-5 text-gray-500" />
-          <h2 className="text-lg font-semibold">
-            {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={previousMonth}>
-            <ChevronLeft className="w-4 h-4" />
+    <Card className="p-6 bg-gray-900/50 border-gray-700/50">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-white">Maintenance Schedule</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setView('dayGridMonth')}
+            className={`border-gray-700 ${
+              view === 'dayGridMonth' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Calendar className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={nextMonth}>
-            <ChevronRight className="w-4 h-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setView('timeGridWeek')}
+            className={`border-gray-700 ${
+              view === 'timeGridWeek' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <Grid2X2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setView('listWeek')}
+            className={`border-gray-700 ${
+              view === 'listWeek' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <List className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="p-4">
-        {/* Weekday Headers */}
-        <div className="grid grid-cols-7 gap-2 mb-2">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-center text-sm font-medium text-gray-500">
-              {day}
-            </div>
-          ))}
-        </div>
+      <div className="calendar-container">
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView={view}
+          headerToolbar={{
+            left: 'prev,next today',
+            center: 'title',
+            right: ''
+          }}
+          events={events}
+          eventClick={handleEventClick}
+          height="auto"
+          themeSystem="standard"
+          dayMaxEvents={true}
+          eventTimeFormat={{
+            hour: '2-digit',
+            minute: '2-digit',
+            meridiem: false
+          }}
+          slotMinTime="08:00:00"
+          slotMaxTime="20:00:00"
+          allDaySlot={true}
+          nowIndicator={true}
+                     eventDisplay="block"
+           eventClassNames="rounded-lg"
+        />
 
-        {/* Calendar Days */}
-        <div className="grid grid-cols-7 gap-2">
-          {days.map((day, index) => {
-            if (!day) {
-              return (
-                <div
-                  key={`empty-${index}`}
-                  className="aspect-square p-2 bg-gray-50"
-                />
-              );
-            }
+        <style jsx global>{`
+          .fc {
+            --fc-border-color: rgba(75, 85, 99, 0.3);
+            --fc-button-bg-color: rgba(75, 85, 99, 0.2);
+            --fc-button-border-color: rgba(75, 85, 99, 0.3);
+            --fc-button-hover-bg-color: rgba(139, 92, 246, 0.8);
+            --fc-button-hover-border-color: rgba(139, 92, 246, 0.8);
+            --fc-button-active-bg-color: rgba(139, 92, 246, 1);
+            --fc-button-active-border-color: rgba(139, 92, 246, 1);
+            --fc-event-bg-color: rgba(139, 92, 246, 0.8);
+            --fc-event-border-color: rgba(139, 92, 246, 0.8);
+            --fc-page-bg-color: transparent;
+            --fc-neutral-bg-color: rgba(31, 41, 55, 0.5);
+            font-family: inherit;
+          }
 
-            const events = getEventsForDate(day);
-            const isToday = day.toDateString() === new Date().toDateString();
-            const isSelected = selectedDate?.toDateString() === day.toDateString();
+          .fc .fc-toolbar-title {
+            color: white;
+          }
 
-            return (
-              <div
-                key={day.toISOString()}
-                className={`
-                  aspect-square p-2 border rounded-lg cursor-pointer
-                  ${isToday ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}
-                  ${isSelected ? 'ring-2 ring-blue-500' : ''}
-                  ${events.length > 0 ? 'border-blue-200' : ''}
-                `}
-                onClick={() => setSelectedDate(day)}
-              >
-                <div className="text-sm font-medium mb-1">
-                  {day.getDate()}
-                </div>
-                {events.length > 0 && (
-                  <div className="space-y-1">
-                    {events.map(event => (
-                      <div
-                        key={event.id}
-                        className="text-xs p-1 bg-blue-100 text-blue-700 rounded truncate"
-                        title={event.title}
-                      >
-                        {event.title}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+          .fc .fc-button {
+            color: white;
+          }
+
+          .fc .fc-daygrid-day-number,
+          .fc .fc-col-header-cell-cushion {
+            color: white;
+          }
+
+          .fc .fc-daygrid-day.fc-day-today {
+            background-color: rgba(139, 92, 246, 0.1);
+          }
+
+          .fc-event {
+            cursor: pointer;
+            padding: 2px 4px;
+            margin: 1px 0;
+            border-radius: 4px;
+          }
+
+          .fc-event:hover {
+            filter: brightness(1.1);
+          }
+
+          .fc-daygrid-event-dot {
+            display: none;
+          }
+        `}</style>
       </div>
-
-      {/* Selected Date Events */}
-      {selectedDate && (
-        <div className="border-t p-4">
-          <h3 className="text-sm font-medium mb-2">
-            {selectedDate.toLocaleDateString('default', { 
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric'
-            })}
-          </h3>
-          <div className="space-y-2">
-            {getEventsForDate(selectedDate).map(event => (
-              <div
-                key={event.id}
-                className="p-3 bg-gray-50 rounded-lg"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{event.title}</div>
-                    <div className="text-sm text-gray-500">
-                      System Type: {event.system.type}
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onScheduleMaintenance(event.system.id)}
-                  >
-                    Schedule
-                  </Button>
-                </div>
-              </div>
-            ))}
-            {getEventsForDate(selectedDate).length === 0 && (
-              <p className="text-sm text-gray-500">
-                No maintenance scheduled for this day
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+    </Card>
   );
 } 
