@@ -495,7 +495,7 @@ export default function LandingPage() {
               <h3 className="text-lg font-semibold text-white mb-6">Quick Links</h3>
               <ul className="space-y-3">
                 <li>
-                  <Link href="/auth/sign-in-simple" className="text-gray-400 hover:text-white transition">
+                  <Link href="/auth/sign-in" className="text-gray-400 hover:text-white transition">
                     Sign In
                   </Link>
                 </li>
