@@ -60,3 +60,23 @@ Thumbs.db
 # PDFTron WebViewer
 /public/webviewer/lib
 /public/webviewer/ui/chunks
+
+# Test files
+*.test.*
+*.spec.*
+**/test/**
+**/tests/**
+**/__tests__/**
+**/debug/**
+**/sample/**
+
+# Backup files
+*.bak
+*.old
+*.tmp
+*.log
+
+# Development files
+/scripts/test-*
+/scripts/debug-*
+/scripts/generate-test-*
