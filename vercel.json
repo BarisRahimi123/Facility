@@ -29,12 +29,12 @@
   "redirects": [
     {
       "source": "/signin",
-      "destination": "/auth/sign-in-simple",
+      "destination": "/auth/sign-in",
       "permanent": true
     },
     {
       "source": "/login",
-      "destination": "/auth/sign-in-simple",
+      "destination": "/auth/sign-in",
       "permanent": true
     },
     {
