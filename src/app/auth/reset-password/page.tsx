@@ -1,147 +1,134 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Building2, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import { GlassNavbar } from '@/components/ui/glass-navbar';
 import { createClientBrowser } from '@/lib/supabase-browser';
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
-    
-    // Reset states
-    setError(null);
-    setMessage(null);
-    setDebugInfo(null);
+    if (loading) return;
     
     // Validate email
     if (!email || !email.includes('@')) {
-      setError('Please enter a valid email address');
+      toast({
+        title: 'Error',
+        description: 'Please enter a valid email address',
+        variant: 'destructive',
+      });
       return;
     }
     
-    setIsLoading(true);
-    setDebugInfo('Processing password reset request...');
+    setLoading(true);
     
     try {
       const supabase = createClientBrowser();
-      
-      setDebugInfo('Sending password reset email...');
       
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/auth/update-password`,
       });
       
-      if (error) {
-        setDebugInfo(`Password reset error: ${error.message}`);
-        throw error;
-      }
+      if (error) throw error;
       
-      setDebugInfo('Password reset email sent successfully');
-      setMessage('Check your email for a password reset link. If you don\'t see it, check your spam folder.');
-    } catch (err) {
-      console.error('Password reset error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to send password reset email');
+      toast({
+        title: 'Success',
+        description: 'Check your email for a password reset link. If you don\'t see it, check your spam folder.',
+      });
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send password reset email',
+        variant: 'destructive',
+      });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Show a simple loading state before client-side code runs
-  if (!mounted) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-8 h-8 border-t-2 border-b-2 border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-md">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold">Reset Password</h1>
-          <p className="text-gray-600 mt-2">
-            Enter your email to receive a password reset link
-          </p>
-        </div>
+    <div className="min-h-screen bg-black">
+      <GlassNavbar />
+      
+      <div className="flex min-h-screen items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-black to-gray-900/50" />
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your.email@example.com"
-              disabled={isLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
-          </div>
-          
-          {error && (
-            <div className="text-sm text-red-500 p-2 bg-red-50 rounded">
-              {error}
+        <div className="relative w-full max-w-md space-y-8">
+          <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-700/50 p-8">
+            <div className="text-center">
+              <div className="mx-auto h-16 w-16 bg-gradient-to-br from-purple-600 to-purple-700 rounded-2xl flex items-center justify-center mb-4">
+                <Building2 className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight text-white">
+                Reset Password
+              </h2>
+              <p className="mt-2 text-sm text-gray-400">
+                Enter your email to receive a password reset link
+              </p>
             </div>
-          )}
-          
-          {message && (
-            <div className="text-sm text-green-500 p-2 bg-green-50 rounded">
-              {message}
-            </div>
-          )}
-          
-          {debugInfo && (
-            <div className="text-xs text-gray-500 p-2 bg-gray-50 rounded border border-gray-200">
-              Debug: {debugInfo}
-            </div>
-          )}
-          
-          <button 
-            type="submit" 
-            disabled={isLoading}
-            className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {isLoading ? "Sending..." : "Send Reset Link"}
-          </button>
-        </form>
-        
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Remember your password?{' '}
-            <Link href="/auth/sign-in-simple" className="text-blue-600 hover:text-blue-800">
-              Sign in
-            </Link>
-          </p>
-        </div>
-        
-        <div className="mt-8 pt-4 border-t border-gray-200">
-          <div className="flex justify-between">
-            <Link href="/auth" className="text-sm text-blue-600 hover:underline">
-              Back to Auth Options
-            </Link>
-            <Link href="/auth/supabase-test" className="text-sm text-blue-600 hover:underline">
-              Test Connection
-            </Link>
+
+            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+              <div>
+                <Label htmlFor="email" className="text-gray-300">
+                  Email address
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 bg-gray-800/50 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                  placeholder="Enter your email"
+                  disabled={loading}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border-0 rounded-xl py-3 text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Sending Reset Link...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center">
+                    Send Reset Link
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </span>
+                )}
+              </Button>
+
+              <div className="text-center text-sm">
+                <Link
+                  href="/auth/sign-in"
+                  className="flex items-center justify-center font-medium text-purple-400 hover:text-purple-300"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Sign In
+                </Link>
+              </div>
+            </form>
           </div>
         </div>
       </div>
