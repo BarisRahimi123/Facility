@@ -25,7 +25,7 @@ const animationData = require('../../public/animations/lottie/anim1.json');
 const penAnimationData = require('../../public/animations/lottie/Pen.json');
 const docusAnimationData = require('../../public/animations/lottie/docs.json');
 const managerAnimationData = require('../../public/animations/lottie/manager.json');
-const virtualTourAnimationData = require('../../public/animations/lottie/VirtualT.json');
+const virtualTourAnimationData = require('../../public/animations/lottie/virtualT.json');
 
 interface Feature {
   icon?: LucideIcon;
