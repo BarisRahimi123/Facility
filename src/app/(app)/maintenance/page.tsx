@@ -240,6 +240,7 @@ export default function MaintenancePage() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [activeActionTab, setActiveActionTab] = useState<'new' | 'pending' | 'escalated'>('new');
 
   // Mock data for team members and contractors
   const teamMembers = [
@@ -714,7 +715,7 @@ export default function MaintenancePage() {
   // Add pagination controls component
   const PaginationControls = () => {
     return (
-      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-gray-900/50 border-t border-gray-800 sm:px-6">
+      <div className="flex items-center justify-between mt-4 px-4 py-3 bg-card/50 border-t border-border sm:px-6">
         <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-gray-300">
@@ -833,7 +834,7 @@ export default function MaintenancePage() {
   }, [selectedFacility, viewMode, activeTab, currentPage, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="p-6 max-w-[1600px] mx-auto space-y-6">
         {/* Header Section */}
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -863,7 +864,7 @@ export default function MaintenancePage() {
         </div>
 
         {/* Filters Section */}
-        <Card className="bg-gray-900/50 border-gray-800">
+        <Card className="bg-card/50 border-border">
           <CardContent className="p-4 space-y-4">
             <div className="flex flex-wrap gap-4">
               <div className="flex-1 min-w-[200px]">
@@ -932,12 +933,12 @@ export default function MaintenancePage() {
 
         {/* View Toggle and Actions */}
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 bg-gray-900 rounded-lg p-1">
+          <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setViewMode('board')}
-              className={viewMode === 'board' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-400 hover:text-white hover:bg-gray-800'}
+              className={viewMode === 'board' ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground hover:text-foreground hover:bg-accent'}
             >
               <LayoutGrid className="w-4 h-4 mr-2" />
               Board
@@ -1000,7 +1001,7 @@ export default function MaintenancePage() {
         {/* Main Content */}
         <div className="mt-6">
           {viewMode === 'board' && (
-            <Card className="bg-gray-900/50 border-gray-800">
+            <Card className="bg-card/50 border-border">
               <CardContent className="p-4">
                 <Suspense fallback={
                   <div className="flex items-center justify-center h-64">
@@ -1020,7 +1021,7 @@ export default function MaintenancePage() {
           )}
 
           {viewMode === 'table' && (
-            <Card className="bg-gray-900/50 border-gray-800">
+            <Card className="bg-card/50 border-border">
               <CardContent className="p-4">
                 <MaintenanceTable
                   tasks={tasks}
@@ -1038,7 +1039,7 @@ export default function MaintenancePage() {
           )}
 
           {viewMode === 'calendar' && (
-            <Card className="bg-gray-900/50 border-gray-800">
+            <Card className="bg-card/50 border-border">
               <CardContent className="p-4">
                 <MaintenanceCalendar
                   tasks={tasks}
@@ -1049,6 +1050,61 @@ export default function MaintenancePage() {
             </Card>
           )}
         </div>
+
+        {/* Quick Actions Card */}
+        <Card className="bg-card/50 border-border">
+          <CardHeader>
+            <CardTitle className="text-foreground">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+              <Button
+                variant={activeActionTab === 'new' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveActionTab('new')}
+                className={activeActionTab === 'new' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}
+              >
+                New Issue
+              </Button>
+              <Button
+                variant={activeActionTab === 'pending' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveActionTab('pending')}
+                className={activeActionTab === 'pending' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}
+              >
+                Pending Review
+              </Button>
+              <Button
+                variant={activeActionTab === 'escalated' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setActiveActionTab('escalated')}
+                className={activeActionTab === 'escalated' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}
+              >
+                Escalated
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity Card */}
+        <Card className="bg-card/50 border-border">
+          <CardHeader>
+            <CardTitle className="text-foreground">Recent Activity</CardTitle>
+          </CardHeader>
+        </Card>
+
+        {/* Stats Cards */}
+        <Card className="bg-card/50 border-border">
+          <CardHeader>
+            <CardTitle className="text-foreground">This Week</CardTitle>
+          </CardHeader>
+        </Card>
+
+        <Card className="bg-card/50 border-border">
+          <CardHeader>
+            <CardTitle className="text-foreground">Open Issues</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
 
       {/* Modals */}

@@ -36,6 +36,24 @@ export interface Facility {
   active_issues?: number;
   occupancy_rate?: number;
   matterport_url?: string;
+  // Image fields for grid view display
+  image_url?: string;
+  image_description?: string;
+  // Restroom information for compliance calculations
+  boys_toilets?: number;
+  girls_toilets?: number;
+  unisex_toilets?: number;
+  boys_urinals?: number;
+  girls_urinals?: number;
+  boys_sinks?: number;
+  girls_sinks?: number;
+  unisex_sinks?: number;
+  boys_restrooms_count?: number;
+  girls_restrooms_count?: number;
+  unisex_restrooms_count?: number;
+  staff_toilets?: number;
+  staff_sinks?: number;
+  staff_restrooms_count?: number;
   created_by: string;
   created_at: string;
   updated_at: string;

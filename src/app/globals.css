@@ -2,47 +2,284 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  :root {
+    /* Pipedrive-inspired light theme colors */
+    --background: 0 0% 100%; /* #FFFFFF */
+    --foreground: 220 13% 13%; /* #1F2937 - Dark gray for text */
+    
+    --muted: 220 14% 96%; /* #F3F4F6 - Light gray background */
+    --muted-foreground: 215 16% 47%; /* #6B7280 - Medium gray text */
+    
+    --popover: 0 0% 100%; /* #FFFFFF */
+    --popover-foreground: 220 13% 13%; /* #1F2937 */
+    
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 220 13% 13%; /* #1F2937 */
+    
+    --border: 214 32% 91%; /* #E5E7EB - Light gray border */
+    --input: 214 32% 91%; /* #E5E7EB */
+    
+    --primary: 211 100% 50%; /* #007AFF - Pipedrive blue */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF */
+    
+    --secondary: 220 14% 96%; /* #F3F4F6 - Light gray */
+    --secondary-foreground: 220 13% 13%; /* #1F2937 */
+    
+    --accent: 158 100% 35%; /* #00B16A - Pipedrive green */
+    --accent-foreground: 0 0% 100%; /* #FFFFFF */
+    
+    --destructive: 0 84% 60%; /* #EF4444 - Red */
+    --destructive-foreground: 0 0% 100%; /* #FFFFFF */
+    
+    --ring: 211 100% 50%; /* #007AFF */
+    
+    --radius: 0.375rem; /* 6px - Slightly rounded corners */
+  }
+  
+  .dark {
+    --background: 220 26% 14%;
+    --foreground: 210 40% 98%;
+    
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    
+    --popover: 220 26% 14%;
+    --popover-foreground: 210 40% 98%;
+    
+    --card: 220 26% 14%;
+    --card-foreground: 210 40% 98%;
+    
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    
+    --primary: 263 90% 51%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --accent: 263 90% 51%;
+    --accent-foreground: 0 0% 100%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --ring: 263 90% 51%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+/* Default dark theme CSS variables (original dark colors) */
 :root {
-  --background: #000000;
+  --radius: 0.75rem;
+  
+  --background: #111827;  /* gray-900 - original dark theme */
   --foreground: #ffffff;
-  
-  --primary: #8b5cf6;
+  --muted-foreground: #9ca3af;  /* gray-400 */
+  --card: rgba(31, 41, 55, 0.5);  /* bg-gray-800/50 - original card color */
+  --card-foreground: #ffffff;
+  --border: #374151;  /* gray-700 */
+  --muted: #1f2937;  /* gray-800 */
+  --primary: #8b5cf6;  /* purple-600 */
   --primary-foreground: #ffffff;
-  
-  --secondary: #1f2937;
-  --secondary-foreground: #f3f4f6;
-  
-  --accent: #374151;
-  --accent-foreground: #f3f4f6;
-  
+  --accent: #374151;  /* gray-700 for hover states */
+  --accent-foreground: #ffffff;
+  --popover: #1f2937;  /* gray-800 */
+  --popover-foreground: #ffffff;
+  --header: #111827;  /* gray-900 */
+  --header-foreground: #ffffff;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
+  --input: #374151;  /* gray-700 */
+  --ring: #8b5cf6;  /* purple-600 */
+  --sidebar: #0f172a;  /* gray-950 */
+  --sidebar-foreground: #ffffff;
+  --secondary: #1f2937;  /* gray-800 */
+  --secondary-foreground: #f3f4f6;
+}
+
+/* Light theme overrides - MUST come after :root for proper specificity */
+/* Pipedrive-inspired light theme */
+.light {
+  --background: #ffffff !important;
+  --foreground: #1f2937 !important; /* Dark gray text */
   
-  --muted: #374151;
-  --muted-foreground: #9ca3af;
+  --card: #ffffff !important; /* White cards */
+  --card-foreground: #1f2937 !important;
   
-  --popover: #1f2937;
-  --popover-foreground: #ffffff;
+  --popover: #ffffff !important;
+  --popover-foreground: #1f2937 !important;
   
-  --border: #374151;
-  --input: #374151;
-  --ring: #8b5cf6;
+  --primary: #007aff !important; /* Pipedrive blue */
+  --primary-foreground: #ffffff !important;
   
-  --radius: 0.75rem;
+  --secondary: #f3f4f6 !important; /* Light gray */
+  --secondary-foreground: #1f2937 !important;
+  
+  --muted: #f9fafb !important; /* Very light gray */
+  --muted-foreground: #6b7280 !important; /* Medium gray */
+  
+  --accent: #00b16a !important; /* Pipedrive green */
+  --accent-foreground: #ffffff !important;
+  
+  --destructive: #ef4444 !important;
+  --destructive-foreground: #ffffff !important;
+  
+  --border: #e5e7eb !important; /* Light gray border */
+  --input: #ffffff !important; /* White input background */
+  --ring: #007aff !important; /* Blue focus ring */
+  
+  --sidebar: #fafbfc !important; /* Very light gray sidebar */
+  --sidebar-foreground: #1f2937 !important;
+  
+  --header: #ffffff !important;
+  --header-foreground: #1f2937 !important;
+  
+  --radius: 0.375rem !important; /* 6px - slightly rounded corners */
+}
+
+/* Debug: Add a visual indicator when light theme is active */
+.light body {
+  border-top: 4px solid #00b16a !important; /* Pipedrive green border to indicate light mode */
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Dark theme overrides for components */
-.dark {
-  --background: #000000;
-  --foreground: #ffffff;
-  --border: #374151;
-  --input: #374151;
+/* Pipedrive-inspired enhancements for light theme */
+.light {
+  /* Subtle shadows for cards and popups */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Light theme specific component styles */
+.light .card {
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+}
+
+.light .card:hover {
+  box-shadow: var(--shadow);
+}
+
+/* Button styles for light theme */
+.light button {
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.light button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.light button:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Primary button with Pipedrive blue */
+.light .btn-primary,
+.light button[class*="bg-primary"] {
+  background-color: #007aff !important;
+  color: #ffffff !important;
+  border: none;
+}
+
+.light .btn-primary:hover,
+.light button[class*="bg-primary"]:hover {
+  background-color: #0066d6 !important;
+}
+
+/* Success/accent button with Pipedrive green */
+.light .btn-success,
+.light button[class*="bg-green"],
+.light button[class*="bg-accent"] {
+  background-color: #00b16a !important;
+  color: #ffffff !important;
+}
+
+.light .btn-success:hover,
+.light button[class*="bg-green"]:hover,
+.light button[class*="bg-accent"]:hover {
+  background-color: #009959 !important;
+}
+
+/* Input styles for light theme */
+.light input,
+.light textarea,
+.light select {
+  background-color: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  transition: all 0.2s ease;
+}
+
+.light input:focus,
+.light textarea:focus,
+.light select:focus {
+  border-color: #007aff !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1) !important;
+}
+
+/* Table styles for light theme */
+.light table {
+  background-color: #ffffff;
+}
+
+.light thead {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.light tbody tr {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.light tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+/* Sidebar adjustments for light theme */
+.light aside,
+.light nav {
+  background-color: var(--sidebar) !important;
+  border-right: 1px solid var(--border);
+}
+
+/* Modal/Dialog styles for light theme */
+.light [role="dialog"] {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Badge/tag styles */
+.light .badge,
+.light [class*="badge"] {
+  font-weight: 500;
+}
+
+/* Status indicators */
+.light .status-active {
+  color: #00b16a;
+  background-color: rgba(0, 177, 106, 0.1);
+}
+
+.light .status-inactive {
+  color: #6b7280;
+  background-color: rgba(107, 114, 128, 0.1);
+}
+
+.light .status-pending {
+  color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.1);
 }
 
 /* FullCalendar Dark Theme Styles */
@@ -65,6 +302,26 @@ body {
   --fc-today-bg-color: rgba(139, 92, 246, 0.1);
 }
 
+/* FullCalendar Light Theme Styles */
+.light .fc {
+  --fc-border-color: #e5e7eb;
+  --fc-button-bg-color: #ffffff;
+  --fc-button-border-color: #e5e7eb;
+  --fc-button-text-color: #1f2937;
+  --fc-button-hover-bg-color: #f3f4f6;
+  --fc-button-hover-border-color: #d1d5db;
+  --fc-button-active-bg-color: #e5e7eb;
+  --fc-button-active-border-color: #d1d5db;
+  --fc-event-bg-color: #007aff;
+  --fc-event-border-color: #0066d6;
+  --fc-event-text-color: #ffffff;
+  --fc-event-selected-overlay-color: rgba(0, 122, 255, 0.1);
+  --fc-more-link-bg-color: #f9fafb;
+  --fc-more-link-text-color: #1f2937;
+  --fc-non-business-color: rgba(243, 244, 246, 0.5);
+  --fc-today-bg-color: rgba(0, 122, 255, 0.05);
+}
+
 .fc .fc-button {
   @apply font-medium text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500;
 }
@@ -79,12 +336,23 @@ body {
 }
 
 .fc .fc-toolbar-title {
-  @apply text-xl font-semibold text-white;
+  @apply text-xl font-semibold;
+  color: var(--foreground);
 }
 
 .fc .fc-daygrid-day-number,
 .fc .fc-col-header-cell-cushion {
-  @apply text-sm text-gray-300;
+  @apply text-sm;
+  color: var(--muted-foreground);
+}
+
+.light .fc .fc-toolbar-title {
+  @apply text-gray-900;
+}
+
+.light .fc .fc-daygrid-day-number,
+.light .fc .fc-col-header-cell-cushion {
+  @apply text-gray-600;
 }
 
 .fc .fc-daygrid-day.fc-day-today {
@@ -197,4 +465,322 @@ body {
 
 .animate-pulse-dot {
   animation: pulse 2s infinite;
+}
+
+/* Mapbox Custom Styles - Dark Theme */
+.dark .mapboxgl-popup-content {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Mapbox Custom Styles - Light Theme */
+.light .mapboxgl-popup-content {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Default theme (dark) popup styles */
+.mapboxgl-popup-content {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.5rem !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dark .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.light .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.dark .mapboxgl-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 1.25rem !important;
+  padding: 0.25rem !important;
+}
+
+.light .mapboxgl-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 1.25rem !important;
+  padding: 0.25rem !important;
+}
+
+.mapboxgl-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 1.25rem !important;
+  padding: 0.25rem !important;
+}
+
+.dark .mapboxgl-popup-close-button:hover {
+  color: var(--foreground) !important;
+  background-color: transparent !important;
+}
+
+.light .mapboxgl-popup-close-button:hover {
+  color: var(--foreground) !important;
+  background-color: transparent !important;
+}
+
+.mapboxgl-popup-close-button:hover {
+  color: var(--foreground) !important;
+  background-color: transparent !important;
+}
+
+.mapboxgl-ctrl-group {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.mapboxgl-ctrl-group button {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+  color: var(--muted-foreground) !important;
+}
+
+.mapboxgl-ctrl-group button:hover {
+  background-color: var(--accent) !important;
+  color: var(--foreground) !important;
+}
+
+.mapboxgl-ctrl-group button:disabled {
+  opacity: 0.5 !important;
+}
+
+/* Facility Map Popups */
+.facility-popup .mapboxgl-popup-content {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  padding: 0 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+  color: var(--card-foreground) !important;
+}
+
+.facility-popup .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.facility-popup .mapboxgl-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 18px !important;
+  padding: 8px !important;
+}
+
+.facility-popup .mapboxgl-popup-close-button:hover {
+  color: var(--foreground) !important;
+  background-color: var(--accent) !important;
+}
+
+/* Custom facility markers */
+.custom-facility-marker {
+  transition: transform 0.2s ease;
+}
+
+.custom-facility-marker:hover {
+  transform: scale(1.1);
+}
+
+/* Field Map Popups */
+.field-popup .mapboxgl-popup-content {
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  max-width: 320px !important;
+  color: var(--card-foreground) !important;
+}
+
+.field-popup .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+}
+
+.field-popup .mapboxgl-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 20px !important;
+  padding: 8px !important;
+  right: 8px !important;
+  top: 8px !important;
+}
+
+.field-popup .mapboxgl-popup-close-button:hover {
+  color: var(--foreground) !important;
+  background-color: var(--accent) !important;
+  border-radius: 50% !important;
+}
+
+/* Custom field markers */
+.custom-field-marker {
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.custom-field-marker:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 8px 16px rgba(139, 92, 246, 0.4) !important;
+}
+
+/* Aerial overlay controls */
+.mapboxgl-ctrl-aerial {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.mapboxgl-ctrl-aerial button {
+  background: transparent !important;
+  border: none !important;
+  color: var(--muted-foreground) !important;
+  padding: 8px !important;
+  cursor: pointer !important;
+}
+
+.mapboxgl-ctrl-aerial button:hover {
+  background: var(--accent) !important;
+  color: var(--foreground) !important;
+}
+
+/* Field booking button animations */
+.field-popup-content button {
+  transition: all 0.2s ease !important;
+}
+
+.field-popup-content button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+}
+
+/* Field Summary Popup Styles */
+.mapboxgl-popup.field-summary-popup .mapboxgl-popup-content {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(16px);
+  padding: 0;
+  color: var(--card-foreground);
+}
+
+.mapboxgl-popup.field-summary-popup .mapboxgl-popup-close-button {
+  color: var(--muted-foreground);
+  font-size: 18px;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.mapboxgl-popup.field-summary-popup .mapboxgl-popup-close-button:hover {
+  color: var(--foreground);
+  background: var(--accent);
+  border-radius: 6px;
+}
+
+.mapboxgl-popup.field-summary-popup .mapboxgl-popup-tip {
+  border-top-color: var(--card);
+}
+
+/* Field marker hover effects */
+.custom-field-marker:hover {
+  z-index: 1000;
+}
+
+/* Mapbox control styling for theme support */
+.mapboxgl-ctrl-group {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(16px);
+}
+
+.mapboxgl-ctrl-group button {
+  background: transparent !important;
+  border: none !important;
+  color: var(--muted-foreground) !important;
+}
+
+.mapboxgl-ctrl-group button:hover {
+  background: var(--accent) !important;
+  color: var(--foreground) !important;
+}
+
+/* Mapbox Hover Tooltip Styles */
+.mapboxgl-popup.facility-hover-popup .mapboxgl-popup-content,
+.mapboxgl-popup.field-hover-popup .mapboxgl-popup-content {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px !important;
+  backdrop-filter: blur(8px) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+  padding: 0 !important;
+  max-width: none !important;
+  color: var(--card-foreground) !important;
+}
+
+.mapboxgl-popup.facility-hover-popup .mapboxgl-popup-tip,
+.mapboxgl-popup.field-hover-popup .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+  border-bottom-color: var(--card) !important;
+}
+
+/* Enhanced marker hover effects */
+.custom-facility-marker:hover,
+.custom-field-marker:hover {
+  z-index: 1000 !important;
+}
+
+/* Smooth transitions for popups */
+.mapboxgl-popup {
+  transition: opacity 0.2s ease !important;
+}
+
+.mapboxgl-popup.facility-hover-popup,
+.mapboxgl-popup.field-hover-popup {
+  pointer-events: none !important;
+}
+
+/* Facility popup styling */
+.facility-popup .mapboxgl-popup-content {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+  color: var(--card-foreground) !important;
+}
+
+.facility-popup .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+  border-bottom-color: var(--card) !important;
+}
+
+/* Field summary popup styling */
+.field-summary-popup .mapboxgl-popup-content {
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+  color: var(--card-foreground) !important;
+}
+
+.field-summary-popup .mapboxgl-popup-tip {
+  border-top-color: var(--card) !important;
+  border-bottom-color: var(--card) !important;
 }

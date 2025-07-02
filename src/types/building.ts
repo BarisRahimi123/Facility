@@ -135,6 +135,24 @@ export interface Building {
   number_of_rooms: number;
   status: BuildingStatus;
   notes: string | null;
+  // Image fields for grid view display
+  image_url?: string;
+  image_description?: string;
+  // Restroom information for compliance calculations
+  boys_toilets?: number;
+  girls_toilets?: number;
+  unisex_toilets?: number;
+  boys_urinals?: number;
+  girls_urinals?: number;
+  boys_sinks?: number;
+  girls_sinks?: number;
+  unisex_sinks?: number;
+  boys_restrooms_count?: number;
+  girls_restrooms_count?: number;
+  unisex_restrooms_count?: number;
+  staff_toilets?: number;
+  staff_sinks?: number;
+  staff_restrooms_count?: number;
   created_at: string;
   updated_at: string;
   created_by: string;
@@ -150,6 +168,10 @@ export interface Room {
   floor: string;
   furniture_details?: Record<string, any>;
   accessibility_notes?: string;
+  
+  // Usage categories for public rental
+  possible_uses?: string[]; // e.g., ['Meetings', 'Events', 'Training', 'Conferences']
+  
   created_at: string;
   updated_at: string;
 }
@@ -297,7 +319,34 @@ export interface SystemMaintenance {
   updated_at: string;
 }
 
-export type BuildingFormData = Omit<Building, 'id' | 'created_at' | 'updated_at'>;
+export type BuildingFormData = {
+  name: string;
+  building_number: string;
+  construction_date: string | null;
+  building_type: BuildingType;
+  square_footage: number;
+  number_of_rooms: number;
+  facility_id: string;
+  notes: string | null;
+  image_description?: string | null;
+  status: BuildingStatus;
+  created_by: string;
+  // Optional restroom information
+  boys_toilets?: number;
+  girls_toilets?: number;
+  unisex_toilets?: number;
+  boys_urinals?: number;
+  girls_urinals?: number;
+  boys_sinks?: number;
+  girls_sinks?: number;
+  unisex_sinks?: number;
+  boys_restrooms_count?: number;
+  girls_restrooms_count?: number;
+  unisex_restrooms_count?: number;
+  staff_toilets?: number;
+  staff_sinks?: number;
+  staff_restrooms_count?: number;
+};
 
 export interface RoomFormData {
   building_id: string;

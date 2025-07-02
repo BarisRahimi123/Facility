@@ -16,6 +16,7 @@ const publicPaths = [
   '/auth/reset-password',
   '/auth/update-password',
   '/auth/callback',
+  '/auth/accept-invitation',
   '/(auth)',
   '/(auth)/sign-in',
   '/(auth)/sign-up',

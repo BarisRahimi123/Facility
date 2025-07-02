@@ -178,3 +178,87 @@ export interface FormConfig {
   showRequestInfoButton?: boolean;
   requestInfoButtonText?: string;
 }
+
+export type MaintenanceStatus = 
+  | 'pending'
+  | 'approved'
+  | 'in_progress'
+  | 'completed'
+  | 'rejected'
+  | 'cancelled';
+
+export type MaintenancePriority =
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'urgent'
+  | 'emergency';
+
+export type MaintenanceType =
+  | 'repair'
+  | 'inspection'
+  | 'preventive'
+  | 'replacement'
+  | 'cleaning'
+  | 'upgrade'
+  | 'other';
+
+export interface MaintenanceRequest {
+  id: string;
+  facility_id: string;
+  building_id: string;
+  room_id?: string;
+  system_id?: string;
+  title: string;
+  description: string;
+  type: MaintenanceType;
+  priority: MaintenancePriority;
+  status: MaintenanceStatus;
+  requested_by: string;
+  assigned_to?: string;
+  estimated_cost?: number;
+  actual_cost?: number;
+  start_date?: string;
+  completion_date?: string;
+  due_date?: string;
+  attachments?: {
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+  }[];
+  notes?: {
+    id: string;
+    text: string;
+    created_by: string;
+    created_at: string;
+  }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MaintenanceStats {
+  total: number;
+  pending: number;
+  approved: number;
+  in_progress: number;
+  completed: number;
+  rejected: number;
+  cancelled: number;
+  by_priority: {
+    low: number;
+    medium: number;
+    high: number;
+    urgent: number;
+    emergency: number;
+  };
+  by_type: {
+    repair: number;
+    inspection: number;
+    preventive: number;
+    replacement: number;
+    cleaning: number;
+    upgrade: number;
+    other: number;
+  };
+}

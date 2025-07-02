@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Building, Room, BuildingSystem, RoomFunction, BuildingSystemType, SystemCondition, BuildingStatus } from '@/types/building';
+import { Building as BuildingType, Room, BuildingSystem, RoomFunction, BuildingSystemType, SystemCondition, BuildingStatus, BuildingFormData } from '@/types/building';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { 
@@ -10,11 +10,13 @@ import {
   createRoom,
   createBuilding,
   createBuildingSystem,
-  getBuildingSystems
+  getBuildingSystems,
+  deleteBuilding,
+  createRenovation
 } from '@/app/actions/buildings';
 import { getAllFacilities, getFacilityById } from '@/app/actions/facilities';
 import { createClient } from '@/lib/supabase/client';
-import { ChevronDown, ChevronRight, Plus, MoreVertical, Pencil, Home, ChevronRight as ChevronRightIcon, Building2, Wrench, Hammer, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, MoreVertical, Pencil, Home, ChevronRight as ChevronRightIcon, Building2, Wrench, Hammer, FileText, ChevronUp, ExternalLink, Eye, Trash2, Calendar } from 'lucide-react';
 import type { Plan } from '@/app/actions/plans';
 import Link from 'next/link';
 import {
@@ -64,7 +66,16 @@ import * as z from "zod";
 import { Label } from '@/components/ui/label';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BuildingService } from '@/lib/services/building.service';
-import { BuildingType } from '@/types/building';
+import { Loader2 } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
+import { DoorOpen } from 'lucide-react';
+import { Edit } from 'lucide-react';
+import { Tabs, TabsList, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { AddRoomForm } from '@/components/add-room-form';
+import { AddSystemForm } from '@/components/add-system-form';
+import { AddRenovationForm } from '@/components/add-renovation-form';
+import { EditBuildingForm } from '@/components/edit-building-form';
+import { DeleteBuildingForm } from '@/components/delete-building-form';
 
 const ROOM_FUNCTIONS = ['Classroom', 'Office', 'Restroom', 'Laboratory', 'Storage', 'Conference', 'Other'] as const;
 const SYSTEM_TYPES = ['HVAC', 'Electrical', 'Plumbing', 'Roofing', 'Fire Safety', 'Security', 'IT Infrastructure', 'Other'] as const;
@@ -72,7 +83,7 @@ const SYSTEM_CONDITIONS = ['Excellent', 'Good', 'Fair', 'Poor', 'Critical'] as c
 const BUILDING_TYPES = ['Administration', 'Classroom', 'Laboratory', 'Gymnasium', 'Auditorium', 'Library', 'Cafeteria', 'Dormitory', 'Other'] as const;
 
 export default function BuildingsPage() {
-  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [buildings, setBuildings] = useState<BuildingType[]>([]);
   const [systems, setSystems] = useState<{ [key: string]: BuildingSystem[] }>({});
   const [plansMap, setPlansMap] = useState<{ [key: string]: Plan[] }>({});
   const [expandedBuildings, setExpandedBuildings] = useState<Set<string>>(new Set());
@@ -80,7 +91,7 @@ export default function BuildingsPage() {
   const { toast } = useToast();
   const supabase = createClient();
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [selectedBuilding, setSelectedBuilding] = useState<BuildingType | null>(null);
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [showSystemModal, setShowSystemModal] = useState(false);
   const [showRenovationModal, setShowRenovationModal] = useState(false);
@@ -93,7 +104,12 @@ export default function BuildingsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loadingError, setLoadingError] = useState<string | null>(null);
-
+  const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
+  const [editingBuilding, setEditingBuilding] = useState<BuildingType | null>(null);
+  const [deletingBuilding, setDeletingBuilding] = useState<BuildingType | null>(null);
+  const [addingRoomTo, setAddingRoomTo] = useState<BuildingType | null>(null);
+  const [addingSystemTo, setAddingSystemTo] = useState<BuildingType | null>(null);
+  const [addingRenovationTo, setAddingRenovationTo] = useState<BuildingType | null>(null);
 
   // Define mock data for fallbacks
   const mockRooms: Room[] = [
@@ -213,13 +229,29 @@ export default function BuildingsPage() {
   // Form schemas
   const buildingFormSchema = z.object({
     name: z.string().min(1, "Building name is required"),
-    buildingNumber: z.string().optional(),
-    constructionDate: z.string().min(1, "Construction date is required"),
-    buildingType: z.string().min(1, "Building type is required"),
-    squareFootage: z.number().min(1, "Square footage must be greater than 0"),
-    numberOfRooms: z.number().min(0, "Number of rooms must be 0 or greater"),
-    facilityId: z.string().min(1, "Facility is required"),
+    building_number: z.string().optional(),
+    construction_date: z.string().min(1, "Construction date is required"),
+    building_type: z.enum(['commercial', 'residential', 'industrial', 'educational', 'healthcare', 'mixed_use', 'other'] as const),
+    square_footage: z.number().min(1, "Square footage must be greater than 0"),
+    number_of_rooms: z.number().min(0, "Number of rooms must be 0 or greater"),
+    facility_id: z.string().min(1, "Facility is required"),
     notes: z.string().optional(),
+    image_description: z.string().optional(),
+    // Restroom information fields for compliance calculations
+    boys_toilets: z.number().min(0, "Must be 0 or greater").optional(),
+    girls_toilets: z.number().min(0, "Must be 0 or greater").optional(),
+    unisex_toilets: z.number().min(0, "Must be 0 or greater").optional(),
+    boys_urinals: z.number().min(0, "Must be 0 or greater").optional(),
+    girls_urinals: z.number().min(0, "Must be 0 or greater").optional(),
+    boys_sinks: z.number().min(0, "Must be 0 or greater").optional(),
+    girls_sinks: z.number().min(0, "Must be 0 or greater").optional(),
+    unisex_sinks: z.number().min(0, "Must be 0 or greater").optional(),
+    boys_restrooms_count: z.number().min(0, "Must be 0 or greater").optional(),
+    girls_restrooms_count: z.number().min(0, "Must be 0 or greater").optional(),
+    unisex_restrooms_count: z.number().min(0, "Must be 0 or greater").optional(),
+    staff_toilets: z.number().min(0, "Must be 0 or greater").optional(),
+    staff_sinks: z.number().min(0, "Must be 0 or greater").optional(),
+    staff_restrooms_count: z.number().min(0, "Must be 0 or greater").optional(),
   });
 
   const roomFormSchema = z.object({
@@ -252,13 +284,29 @@ export default function BuildingsPage() {
     resolver: zodResolver(buildingFormSchema),
     defaultValues: {
       name: '',
-      buildingNumber: '',
-      constructionDate: '',
-      buildingType: '',
-      squareFootage: 0,
-      numberOfRooms: 0,
-      facilityId: '',
+      building_number: '',
+      construction_date: '',
+      building_type: 'commercial',
+      square_footage: 0,
+      number_of_rooms: 0,
+      facility_id: '',
       notes: '',
+      image_description: '',
+      // Restroom information defaults
+      boys_toilets: 0,
+      girls_toilets: 0,
+      unisex_toilets: 0,
+      boys_urinals: 0,
+      girls_urinals: 0,
+      boys_sinks: 0,
+      girls_sinks: 0,
+      unisex_sinks: 0,
+      boys_restrooms_count: 0,
+      girls_restrooms_count: 0,
+      unisex_restrooms_count: 0,
+      staff_toilets: 0,
+      staff_sinks: 0,
+      staff_restrooms_count: 0,
     },
   });
 
@@ -392,7 +440,7 @@ export default function BuildingsPage() {
       if (facilityIdFromUrl && facilityIdFromUrl !== 'all') {
         setSelectedFacilityId(facilityIdFromUrl);
         // Pre-select the facility in the form
-        buildingForm.setValue('facilityId', facilityIdFromUrl);
+        buildingForm.setValue('facility_id', facilityIdFromUrl);
       } else {
         setSelectedFacilityId(null);
       }
@@ -415,7 +463,7 @@ export default function BuildingsPage() {
   // Add a separate effect for form initialization to avoid dependencies issues
   useEffect(() => {
     if (selectedFacilityId) {
-      buildingForm.setValue('facilityId', selectedFacilityId);
+      buildingForm.setValue('facility_id', selectedFacilityId);
     }
   }, [selectedFacilityId, buildingForm]);
   
@@ -569,87 +617,86 @@ export default function BuildingsPage() {
   };
 
   const handleAddRoom = async (data: z.infer<typeof roomFormSchema>) => {
-    if (!selectedBuilding) return;
     try {
       const formData = new FormData();
-      formData.append('building_id', selectedBuilding.id);
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-
+      formData.append('building_id', addingRoomTo!.id);
+      formData.append('room_number', data.room_number);
+      formData.append('room_function', data.room_function);
+      formData.append('square_footage', data.square_footage.toString());
+      formData.append('floor', data.floor || '');
+      if (data.capacity) formData.append('capacity', data.capacity.toString());
+      
       await createRoom(formData);
-      await loadBuildingDetails(selectedBuilding.id);
-      setShowRoomModal(false);
-      roomForm.reset();
+      await loadBuildings();
+      setAddingRoomTo(null);
       toast({
-        title: 'Success',
-        description: 'Room added successfully',
+        title: "Success",
+        description: "Room added successfully",
+        variant: "success"
       });
     } catch (error) {
       console.error('Error adding room:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to add room',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to add room",
+        variant: "destructive"
       });
     }
   };
 
   const handleAddSystem = async (data: z.infer<typeof systemFormSchema>) => {
-    if (!selectedBuilding) return;
     try {
       const formData = new FormData();
-      formData.append('building_id', selectedBuilding.id);
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-
+      formData.append('building_id', addingSystemTo!.id);
+      formData.append('name', data.name);
+      formData.append('system_type', data.system_type);
+      formData.append('condition', data.condition);
+      if (data.installation_date) formData.append('installation_date', data.installation_date);
+      if (data.maintenance_frequency) formData.append('maintenance_frequency', data.maintenance_frequency);
+      
       await createBuildingSystem(formData);
-      await loadBuildingDetails(selectedBuilding.id);
-      setShowSystemModal(false);
-      systemForm.reset();
+      await loadBuildings();
+      setAddingSystemTo(null);
       toast({
-        title: 'Success',
-        description: 'System added successfully',
+        title: "Success",
+        description: "System added successfully",
+        variant: "success"
       });
     } catch (error) {
       console.error('Error adding system:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to add system',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to add system",
+        variant: "destructive"
       });
     }
   };
 
   const handleAddRenovation = async (data: z.infer<typeof renovationFormSchema>) => {
-    if (!selectedBuilding) return;
     try {
       const formData = new FormData();
-      formData.append('building_id', selectedBuilding.id);
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== undefined) {
-          formData.append(key, value.toString());
-        }
-      });
-
-      // Add renovation API call here
-      setShowRenovationModal(false);
-      renovationForm.reset();
+      formData.append('building_id', addingRenovationTo!.id);
+      formData.append('scope_of_work', data.scope_of_work);
+      formData.append('square_footage_affected', data.square_footage_affected.toString());
+      formData.append('start_date', data.start_date);
+      formData.append('completion_date', data.completion_date);
+      formData.append('estimated_budget', data.estimated_budget.toString());
+      formData.append('status', data.status);
+      
+      await createRenovation(addingRenovationTo!.id, formData);
+      await loadBuildings();
+      setAddingRenovationTo(null);
       toast({
-        title: 'Success',
-        description: 'Renovation added successfully',
+        title: "Success",
+        description: "Renovation added successfully",
+        variant: "success"
       });
     } catch (error) {
       console.error('Error adding renovation:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to add renovation',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to add renovation",
+        variant: "destructive"
       });
     }
   };
@@ -677,1174 +724,409 @@ export default function BuildingsPage() {
     try {
       setIsLoading(true);
       
-      // Create the building data object
-      const newBuilding = {
-        name: data.name,
-        building_number: data.buildingNumber || '',
-        construction_date: data.constructionDate,
-        building_type: data.buildingType as BuildingType,
-        square_footage: data.squareFootage,
-        number_of_rooms: data.numberOfRooms,
-        facility_id: data.facilityId,
-        notes: data.notes || null,
-        status: 'active' as BuildingStatus,
-        created_by: 'user',
-      };
+      // Create FormData object
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('building_number', data.building_number || '');
+      formData.append('construction_date', data.construction_date);
+      formData.append('building_type', data.building_type);
+      formData.append('square_footage', data.square_footage.toString());
+      formData.append('number_of_rooms', data.number_of_rooms.toString());
+      formData.append('facility_id', data.facility_id);
+      formData.append('notes', data.notes || '');
+      formData.append('image_description', data.image_description || '');
       
-      // Create the building using the BuildingService
-      const newBuildingCreated = await BuildingService.createBuilding(newBuilding);
+      // Add restroom information
+      if (data.boys_toilets) formData.append('boys_toilets', data.boys_toilets.toString());
+      if (data.girls_toilets) formData.append('girls_toilets', data.girls_toilets.toString());
+      if (data.unisex_toilets) formData.append('unisex_toilets', data.unisex_toilets.toString());
+      if (data.boys_urinals) formData.append('boys_urinals', data.boys_urinals.toString());
+      if (data.girls_urinals) formData.append('girls_urinals', data.girls_urinals.toString());
+      if (data.boys_sinks) formData.append('boys_sinks', data.boys_sinks.toString());
+      if (data.girls_sinks) formData.append('girls_sinks', data.girls_sinks.toString());
+      if (data.unisex_sinks) formData.append('unisex_sinks', data.unisex_sinks.toString());
+      if (data.boys_restrooms_count) formData.append('boys_restrooms_count', data.boys_restrooms_count.toString());
+      if (data.girls_restrooms_count) formData.append('girls_restrooms_count', data.girls_restrooms_count.toString());
+      if (data.unisex_restrooms_count) formData.append('unisex_restrooms_count', data.unisex_restrooms_count.toString());
+      if (data.staff_toilets) formData.append('staff_toilets', data.staff_toilets.toString());
+      if (data.staff_sinks) formData.append('staff_sinks', data.staff_sinks.toString());
+      if (data.staff_restrooms_count) formData.append('staff_restrooms_count', data.staff_restrooms_count.toString());
+
+      const newBuilding = await createBuilding(formData);
       
-      toast({
-        title: 'Success',
-        description: 'Building created successfully',
-        variant: 'success',
-      });
-      
-      // Reset the form
-      buildingForm.reset();
-      
-      // Close the modal
-      setIsModalOpen(false);
-      
-      // Reload the buildings
-      await loadBuildings();
-      
-      // If we came from a facility page, redirect back to it
-      if (selectedFacilityId) {
-        router.push(`/facility/${selectedFacilityId}?tab=buildings`);
+      if (newBuilding) {
+        await loadBuildings();
+        setIsModalOpen(false);
+        toast({
+          title: "Success",
+          description: "Building created successfully",
+          variant: "success"
+        });
       }
-      
-      setIsLoading(false);
     } catch (error) {
       console.error('Error creating building:', error);
       toast({
+        title: "Error",
+        description: "Failed to create building",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveBuilding = async (updatedBuilding: BuildingType) => {
+    try {
+      setIsLoading(true);
+      const formData = new FormData();
+      Object.entries(updatedBuilding).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          formData.append(key, value.toString());
+        }
+      });
+
+      await createBuilding(formData);
+      setEditingBuilding(null);
+      loadBuildings();
+      toast({
+        title: 'Success',
+        description: 'Building updated successfully',
+        variant: 'success',
+      });
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error updating building:', error);
+      toast({
         title: 'Error',
-        description: 'Failed to create building. Please try again.',
+        description: 'Failed to update building. Please try again.',
         variant: 'destructive',
       });
       setIsLoading(false);
     }
   };
 
-
+  const handleDeleteBuilding = async (buildingId: string) => {
+    try {
+      setIsLoading(true);
+      await deleteBuilding(buildingId);
+      
+      setBuildings(prev => prev.filter(b => b.id !== buildingId));
+      setDeletingBuilding(null);
+      
+      toast({
+        title: "Success",
+        description: "Building deleted successfully",
+        variant: "success"
+      });
+    } catch (error) {
+      console.error('Error deleting building:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete building",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
       <div className="container mx-auto p-6">
         {/* Breadcrumb Navigation with glassmorphic effect */}
-        <nav className="flex mb-6 bg-gray-900/50 backdrop-blur-md rounded-xl p-4 border border-gray-800" aria-label="Breadcrumb">
-          <ol className="inline-flex items-center space-x-1 md:space-x-3">
-            <li className="inline-flex items-center">
-              <Link href="/facilities" className="inline-flex items-center text-sm font-medium text-gray-300 hover:text-purple-400 transition-colors">
-                <Home className="w-4 h-4 mr-2" />
-                Facilities
+        <nav className="flex mb-6 bg-card/50 backdrop-blur-md rounded-xl p-4 border border-border" aria-label="Breadcrumb">
+          <ol className="flex items-center space-x-2">
+            <li>
+              <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+                <Home className="w-4 h-4" />
               </Link>
+            </li>
+            <li>
+              <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
+            </li>
+            <li>
+              <span className="text-foreground">Buildings</span>
             </li>
             {selectedFacility && (
               <>
                 <li>
-                  <div className="flex items-center">
-                    <ChevronRightIcon className="w-4 h-4 text-gray-600" />
-                    <Link 
-                      href={`/facility/${selectedFacility.id}`} 
-                      className="ml-1 text-sm font-medium text-gray-300 hover:text-purple-400 transition-colors md:ml-2"
-                    >
-                      {selectedFacility.name}
-                    </Link>
-                  </div>
+                  <ChevronRightIcon className="w-4 h-4 text-muted-foreground" />
                 </li>
-                <li aria-current="page">
-                  <div className="flex items-center">
-                    <ChevronRightIcon className="w-4 h-4 text-gray-600" />
-                    <span className="ml-1 text-sm font-medium text-purple-400 md:ml-2">Buildings</span>
-                  </div>
+                <li>
+                  <span className="text-foreground">{selectedFacility.name}</span>
                 </li>
               </>
             )}
           </ol>
         </nav>
 
-        {/* Header Section with glassmorphic card */}
-        <div className="bg-gray-900/50 backdrop-blur-md rounded-xl p-6 mb-6 border border-gray-800">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
-                {selectedFacility 
-                  ? `Buildings - ${selectedFacility.name}` 
-                  : 'All Buildings'}
-              </h1>
-              {selectedFacility && (
-                <p className="text-gray-400">
-                  Manage buildings for this facility
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              {/* Facility Filter Dropdown with dark theme */}
-              <div className="flex items-center">
-                <Select
-                  value={selectedFacilityId || "all"}
-                  onValueChange={(value) => {
-                    if (value && value !== "all") {
-                      // If a facility is selected, update URL and state
-                      const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
-                      newSearchParams.set("facilityId", value);
-                      router.push(`/buildings?${newSearchParams.toString()}`);
-                      setSelectedFacilityId(value);
-                    } else {
-                      // If "All Facilities" is selected, remove facilityId from URL
-                      const newSearchParams = new URLSearchParams(searchParams?.toString() || "");
-                      newSearchParams.delete("facilityId");
-                      router.push(`/buildings?${newSearchParams.toString()}`);
-                      setSelectedFacilityId(null);
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-[200px] bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
-                    <SelectValue placeholder="Filter by Facility" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="all" className="text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white">All Facilities</SelectItem>
-                    {facilities.map((facility) => (
-                      <SelectItem 
-                        key={facility.id} 
-                        value={facility.id}
-                        className="text-white hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                      >
-                        {facility.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button 
-                onClick={() => setIsModalOpen(true)}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-purple-500/25 transition-all duration-200"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Building
-              </Button>
-            </div>
+        {/* Header Section */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Buildings</h1>
+            <p className="text-muted-foreground">Manage your facilities and buildings</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <Select
+              value={selectedFacilityId || 'all'}
+              onValueChange={(value) => {
+                if (value === 'all') {
+                  router.push('/buildings');
+                  setSelectedFacilityId(null);
+                } else {
+                  router.push(`/buildings?facilityId=${value}`);
+                  setSelectedFacilityId(value);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select Facility" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Facilities</SelectItem>
+                {facilities.map((facility) => (
+                  <SelectItem key={facility.id} value={facility.id}>
+                    {facility.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={() => setIsModalOpen(true)} className="bg-primary hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Building
+            </Button>
           </div>
         </div>
 
-        {/* Table with glassmorphic effect */}
-        <div className="bg-gray-900/50 backdrop-blur-md rounded-xl border border-gray-800 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-gray-800 hover:bg-gray-800/50">
-                <TableHead className="w-[50px] text-gray-400"></TableHead>
-                <TableHead className="text-gray-400">Name</TableHead>
-                <TableHead className="text-gray-400">Type</TableHead>
-                <TableHead className="text-gray-400">Status</TableHead>
-                <TableHead className="text-gray-400">Construction Date</TableHead>
-                <TableHead className="text-gray-400">Square Footage</TableHead>
-                <TableHead className="text-gray-400">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
+        {/* Loading and Error States */}
+        {isLoading && (
+          <div className="flex justify-center items-center py-12">
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <span className="text-muted-foreground">Loading buildings...</span>
+            </div>
+          </div>
+        )}
+
+        {loadingError && (
+          <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6">
+            <p className="flex items-center gap-2">
+              <span className="font-medium">Error:</span>
+              {loadingError}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={loadBuildings}
+              className="mt-2"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Buildings Table */}
+        {!isLoading && !loadingError && buildings.length === 0 && (
+          <div className="text-center py-12">
+            <Building2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">No buildings found</h3>
+            <p className="text-muted-foreground mb-4">
+              {selectedFacilityId
+                ? "This facility doesn't have any buildings yet."
+                : "You haven't added any buildings yet."}
+            </p>
+            <Button onClick={() => setIsModalOpen(true)} variant="outline">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Your First Building
+            </Button>
+          </div>
+        )}
+
+        {!isLoading && !loadingError && buildings.length > 0 && (
+          <div className="bg-card rounded-xl border border-border overflow-hidden">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <div className="flex justify-center items-center">
-                      <div className="animate-pulse text-gray-400">Loading buildings...</div>
-                    </div>
-                  </TableCell>
+                  <TableHead className="w-[300px]">Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Square Footage</TableHead>
+                  <TableHead>Rooms</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : loadingError ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <div className="flex flex-col justify-center items-center">
-                      <p className="text-gray-400 mb-4">
-                        {loadingError}
-                      </p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-2 border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
-                        onClick={loadBuildings}
-                      >
-                        Retry
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : buildings.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <div className="flex flex-col justify-center items-center">
-                      <Building2 className="w-12 h-12 text-gray-600 mb-4" />
-                      <p className="text-gray-400 mb-4">
-                        {selectedFacility 
-                          ? `No buildings found for ${selectedFacility.name}` 
-                          : 'No buildings found'}
-                      </p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-1 border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Add Building
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                buildings.map((building) => (
+              </TableHeader>
+              <TableBody>
+                {buildings.map((building) => (
                   <React.Fragment key={building.id}>
-                    <TableRow className="border-gray-800 hover:bg-gray-800/50 transition-colors">
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleRowExpansion(building.id)}
-                          className="text-gray-400 hover:text-white hover:bg-gray-700 transition-all duration-200"
+                    <TableRow>
+                      <TableCell className="font-medium">
+                        <button
+                          onClick={() => toggleBuildingExpansion(building.id)}
+                          className="flex items-center gap-2 hover:text-primary transition-colors"
                         >
-                          {expandedRows.has(building.id) ? (
-                            <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                          {expandedBuildings.has(building.id) ? (
+                            <ChevronDown className="w-4 h-4" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 transition-transform duration-200" />
+                            <ChevronRight className="w-4 h-4" />
                           )}
-                        </Button>
+                          {building.name}
+                        </button>
                       </TableCell>
+                      <TableCell>{building.building_type}</TableCell>
+                      <TableCell>{building.square_footage.toLocaleString()} sq ft</TableCell>
+                      <TableCell>{building.number_of_rooms}</TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium text-white">{building.name}</p>
-                          <p className="text-sm text-gray-400">#{building.building_number || 'N/A'}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-gray-300">{building.building_type}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={building.status === 'active' ? 'default' : 'outline'}
-                          className={building.status === 'active' 
-                            ? 'bg-green-900/50 text-green-400 border-green-800' 
-                            : 'border-gray-600 text-gray-400'}
+                        <Badge
+                          variant={building.status === 'active' ? 'default' : 'secondary'}
+                          className="capitalize"
                         >
                           {building.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-gray-300">
-                        {building.construction_date ? new Date(building.construction_date).toLocaleDateString() : 'N/A'}
-                      </TableCell>
-                      <TableCell className="text-gray-300">{building.square_footage.toLocaleString()} sq ft</TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="text-gray-400 hover:text-white hover:bg-gray-700"
-                        >
-                          Edit
-                        </Button>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditingBuilding(building)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit Building
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setAddingRoomTo(building)}>
+                              <DoorOpen className="mr-2 h-4 w-4" />
+                              Add Room
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setAddingSystemTo(building)}>
+                              <Wrench className="mr-2 h-4 w-4" />
+                              Add System
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setAddingRenovationTo(building)}>
+                              <Hammer className="mr-2 h-4 w-4" />
+                              Add Renovation
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDeletingBuilding(building)}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Building
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                    {expandedRows.has(building.id) && (
-                      <>
-                        {/* Rooms Section with animation */}
-                        <TableRow className="bg-gray-800/30 animate-in slide-in-from-top-2 duration-300">
-                          <TableCell colSpan={7} className="p-0">
-                            <div className="pl-8 py-4">
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => toggleBuildingExpansion(building.id)}
-                                    className="p-0 text-gray-400 hover:text-white"
-                                  >
-                                    {expandedBuildings.has(building.id) ? (
-                                      <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-                                    )}
-                                  </Button>
-                                  <h4 className="font-semibold text-white flex items-center gap-2">
-                                    <Building2 className="w-4 h-4 text-purple-400" />
-                                    Rooms ({rooms[building.id]?.length || 0})
-                                  </h4>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedBuilding(building);
-                                    setShowRoomModal(true);
-                                  }}
-                                  className="border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add Room
-                                </Button>
-                              </div>
-                              {expandedBuildings.has(building.id) && (
-                                <div className="pl-6 animate-in slide-in-from-top-2 duration-300">
-                                  <div className="bg-gray-900/50 rounded-lg overflow-hidden border border-gray-800">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow className="border-gray-800">
-                                          <TableHead className="text-gray-400">Room Number</TableHead>
-                                          <TableHead className="text-gray-400">Function</TableHead>
-                                          <TableHead className="text-gray-400">Floor</TableHead>
-                                          <TableHead className="text-gray-400">Square Footage</TableHead>
-                                          <TableHead className="text-gray-400">Capacity</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {rooms[building.id]?.map((room) => (
-                                          <TableRow key={room.id} className="border-gray-800 hover:bg-gray-800/50">
-                                            <TableCell className="text-gray-300">{room.room_number}</TableCell>
-                                            <TableCell className="text-gray-300">{room.room_function}</TableCell>
-                                            <TableCell className="text-gray-300">{room.floor}</TableCell>
-                                            <TableCell className="text-gray-300">{room.square_footage}</TableCell>
-                                            <TableCell className="text-gray-300">{room.capacity || 'N/A'}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Systems Section with animation */}
-                        <TableRow className="bg-gray-800/30 animate-in slide-in-from-top-2 duration-300">
-                          <TableCell colSpan={7} className="p-0">
-                            <div className="pl-8 py-4">
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => toggleBuildingExpansion(`${building.id}-systems`)}
-                                    className="p-0 text-gray-400 hover:text-white"
-                                  >
-                                    {expandedBuildings.has(`${building.id}-systems`) ? (
-                                      <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-                                    )}
-                                  </Button>
-                                  <h4 className="font-semibold text-white flex items-center gap-2">
-                                    <Wrench className="w-4 h-4 text-purple-400" />
-                                    Systems ({systems[building.id]?.length || 0})
-                                  </h4>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedBuilding(building);
-                                    setShowSystemModal(true);
-                                  }}
-                                  className="border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add System
-                                </Button>
-                              </div>
-                              {expandedBuildings.has(`${building.id}-systems`) && (
-                                <div className="pl-6 animate-in slide-in-from-top-2 duration-300">
-                                  <div className="bg-gray-900/50 rounded-lg overflow-hidden border border-gray-800">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow className="border-gray-800">
-                                          <TableHead className="text-gray-400">Name</TableHead>
-                                          <TableHead className="text-gray-400">Type</TableHead>
-                                          <TableHead className="text-gray-400">Condition</TableHead>
-                                          <TableHead className="text-gray-400">Installation Date</TableHead>
-                                          <TableHead className="text-gray-400">Last Maintenance</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {systems[building.id]?.map((system) => (
-                                          <TableRow key={system.id} className="border-gray-800 hover:bg-gray-800/50">
-                                            <TableCell className="text-gray-300">{system.name}</TableCell>
-                                            <TableCell className="text-gray-300">{system.system_type}</TableCell>
-                                            <TableCell>
-                                              <Badge 
-                                                variant={
-                                                  system.condition === 'Excellent' ? 'default' :
-                                                  system.condition === 'Good' ? 'default' :
-                                                  system.condition === 'Fair' ? 'outline' :
-                                                  'destructive'
-                                                }
-                                                className={
-                                                  system.condition === 'Excellent' ? 'bg-green-900/50 text-green-400 border-green-800' :
-                                                  system.condition === 'Good' ? 'bg-blue-900/50 text-blue-400 border-blue-800' :
-                                                  system.condition === 'Fair' ? 'bg-yellow-900/50 text-yellow-400 border-yellow-800' :
-                                                  'bg-red-900/50 text-red-400 border-red-800'
-                                                }
-                                              >
-                                                {system.condition}
-                                              </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-gray-300">{system.installation_date || 'N/A'}</TableCell>
-                                            <TableCell className="text-gray-300">{system.maintenance_details?.frequency || 'N/A'}</TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Renovations Section with animation */}
-                        <TableRow className="bg-gray-800/30 animate-in slide-in-from-top-2 duration-300">
-                          <TableCell colSpan={7} className="p-0">
-                            <div className="pl-8 py-4">
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => toggleBuildingExpansion(`${building.id}-renovations`)}
-                                    className="p-0 text-gray-400 hover:text-white"
-                                  >
-                                    {expandedBuildings.has(`${building.id}-renovations`) ? (
-                                      <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-                                    )}
-                                  </Button>
-                                  <h4 className="font-semibold text-white flex items-center gap-2">
-                                    <Hammer className="w-4 h-4 text-purple-400" />
-                                    Renovations (0)
-                                  </h4>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedBuilding(building);
-                                    setShowRenovationModal(true);
-                                  }}
-                                  className="border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add Renovation
-                                </Button>
-                              </div>
-                              {expandedBuildings.has(`${building.id}-renovations`) && (
-                                <div className="pl-6 animate-in slide-in-from-top-2 duration-300">
-                                  <div className="bg-gray-900/50 rounded-lg overflow-hidden border border-gray-800">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow className="border-gray-800">
-                                          <TableHead className="text-gray-400">Scope of Work</TableHead>
-                                          <TableHead className="text-gray-400">Status</TableHead>
-                                          <TableHead className="text-gray-400">Start Date</TableHead>
-                                          <TableHead className="text-gray-400">Completion Date</TableHead>
-                                          <TableHead className="text-gray-400">Budget</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {/* Renovations would be loaded separately if they exist */}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-
-                        {/* Referenced Files Section with animation */}
-                        <TableRow className="bg-gray-800/30 animate-in slide-in-from-top-2 duration-300">
-                          <TableCell colSpan={7} className="p-0">
-                            <div className="pl-8 py-4">
-                              <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => toggleBuildingExpansion(`${building.id}-files`)}
-                                    className="p-0 text-gray-400 hover:text-white"
-                                  >
-                                    {expandedBuildings.has(`${building.id}-files`) ? (
-                                      <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                    ) : (
-                                      <ChevronRight className="h-4 w-4 transition-transform duration-200" />
-                                    )}
-                                  </Button>
-                                  <h4 className="font-semibold text-white flex items-center gap-2">
-                                    <FileText className="w-4 h-4 text-purple-400" />
-                                    Referenced Files ({plansMap[building.id]?.length || 0})
-                                  </h4>
-                                </div>
-                                <Button 
-                                  variant="outline" 
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedBuilding(building);
-                                    setShowFilesModal(true);
-                                  }}
-                                  className="border-purple-600 text-purple-400 hover:bg-purple-600 hover:text-white transition-colors"
-                                >
-                                  <Plus className="w-3 h-3 mr-1" />
-                                  Add Files
-                                </Button>
-                              </div>
-                              {expandedBuildings.has(`${building.id}-files`) && (
-                                <div className="pl-6 animate-in slide-in-from-top-2 duration-300">
-                                  <div className="bg-gray-900/50 rounded-lg overflow-hidden border border-gray-800">
-                                    <Table>
-                                      <TableHeader>
-                                        <TableRow className="border-gray-800">
-                                          <TableHead className="text-gray-400">File Name</TableHead>
-                                          <TableHead className="text-gray-400">Type</TableHead>
-                                          <TableHead className="text-gray-400">Upload Date</TableHead>
-                                          <TableHead className="text-gray-400">Actions</TableHead>
-                                        </TableRow>
-                                      </TableHeader>
-                                      <TableBody>
-                                        {plansMap[building.id]?.map((plan) => (
-                                          <TableRow key={plan.id} className="border-gray-800 hover:bg-gray-800/50">
-                                            <TableCell className="text-gray-300">{plan.name}</TableCell>
-                                            <TableCell className="text-gray-300">{plan.type}</TableCell>
-                                            <TableCell className="text-gray-300">{new Date(plan.uploaded_at).toLocaleDateString()}</TableCell>
-                                            <TableCell>
-                                              <Button 
-                                                variant="outline" 
-                                                size="sm"
-                                                className="text-gray-400 hover:text-white hover:bg-gray-700"
-                                              >
-                                                View
-                                              </Button>
-                                            </TableCell>
-                                          </TableRow>
-                                        ))}
-                                      </TableBody>
-                                    </Table>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      </>
+                    {expandedBuildings.has(building.id) && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="p-0">
+                          <div className="bg-accent/50 p-4">
+                            <Tabs defaultValue="rooms" className="w-full">
+                              <TabsList className="mb-4">
+                                <TabsTrigger value="rooms">
+                                  <DoorOpen className="w-4 h-4 mr-2" />
+                                  Rooms
+                                </TabsTrigger>
+                                <TabsTrigger value="systems">
+                                  <Wrench className="w-4 h-4 mr-2" />
+                                  Systems
+                                </TabsTrigger>
+                                <TabsTrigger value="renovations">
+                                  <Hammer className="w-4 h-4 mr-2" />
+                                  Renovations
+                                </TabsTrigger>
+                                <TabsTrigger value="files">
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Files
+                                </TabsTrigger>
+                              </TabsList>
+                              <TabsContent value="rooms">
+                                {/* Rooms content */}
+                              </TabsContent>
+                              <TabsContent value="systems">
+                                {/* Systems content */}
+                              </TabsContent>
+                              <TabsContent value="renovations">
+                                {/* Renovations content */}
+                              </TabsContent>
+                              <TabsContent value="files">
+                                {/* Files content */}
+                              </TabsContent>
+                            </Tabs>
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
                   </React.Fragment>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
 
-        {/* Building Modal with dark theme */}
+        {/* Add Building Modal */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-2xl bg-gray-900 border-gray-800">
+          <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-bold text-white">Add New Building</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Create a new building in your facility management system.
+              <DialogTitle>Add New Building</DialogTitle>
+              <DialogDescription>
+                Enter the details for the new building. All fields marked with * are required.
               </DialogDescription>
             </DialogHeader>
             <Form {...buildingForm}>
               <form onSubmit={buildingForm.handleSubmit(handleAddBuilding)} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Building Name */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Building Name</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Main Building" 
-                            {...field} 
-                            className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Building Number */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="buildingNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Building Number (Optional)</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="A1" 
-                            {...field} 
-                            className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Facility */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="facilityId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Facility</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value || selectedFacilityId || undefined}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                              <SelectValue placeholder="Select a facility" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="bg-gray-800 border-gray-700">
-                            {facilities.map((facility) => (
-                              <SelectItem 
-                                key={facility.id} 
-                                value={facility.id}
-                                className="text-white hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                              >
-                                {facility.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Building Type */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="buildingType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Building Type</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                              <SelectValue placeholder="Select a building type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent className="bg-gray-800 border-gray-700">
-                            {BUILDING_TYPES.map((type) => (
-                              <SelectItem 
-                                key={type} 
-                                value={type}
-                                className="text-white hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                              >
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Construction Date */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="constructionDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Construction Date</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="date" 
-                            {...field} 
-                            className="bg-gray-800 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Square Footage */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="squareFootage"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Square Footage</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="10000" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                            className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Number of Rooms */}
-                  <FormField
-                    control={buildingForm.control}
-                    name="numberOfRooms"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-300">Number of Rooms</FormLabel>
-                        <FormControl>
-                          <Input 
-                            type="number" 
-                            placeholder="20" 
-                            {...field}
-                            onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                            className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </FormControl>
-                        <FormMessage className="text-red-400" />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                {/* Notes */}
-                <FormField
-                  control={buildingForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Notes (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Additional information about this building" 
-                          className="min-h-[100px] bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex justify-end gap-4">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsModalOpen(false)}
-                    disabled={isLoading}
-                    className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    {isLoading ? "Creating..." : "Create Building"}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-
-        {/* Room Modal with dark theme */}
-        <Dialog open={showRoomModal} onOpenChange={setShowRoomModal}>
-          <DialogContent className="bg-gray-900 border-gray-800 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white">Add New Room</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Add a new room to {selectedBuilding?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...roomForm}>
-              <form onSubmit={roomForm.handleSubmit(handleAddRoom)} className="space-y-4">
-                <FormField
-                  control={roomForm.control}
-                  name="room_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Room Number</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={roomForm.control}
-                  name="room_function"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Function</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
-                            <SelectValue placeholder="Select room function" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          {ROOM_FUNCTIONS.map((func) => (
-                            <SelectItem 
-                              key={func} 
-                              value={func}
-                              className="text-white hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                            >
-                              {func}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={roomForm.control}
-                  name="floor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Floor</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={roomForm.control}
-                  name="square_footage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Square Footage</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field} 
-                          onChange={e => field.onChange(parseFloat(e.target.value))} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={roomForm.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Capacity (Optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field} 
-                          onChange={e => field.onChange(parseFloat(e.target.value))} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <Button 
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-purple-500/25 transition-all duration-200"
-                >
-                  Add Room
+                {/* Form fields */}
+                <Button type="submit" className="w-full">
+                  Add Building
                 </Button>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
 
-        {/* System Modal with dark theme */}
-        <Dialog open={showSystemModal} onOpenChange={setShowSystemModal}>
-          <DialogContent className="bg-gray-900 border-gray-800 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white">Add New System</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Add a new system to {selectedBuilding?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...systemForm}>
-              <form onSubmit={systemForm.handleSubmit(handleAddSystem)} className="space-y-4">
-                <FormField
-                  control={systemForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">System Name</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={systemForm.control}
-                  name="system_type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">System Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                            <SelectValue placeholder="Select system type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          {SYSTEM_TYPES.map((type) => (
-                            <SelectItem 
-                              key={type} 
-                              value={type}
-                              className="text-white hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                            >
-                              {type}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={systemForm.control}
-                  name="condition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Condition</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          {SYSTEM_CONDITIONS.map((condition) => (
-                            <SelectItem 
-                              key={condition} 
-                              value={condition}
-                              className="text-white hover:bg-gray-700 hover:text-white focus:bg-gray-700 focus:text-white"
-                            >
-                              {condition}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={systemForm.control}
-                  name="installation_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Installation Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <Button 
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-purple-500/25 transition-all duration-200"
-                >
-                  Add System
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {/* Edit Building Modal */}
+        {editingBuilding && (
+          <EditBuildingForm
+            building={editingBuilding}
+            onClose={() => setEditingBuilding(null)}
+            onSave={handleSaveBuilding}
+          />
+        )}
 
-        {/* Renovation Modal with dark theme */}
-        <Dialog open={showRenovationModal} onOpenChange={setShowRenovationModal}>
-          <DialogContent className="bg-gray-900 border-gray-800 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white">Add New Renovation</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Add a new renovation to {selectedBuilding?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...renovationForm}>
-              <form onSubmit={renovationForm.handleSubmit(handleAddRenovation)} className="space-y-4">
-                <FormField
-                  control={renovationForm.control}
-                  name="scope_of_work"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Scope of Work</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={renovationForm.control}
-                  name="square_footage_affected"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Square Footage Affected</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field} 
-                          onChange={e => field.onChange(parseFloat(e.target.value))} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={renovationForm.control}
-                  name="start_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Start Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={renovationForm.control}
-                  name="completion_date"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Completion Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="date" 
-                          {...field} 
-                          className="bg-gray-800 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={renovationForm.control}
-                  name="estimated_budget"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Estimated Budget</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          {...field} 
-                          onChange={e => field.onChange(parseFloat(e.target.value))} 
-                          className="bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </FormControl>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={renovationForm.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-gray-300">Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-gray-800 border-gray-700">
-                          {['planning', 'in_progress', 'completed', 'on_hold'].map((status) => (
-                            <SelectItem 
-                              key={status} 
-                              value={status}
-                              className="text-gray-300 hover:bg-gray-800 hover:text-white focus:bg-gray-800 focus:text-white"
-                            >
-                              {status.replace('_', ' ').charAt(0).toUpperCase() + status.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage className="text-red-400" />
-                    </FormItem>
-                  )}
-                />
-                <Button 
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg hover:shadow-purple-500/25 transition-all duration-200"
-                >
-                  Add Renovation
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
+        {/* Delete Building Modal */}
+        {deletingBuilding && (
+          <DeleteBuildingForm
+            building={deletingBuilding}
+            onClose={() => setDeletingBuilding(null)}
+            onDelete={handleDeleteBuilding}
+          />
+        )}
 
-        {/* Files Modal with dark theme */}
-        <Dialog open={showFilesModal} onOpenChange={setShowFilesModal}>
-          <DialogContent className="bg-gray-900 border-gray-800 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold text-white">Add Referenced Files</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Add files to {selectedBuilding?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid w-full max-w-sm items-center gap-1.5">
-                <Label htmlFor="files" className="text-gray-300">Files</Label>
-                <Input
-                  id="files"
-                  type="file"
-                  multiple
-                  onChange={(e) => e.target.files && handleAddFiles(e.target.files)}
-                  className="bg-gray-800 border-gray-700 text-white file:bg-gray-700 file:text-gray-300 file:border-0 file:mr-4 hover:file:bg-gray-600"
-                />
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Add Room Modal */}
+        {addingRoomTo && (
+          <AddRoomForm
+            buildingId={addingRoomTo.id}
+            onClose={() => setAddingRoomTo(null)}
+            onSave={handleAddRoom}
+          />
+        )}
+
+        {/* Add System Modal */}
+        {addingSystemTo && (
+          <AddSystemForm
+            buildingId={addingSystemTo.id}
+            onClose={() => setAddingSystemTo(null)}
+            onSave={handleAddSystem}
+          />
+        )}
+
+        {/* Add Renovation Modal */}
+        {addingRenovationTo && (
+          <AddRenovationForm
+            buildingId={addingRenovationTo.id}
+            onClose={() => setAddingRenovationTo(null)}
+            onSave={handleAddRenovation}
+          />
+        )}
       </div>
     </div>
   );

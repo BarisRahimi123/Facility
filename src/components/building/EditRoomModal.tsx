@@ -22,28 +22,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import { Calculator, Info } from 'lucide-react';
+import {
+  calculateCapacityByCode,
+  getCapacityCalculationDescription,
+  getAvailableRoomFunctions,
+} from '@/utils/capacityCalculator';
 
 interface EditRoomModalProps {
   room: any;
   isOpen: boolean;
   onClose: () => void;
 }
-
-const roomFunctions = [
-  'Classroom',
-  'Office',
-  'Conference',
-  'Laboratory',
-  'Storage',
-  'Restroom',
-  'Mechanical',
-  'Electrical',
-  'Cafeteria',
-  'Library',
-  'Gymnasium',
-  'Auditorium',
-  'Other'
-];
 
 export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalProps) {
   const [loading, setLoading] = useState(false);
@@ -54,8 +44,11 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
   const [roomNumber, setRoomNumber] = useState('');
   const [roomFunction, setRoomFunction] = useState('');
   const [squareFootage, setSquareFootage] = useState('');
-  const [capacity, setCapacity] = useState('');
+  const [occupancy, setOccupancy] = useState('');
   const [floor, setFloor] = useState('');
+  const [isOccupancyManual, setIsOccupancyManual] = useState(false);
+  
+  const roomFunctions = getAvailableRoomFunctions();
 
   // Initialize form values when room changes
   useEffect(() => {
@@ -63,10 +56,24 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
       setRoomNumber(room.room_number || '');
       setRoomFunction(room.room_function || '');
       setSquareFootage(room.square_footage?.toString() || '');
-      setCapacity(room.capacity?.toString() || '');
+      setOccupancy(room.capacity?.toString() || '');
       setFloor(room.floor || '');
+      
+      // If room has existing capacity, assume it was manually set
+      setIsOccupancyManual(!!room.capacity);
     }
   }, [room]);
+
+  // Calculate occupancy automatically when room function or square footage changes
+  useEffect(() => {
+    if (roomFunction && squareFootage && !isOccupancyManual) {
+      const sqFt = parseInt(squareFootage);
+      if (!isNaN(sqFt) && sqFt > 0) {
+        const calculatedOccupancy = calculateCapacityByCode(roomFunction, sqFt);
+        setOccupancy(calculatedOccupancy.toString());
+      }
+    }
+  }, [roomFunction, squareFootage, isOccupancyManual]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -77,7 +84,7 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
       formData.append('room_number', roomNumber);
       formData.append('room_function', roomFunction);
       formData.append('square_footage', squareFootage);
-      if (capacity) formData.append('capacity', capacity);
+      if (occupancy) formData.append('capacity', occupancy);
       if (floor) formData.append('floor', floor);
       
       await updateRoom(room.id, formData);
@@ -163,18 +170,57 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
               />
             </div>
             
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="capacity" className="text-right text-gray-300">
-                Capacity
-              </Label>
-              <Input
-                id="capacity"
-                type="number"
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                placeholder="30"
-                className="col-span-3 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500"
-              />
+            <div className="space-y-2">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="capacity" className="text-right text-gray-300">
+                  Occupancy
+                </Label>
+                <div className="col-span-3 space-y-2">
+                  <div className="relative">
+                    <Input
+                      id="capacity"
+                      type="number"
+                      value={occupancy}
+                      onChange={(e) => {
+                        setOccupancy(e.target.value);
+                        setIsOccupancyManual(true);
+                      }}
+                      placeholder="30"
+                      className={`pr-10 bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-purple-500 focus:ring-purple-500 ${
+                        !isOccupancyManual && occupancy ? 'bg-gray-800/70' : ''
+                      }`}
+                    />
+                    {!isOccupancyManual && occupancy && (
+                      <Calculator className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-purple-400" />
+                    )}
+                  </div>
+                  {roomFunction && squareFootage && (
+                    <div className="flex items-start gap-2">
+                      <Info className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-gray-500">
+                        {isOccupancyManual ? (
+                          <>
+                            Manual override. Auto-calculated: {calculateCapacityByCode(roomFunction, parseInt(squareFootage) || 0)} people
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsOccupancyManual(false);
+                                const calculated = calculateCapacityByCode(roomFunction, parseInt(squareFootage) || 0);
+                                setOccupancy(calculated.toString());
+                              }}
+                              className="ml-1 text-purple-400 hover:text-purple-300 underline"
+                            >
+                              Use calculated
+                            </button>
+                          </>
+                        ) : (
+                          getCapacityCalculationDescription(roomFunction)
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
             
             <div className="grid grid-cols-4 items-center gap-4">

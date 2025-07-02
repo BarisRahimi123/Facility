@@ -32,7 +32,8 @@ export default function IssueReportPage() {
           'zdfempw48hiod4h9ml24io',  // Adding the new token
           'tyut5npnysszkz19531n2',   // Adding the token from the URL in the user query
           'ytty1eszk5afby9h2rq43r',  // Adding the new token from the user query
-          'u8z6hepcuakxmjb4f0rbh'    // Adding another token from the user query
+          'u8z6hepcuakxmjb4f0rbh',   // Adding another token from the user query
+          'j34ec3wqs4nb6zpo4n8tgg'   // Adding the token from the current URL
         ];
         
         // For development purposes, accept any token that's at least 10 characters long

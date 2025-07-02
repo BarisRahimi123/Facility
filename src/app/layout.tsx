@@ -20,13 +20,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script src="/safari-polyfill.js" />
       </head>
-      <body className={`${inter.className} bg-black text-white`}>
+      <body className={`${inter.className} antialiased`}>
         <Providers>
-          <div className="min-h-screen bg-black">
+          <div className="min-h-screen">
             {children}
           </div>
         </Providers>

@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { deleteDocument, getDocuments } from '@/app/actions/documents';
 import UploadDocumentModal from './UploadDocumentModal';
 import EditDocumentModal from './EditDocumentModal';
+import DocumentModal from './DocumentModal';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Document {
@@ -40,6 +41,7 @@ export default function DocumentsList({ buildingId }: DocumentsListProps) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -197,7 +199,7 @@ export default function DocumentsList({ buildingId }: DocumentsListProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => window.open(doc.file_url, '_blank')}
+                        onClick={() => setViewingDocument(doc)}
                         className="border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white"
                         title="View"
                       >
@@ -207,10 +209,12 @@ export default function DocumentsList({ buildingId }: DocumentsListProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          const a = document.createElement('a');
+                          const a = window.document.createElement('a');
                           a.href = doc.file_url;
                           a.download = doc.file_name;
+                          window.document.body.appendChild(a);
                           a.click();
+                          window.document.body.removeChild(a);
                         }}
                         className="border-gray-700 text-gray-400 hover:bg-gray-800 hover:text-white"
                         title="Download"
@@ -300,6 +304,22 @@ export default function DocumentsList({ buildingId }: DocumentsListProps) {
           }}
         />
       )}
+
+      <DocumentModal
+        document={viewingDocument ? {
+          id: viewingDocument.id,
+          name: viewingDocument.name,
+          description: viewingDocument.description,
+          file_url: viewingDocument.file_url,
+          file_type: viewingDocument.file_type,
+          file_size: viewingDocument.file_size,
+          uploaded_at: viewingDocument.created_at,
+          version: viewingDocument.version.toString(),
+          tags: viewingDocument.tags
+        } : null}
+        isOpen={!!viewingDocument}
+        onClose={() => setViewingDocument(null)}
+      />
     </>
   );
 } 

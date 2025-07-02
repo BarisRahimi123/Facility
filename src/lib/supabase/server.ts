@@ -1,13 +1,11 @@
-'use server';
-
 /**
  * Supabase client for server components and API routes
  */
 
-import { createServerClient as createSupabaseServerClient } from '@supabase/ssr';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-import type { CookieOptions } from '@supabase/ssr';
 import type { Database } from '../database.types';
+import { cookies } from 'next/headers';
 
 // Environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -16,44 +14,32 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 /**
  * Create a Supabase client for server components
  * This function should be used in server components or API routes
- * 
- * @param cookieStore Cookie store to use for authentication
  */
-export async function createServerSupabaseClient(cookieStore?: {
-  get: (name: string) => { value: string } | undefined;
-  set: (name: string, value: string, options: CookieOptions) => void;
-  remove: (name: string) => void;
-}) {
-  // If no cookie store is provided, create a simple in-memory cookie store
-  const defaultCookieStore = {
-    cookies: new Map<string, string>(),
-    get(name: string) {
-      const value = this.cookies.get(name);
-      return value ? { value } : undefined;
-    },
-    set(name: string, value: string, options: CookieOptions) {
-      this.cookies.set(name, value);
-    },
-    remove(name: string) {
-      this.cookies.delete(name);
-    }
-  };
+export async function createServerSupabaseClient() {
+  const cookieStore = await cookies();
 
-  const store = cookieStore || defaultCookieStore;
-
-  return createSupabaseServerClient<Database>(
+  return createServerClient<Database>(
     supabaseUrl,
     supabaseAnonKey,
     {
       cookies: {
         get(name: string) {
-          return store.get(name)?.value;
+          return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          store.set(name, value, options);
+          cookieStore.set({
+            name,
+            value,
+            ...options,
+          });
         },
         remove(name: string, options: CookieOptions) {
-          store.remove(name);
+          cookieStore.set({
+            name,
+            value: '',
+            ...options,
+            maxAge: 0,
+          });
         },
       },
     }
@@ -83,4 +69,22 @@ export async function createServiceSupabaseClient() {
 }
 
 // For backward compatibility
-export const createClient = createServerSupabaseClient;
+export function createClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+export function getServiceRoleClient() {
+  return createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+}

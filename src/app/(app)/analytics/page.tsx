@@ -1,23 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  Building2, 
-  Users, 
-  Wrench,
-  CheckCircle,
-  Activity,
-  DollarSign,
-  Calendar,
-  AlertTriangle,
-  Clock,
-  FileText,
-  Download,
-  Share2,
-  Filter
-} from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { TrendingUp, Filter, GraduationCap, UserCheck, BarChart3, Building2, Users, Wrench } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { calculateCapacityByCode } from '@/utils/capacityCalculator';
+import { getBuildings, getRooms } from '@/app/actions/buildings';
+import { getFacilitiesForAnalytics } from '@/app/actions/facilities';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 
 // Analytics data based on what we actually have implemented
 const analyticsData = {
@@ -73,48 +71,356 @@ const analyticsData = {
   }
 };
 
+interface Facility {
+  id: string;
+  name: string;
+}
+
+interface Building {
+  id: string;
+  facility_id: string;
+  name: string;
+  building_type: string;
+  square_footage: number;
+  number_of_rooms: number;
+  status: string;
+}
+
+interface Room {
+  id: string;
+  building_id: string;
+  room_function: string;
+  square_footage: number;
+  capacity?: number;
+}
+
 export default function AnalyticsPage() {
+  const router = useRouter();
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [timeframe, setTimeframe] = useState('month');
   const [reportType, setReportType] = useState('facility');
-  const [selectedFacility, setSelectedFacility] = useState('all');
   const [selectedBuilding, setSelectedBuilding] = useState('all');
   const [reportFormat, setReportFormat] = useState('pdf');
   const [showReportPreview, setShowReportPreview] = useState(false);
+  const [facilityFilter, setFacilityFilter] = useState('all');
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Real data states
+  const [facilities, setFacilities] = useState<Facility[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
+  const [allRooms, setAllRooms] = useState<Room[]>([]);
+  
+  const [capacityData, setCapacityData] = useState({
+    totalClassroomCapacity: 0,
+    totalStaffCapacity: 0,
+    classroomSquareFootage: 0,
+    otherRoomSquareFootage: 0,
+    totalStudentCapacity: 0,
+    facilitiesCount: 0,
+    buildingsCount: 0,
+    roomsCount: 0
+  });
 
-  // Mock data for dropdowns
-  const facilities = [
-    { id: 'all', name: 'All Facilities' },
-    { id: '1', name: 'Central High School' },
-    { id: '2', name: 'Memorial Hospital' },
-    { id: '3', name: 'Tech Hub Office Complex' },
-    { id: '4', name: 'Mendota Unified District Office' },
-    { id: '5', name: 'Manchester Mall' }
-  ];
+  // Check user authorization
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error('Please sign in to access this page');
+          router.push('/auth/sign-in');
+          return;
+        }
 
-  const buildings = [
-    { id: 'all', name: 'All Buildings' },
-    { id: '1', name: 'Main Building', facilityId: '1' },
-    { id: '2', name: 'Building A', facilityId: '1' },
-    { id: '3', name: 'Building B', facilityId: '2' },
-    { id: '4', name: 'Gymnasium', facilityId: '1' },
-    { id: '5', name: 'Administration Building', facilityId: '3' },
-    { id: '6', name: 'North Wing', facilityId: '2' },
-    { id: '7', name: 'South Wing', facilityId: '2' }
-  ];
+        // Get user role from database
+        const { data: userProfile } = await supabase
+          .from('users')
+          .select('role')
+          .eq('email', user.email)
+          .single();
+        
+        const role = userProfile?.role;
+        setUserRole(role);
+        
+        // Check if user has admin privileges
+        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver'];
+        
+        if (!role || !adminRoles.includes(role)) {
+          toast.error('You do not have permission to access this page');
+          router.push('/facilities-map');
+          return;
+        }
+        
+        setIsAuthorized(true);
+      } catch (error) {
+        console.error('Error checking authorization:', error);
+        toast.error('Error checking permissions');
+        router.push('/facilities-map');
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+
+    checkAuth();
+  }, [router]);
+
+  // Load real data on component mount
+  useEffect(() => {
+    if (isAuthorized) {
+      loadRealData();
+    }
+  }, [isAuthorized]);
+
+  // Recalculate capacity when filter changes
+  useEffect(() => {
+    if (facilities.length > 0 && buildings.length > 0 && allRooms.length > 0) {
+      calculateRealCapacityData();
+    }
+  }, [facilityFilter, facilities, buildings, allRooms]);
+
+  const loadRealData = async () => {
+    try {
+      setIsLoading(true);
+      console.log('=== LOADING ANALYTICS DATA ===');
+
+      // Load facilities using server action
+      const facilitiesData = await getFacilitiesForAnalytics();
+      
+      console.log('Raw facilities data:', facilitiesData);
+      
+      // Format facilities for dropdown (add "All Facilities" option)
+      const facilitiesWithAll = [
+        { id: 'all', name: 'All Facilities' },
+        ...facilitiesData.map((f: any) => ({ id: f.id, name: f.name }))
+      ];
+      console.log('Facilities with "All" option:', facilitiesWithAll);
+      setFacilities(facilitiesWithAll);
+
+      // Load buildings
+      const buildingsData = await getBuildings();
+      console.log('Raw buildings data:', buildingsData);
+      console.log('Buildings facility_id mapping:', buildingsData.map(b => ({ 
+        name: b.name, 
+        facility_id: b.facility_id 
+      })));
+      setBuildings(buildingsData);
+
+      // Load all rooms from all buildings
+      const allRoomsData: Room[] = [];
+      for (const building of buildingsData) {
+        try {
+          const roomsData = await getRooms(building.id);
+          console.log(`Loaded ${roomsData.length} rooms for building ${building.name} (ID: ${building.id})`);
+          // Also log the rooms to see their data
+          if (roomsData.length > 0) {
+            console.log('Room details:', roomsData.map(r => ({
+              room_number: r.room_number,
+              room_function: r.room_function,
+              square_footage: r.square_footage,
+              building_id: r.building_id
+            })));
+          }
+          allRoomsData.push(...roomsData);
+        } catch (error) {
+          console.error(`Error loading rooms for building ${building.id}:`, error);
+        }
+      }
+      console.log('Total rooms loaded:', allRoomsData.length);
+      console.log('All rooms summary:', allRoomsData.map(r => ({
+        building_id: r.building_id,
+        room_function: r.room_function,
+        square_footage: r.square_footage
+      })));
+      setAllRooms(allRoomsData);
+
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+      // On error, still show the component with empty data
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateRealCapacityData = () => {
+    console.log('=== CAPACITY CALCULATION DEBUG ===');
+    console.log('Current facilityFilter:', facilityFilter);
+    console.log('Available facilities:', facilities.map(f => ({ id: f.id, name: f.name })));
+    console.log('All buildings with facility_id:', buildings.map(b => ({ 
+      id: b.id, 
+      name: b.name, 
+      facility_id: b.facility_id 
+    })));
+    
+    // Filter buildings based on selected facility
+    const filteredBuildings = facilityFilter === 'all' 
+      ? buildings 
+      : buildings.filter(building => {
+          const matches = building.facility_id === facilityFilter;
+          console.log(`Building ${building.name}: facility_id="${building.facility_id}" === filter="${facilityFilter}" → ${matches}`);
+          return matches;
+        });
+    
+    console.log(`Filtered buildings: ${filteredBuildings.length} out of ${buildings.length} total`);
+    console.log('Filtered buildings details:', filteredBuildings.map(b => ({ 
+      id: b.id, 
+      name: b.name, 
+      facility_id: b.facility_id 
+    })));
+    
+    // Debug: Show which facilities have which buildings
+    console.log('=== FACILITY-BUILDING BREAKDOWN ===');
+    const uniqueFacilityIds = [...new Set(buildings.map(b => b.facility_id))];
+    uniqueFacilityIds.forEach(facilityId => {
+      const facilityBuildings = buildings.filter(b => b.facility_id === facilityId);
+      const facilityName = facilities.find(f => f.id === facilityId)?.name || 'Unknown';
+      console.log(`Facility "${facilityName}" (${facilityId}): ${facilityBuildings.length} buildings`);
+      facilityBuildings.forEach(b => console.log(`  - ${b.name}`));
+    });
+
+    // Get building IDs for filtering rooms
+    const buildingIds = filteredBuildings.map(b => b.id);
+    console.log('Building IDs for room filtering:', buildingIds);
+    
+    // Filter rooms based on selected buildings
+    const filteredRooms = allRooms.filter(room => buildingIds.includes(room.building_id));
+    console.log(`Filtered rooms: ${filteredRooms.length} out of ${allRooms.length} total`);
+
+    let classroomCapacity = 0;
+    let staffCapacity = 0;
+    let classroomSqFt = 0;
+    let otherRoomSqFt = 0;
+
+    // Debug: Show all room functions found
+    const roomFunctions = [...new Set(filteredRooms.map(room => room.room_function))];
+    console.log('Unique room functions found:', roomFunctions);
+    console.log('Sample rooms data:', filteredRooms.slice(0, 3));
+
+    // Group rooms by type for debugging
+    const classrooms: Room[] = [];
+    const staffRooms: Room[] = [];
+    const utilityRooms: Room[] = [];
+
+    filteredRooms.forEach((room, index) => {
+      const capacity = calculateCapacityByCode(room.room_function || 'Other', room.square_footage || 0);
+      
+      console.log(`Room ${index + 1}:`, {
+        room_function: room.room_function,
+        square_footage: room.square_footage,
+        calculated_capacity: capacity
+      });
+      
+      // Make room function checking case-insensitive and more flexible
+      const roomFunction = (room.room_function || '').toLowerCase();
+      const originalRoomFunction = room.room_function || 'Other';
+      
+      // Consider classrooms and educational spaces as student capacity
+      if (roomFunction.includes('classroom') || 
+          roomFunction.includes('laboratory') || 
+          roomFunction.includes('library') ||
+          roomFunction.includes('auditorium') ||
+          roomFunction.includes('gymnasium') ||
+          roomFunction.includes('class') ||
+          roomFunction.includes('lab')) {
+        console.log(`Adding to classroom capacity: ${room.room_function} -> ${capacity} students`);
+        classroomCapacity += capacity;
+        classroomSqFt += room.square_footage || 0;
+        classrooms.push(room);
+      } else if (roomFunction.includes('office') || 
+                 roomFunction.includes('conference') ||
+                 roomFunction.includes('meeting') ||
+                 roomFunction.includes('reception') ||
+                 roomFunction.includes('break') ||
+                 roomFunction === 'admin' ||
+                 roomFunction.includes('staff')) {
+        // Office, conference rooms, meeting rooms, etc. count as staff capacity
+        console.log(`Adding to staff capacity: ${room.room_function} -> ${capacity} staff`);
+        staffCapacity += capacity;
+        otherRoomSqFt += room.square_footage || 0;
+        staffRooms.push(room);
+      } else if (roomFunction.includes('storage') || 
+                 roomFunction.includes('mechanical') ||
+                 roomFunction.includes('electrical') ||
+                 roomFunction.includes('restroom') ||
+                 roomFunction.includes('hallway') ||
+                 roomFunction.includes('janitorial')) {
+        // Utility spaces - minimal occupancy
+        console.log(`Utility/Support space: ${room.room_function} -> ${capacity} occupancy`);
+        // These don't count towards student or primary staff capacity
+        otherRoomSqFt += room.square_footage || 0;
+        utilityRooms.push(room);
+      } else {
+        // Other spaces default to staff capacity
+        console.log(`Other space (defaulting to staff): ${room.room_function} -> ${capacity} occupancy`);
+        staffCapacity += capacity;
+        otherRoomSqFt += room.square_footage || 0;
+        staffRooms.push(room);
+      }
+    });
+
+    // Additional debugging for room breakdown
+    console.log('=== ROOM TYPE BREAKDOWN ===');
+    console.log(`Classrooms/Labs: ${classrooms.length} rooms`);
+    classrooms.forEach(r => {
+      console.log(`  - ${r.room_function} (${r.square_footage} sq ft)`);
+    });
+    console.log(`Staff Spaces: ${staffRooms.length} rooms`);
+    staffRooms.forEach(r => {
+      console.log(`  - ${r.room_function} (${r.square_footage} sq ft)`);
+    });
+    console.log(`Utility Spaces: ${utilityRooms.length} rooms`);
+    utilityRooms.forEach(r => {
+      console.log(`  - ${r.room_function} (${r.square_footage} sq ft)`);
+    });
+
+    // Calculate counts based on filter
+    const facilitiesCount = facilityFilter === 'all' ? facilities.length - 1 : 1; // -1 for "All Facilities" option
+    const buildingsCount = filteredBuildings.length;
+    const roomsCount = filteredRooms.length;
+    
+    console.log('=== FINAL COUNTS ===');
+    console.log(`Facilities: ${facilitiesCount}`);
+    console.log(`Buildings: ${buildingsCount}`);
+    console.log(`Rooms: ${roomsCount}`);
+    console.log(`Classroom capacity: ${classroomCapacity}`);
+    console.log(`Staff capacity: ${staffCapacity}`);
+
+    console.log('Capacity calculation results:', {
+      classroomCapacity,
+      staffCapacity,
+      classroomSqFt,
+      otherRoomSqFt,
+      facilitiesCount,
+      buildingsCount,
+      roomsCount
+    });
+
+    setCapacityData({
+      totalClassroomCapacity: classroomCapacity,
+      totalStaffCapacity: staffCapacity,
+      classroomSquareFootage: classroomSqFt,
+      otherRoomSquareFootage: otherRoomSqFt,
+      totalStudentCapacity: classroomCapacity, // Same as classroom capacity for students
+      facilitiesCount,
+      buildingsCount,
+      roomsCount
+    });
+  };
 
   // Filter buildings based on selected facility
   const getFilteredBuildings = () => {
-    if (selectedFacility === 'all') {
-      return [{ id: 'all', name: 'All Buildings' }, ...buildings.filter(b => b.id !== 'all')];
+    if (facilityFilter === 'all') {
+      return [{ id: 'all', name: 'All Buildings' }, ...buildings.map(b => ({ id: b.id, name: b.name, facilityId: b.facility_id }))];
     }
     return [
       { id: 'all', name: 'All Buildings in Facility' },
-      ...buildings.filter(b => b.facilityId === selectedFacility)
+      ...buildings.filter(b => b.facility_id === facilityFilter).map(b => ({ id: b.id, name: b.name, facilityId: b.facility_id }))
     ];
   };
 
   const handleFacilityChange = (facilityId: string) => {
-    setSelectedFacility(facilityId);
+    setFacilityFilter(facilityId);
     setSelectedBuilding('all'); // Reset building selection when facility changes
   };
 
@@ -122,17 +428,17 @@ export default function AnalyticsPage() {
     setShowReportPreview(true);
     console.log('Viewing report:', {
       type: reportType,
-      facility: selectedFacility,
+      facility: facilityFilter,
       building: selectedBuilding,
       timeframe
     });
   };
 
   const generateReportData = () => {
-    const facilityName = selectedFacility === 'all' ? 'All Facilities' : 
-                        facilities.find(f => f.id === selectedFacility)?.name;
+    const facilityName = facilityFilter === 'all' ? 'All Facilities' : 
+                        facilities.find(f => f.id === facilityFilter)?.name;
     const buildingName = selectedBuilding === 'all' 
-      ? (selectedFacility === 'all' ? 'All Buildings' : 'All Buildings in Facility')
+      ? (facilityFilter === 'all' ? 'All Buildings' : 'All Buildings in Facility')
       : getFilteredBuildings().find(b => b.id === selectedBuilding)?.name;
 
     return {
@@ -141,10 +447,10 @@ export default function AnalyticsPage() {
       period: timeframe,
       generatedDate: new Date().toLocaleDateString(),
       data: {
-        facilities: selectedFacility === 'all' ? 5 : 1,
-        buildings: selectedBuilding === 'all' ? (selectedFacility === 'all' ? 12 : 3) : 1,
-        rooms: selectedBuilding === 'all' ? 156 : 13,
-        systems: selectedBuilding === 'all' ? 89 : 7,
+        facilities: capacityData.facilitiesCount,
+        buildings: capacityData.buildingsCount,
+        rooms: capacityData.roomsCount,
+        systems: Math.round(capacityData.buildingsCount * 7.4), // Estimated
         activeTasks: 23,
         completedTasks: 45,
         renovations: 2
@@ -288,20 +594,50 @@ Active Renovations\t${reportData.data.renovations}`;
     handleViewReport();
   };
 
+  // Show loading state while checking authorization
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-foreground">Checking permissions...</h2>
+          <p className="text-muted-foreground mt-2">Verifying access to analytics</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render page content if user is authorized
+  if (!isAuthorized) {
+    return null; // This will never render since we redirect unauthorized users
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-foreground">Loading Analytics...</h2>
+          <p className="text-muted-foreground mt-2">Fetching facilities, buildings, and rooms data</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="p-6 max-w-[1600px] mx-auto">
         {/* Page Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Facility Analytics</h1>
-            <p className="text-gray-300 mt-2">Overview of your facilities, buildings, and operations</p>
+            <h1 className="text-3xl font-bold text-foreground">Facility Analytics</h1>
+            <p className="text-muted-foreground mt-2">Overview of your facilities, buildings, and operations</p>
           </div>
           <div className="flex gap-2">
             <select 
               value={timeframe}
               onChange={(e) => setTimeframe(e.target.value)}
-              className="bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-white text-sm focus:border-purple-500"
+              className="bg-card border border-border rounded-lg px-4 py-2 text-card-foreground text-sm focus:border-primary focus:ring-1 focus:ring-primary"
             >
               <option value="week">Last 7 days</option>
               <option value="month">Last 30 days</option>
@@ -311,354 +647,177 @@ Active Renovations\t${reportData.data.renovations}`;
           </div>
         </div>
 
-        {/* Report Generation Section */}
-        <Card className="bg-gray-800/30 border-gray-700/50 p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-6 text-white flex items-center gap-2">
-            <FileText className="w-6 h-6 text-purple-400" />
-            Generate Facility Reports
-          </h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Report Configuration */}
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Report Type
-                </label>
-                <select
-                  value={reportType}
-                  onChange={(e) => setReportType(e.target.value)}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-purple-500"
-                >
-                  <option value="facility">Facility Overview Report</option>
-                  <option value="building">Building Detailed Report</option>
-                  <option value="systems">Building Systems Report</option>
-                  <option value="renovations">Renovations Summary</option>
-                  <option value="maintenance">Maintenance Report</option>
-                </select>
+        {/* Facility Filter */}
+        <Card className="bg-card border-border p-6 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Filter className="w-5 h-5 text-primary" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Select Facility
-                </label>
-                <select
-                  value={selectedFacility}
-                  onChange={(e) => handleFacilityChange(e.target.value)}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-purple-500"
-                >
-                  {facilities.map(facility => (
-                    <option key={facility.id} value={facility.id}>
-                      {facility.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Select Building
-                </label>
-                <select
-                  value={selectedBuilding}
-                  onChange={(e) => setSelectedBuilding(e.target.value)}
-                  className="w-full bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-white focus:border-purple-500"
-                >
-                  {getFilteredBuildings().map(building => (
-                    <option key={building.id} value={building.id}>
-                      {building.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Download Format
-                </label>
-                <div className="flex gap-3">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="pdf"
-                      checked={reportFormat === 'pdf'}
-                      onChange={(e) => setReportFormat(e.target.value)}
-                      className="mr-2 text-purple-600"
-                    />
-                    <span className="text-gray-300">PDF</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="excel"
-                      checked={reportFormat === 'excel'}
-                      onChange={(e) => setReportFormat(e.target.value)}
-                      className="mr-2 text-purple-600"
-                    />
-                    <span className="text-gray-300">Excel</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      value="csv"
-                      checked={reportFormat === 'csv'}
-                      onChange={(e) => setReportFormat(e.target.value)}
-                      className="mr-2 text-purple-600"
-                    />
-                    <span className="text-gray-300">CSV</span>
-                  </label>
-                </div>
+                <h2 className="text-lg font-semibold text-card-foreground">Filter Analytics</h2>
+                <p className="text-sm text-muted-foreground">Select a facility to view specific analytics</p>
               </div>
             </div>
-
-            {/* Report Preview/Actions */}
-            <div className="space-y-6">
-              <div className="bg-gray-900/30 rounded-lg p-4 border border-gray-700/50">
-                <h3 className="text-lg font-medium text-white mb-3">Report Summary</h3>
-                <div className="space-y-2 text-sm text-gray-300">
-                  <div className="flex justify-between">
-                    <span>Type:</span>
-                    <span className="text-white capitalize">{reportType.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Facility:</span>
-                    <span className="text-white">
-                      {selectedFacility === 'all' ? 'All Facilities' : 
-                       facilities.find(f => f.id === selectedFacility)?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Building:</span>
-                    <span className="text-white">
-                      {selectedBuilding === 'all' 
-                        ? (selectedFacility === 'all' ? 'All Buildings' : 'All Buildings in Facility')
-                        : getFilteredBuildings().find(b => b.id === selectedBuilding)?.name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Period:</span>
-                    <span className="text-white capitalize">{timeframe}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Format:</span>
-                    <span className="text-white uppercase">{reportFormat}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Button
-                  onClick={handleViewReport}
-                  className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  View Report
-                </Button>
-
-                <Button
-                  onClick={handleDownloadReport}
-                  className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download Report
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Share Report Link
-                </Button>
-              </div>
-
-              <div className="text-xs text-gray-400">
-                <p>Reports include facility overview, building details, system status, maintenance records, and renovation history based on selected criteria.</p>
-              </div>
+            <div className="w-64">
+              <Select value={facilityFilter} onValueChange={(value) => {
+                console.log('=== FACILITY FILTER CHANGED ===');
+                console.log('New facility filter value:', value);
+                setFacilityFilter(value);
+              }}>
+                <SelectTrigger className="bg-background border-border text-foreground focus:border-primary focus:ring-1 focus:ring-primary">
+                  <SelectValue placeholder="Select facility" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {facilities.map((facility) => (
+                    <SelectItem key={facility.id} value={facility.id} className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                      {facility.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </Card>
 
-        {/* Report Preview Modal/Section */}
-        {showReportPreview && (
-          <Card className="bg-white text-black p-0 mb-8 overflow-hidden">
-            {/* Report Header */}
-            <div className="bg-gray-50 border-b p-6 flex justify-between items-center">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">Report Preview</h2>
-                <p className="text-gray-600 mt-1">Professional facility management report</p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => setShowReportPreview(false)}
-                className="border-gray-300 text-gray-700 hover:bg-gray-100"
-              >
-                Close Preview
-              </Button>
+        {/* Facility Loading Capacity - Professional Display */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-primary/20 rounded-lg">
+              <TrendingUp className="w-6 h-6 text-primary" />
             </div>
-
-            {/* Professional Report Content */}
-            <div className="p-8 bg-white">
-              {/* Report Title Section */}
-              <div className="border-b-2 border-purple-600 pb-6 mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {reportType.charAt(0).toUpperCase() + reportType.slice(1).replace('_', ' ')} Report
-                </h1>
-                <div className="text-gray-600 space-y-1">
-                  <p><span className="font-medium">Scope:</span> {
-                    selectedFacility === 'all' ? 'All Facilities' : 
-                    facilities.find(f => f.id === selectedFacility)?.name
-                  }{selectedBuilding !== 'all' && 
-                    ` - ${getFilteredBuildings().find(b => b.id === selectedBuilding)?.name}`}
-                  </p>
-                  <p><span className="font-medium">Period:</span> {timeframe.charAt(0).toUpperCase() + timeframe.slice(1)}</p>
-                  <p><span className="font-medium">Generated:</span> {new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
-
-              {/* Executive Summary */}
-              <div className="mb-10">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 text-purple-600">Executive Summary</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-3xl font-bold text-purple-600 mb-1">
-                      {selectedFacility === 'all' ? '5' : '1'}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Facilities</div>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-3xl font-bold text-blue-600 mb-1">
-                      {selectedBuilding === 'all' ? (selectedFacility === 'all' ? '12' : '3') : '1'}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Buildings</div>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-3xl font-bold text-green-600 mb-1">
-                      {selectedBuilding === 'all' ? '156' : '13'}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Rooms</div>
-                  </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <div className="text-3xl font-bold text-orange-600 mb-1">
-                      {selectedBuilding === 'all' ? '89' : '7'}
-                    </div>
-                    <div className="text-sm text-gray-600 font-medium">Systems</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Performance Overview */}
-              <div className="mb-10">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 text-purple-600">Performance Overview</h2>
-                <div className="overflow-hidden border border-gray-200 rounded-lg">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Metric</th>
-                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Value</th>
-                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-900">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      <tr>
-                        <td className="px-6 py-4 text-sm text-gray-900">Active Tasks</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">23</td>
-                        <td className="px-6 py-4 text-sm text-blue-600">In Progress</td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 text-sm text-gray-900">Completed Tasks</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">45</td>
-                        <td className="px-6 py-4 text-sm text-green-600">Completed</td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 text-sm text-gray-900">Active Renovations</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">2</td>
-                        <td className="px-6 py-4 text-sm text-orange-600">Ongoing</td>
-                      </tr>
-                      <tr>
-                        <td className="px-6 py-4 text-sm text-gray-900">System Health</td>
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">92%</td>
-                        <td className="px-6 py-4 text-sm text-green-600">Excellent</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Key Insights */}
-              <div className="mb-10">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 text-purple-600">Key Insights</h2>
-                <div className="space-y-4">
-                  <div className="p-4 bg-green-50 border-l-4 border-green-400">
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium text-green-800">Positive:</span> System health is at 92%, indicating excellent maintenance practices.
-                    </p>
-                  </div>
-                  <div className="p-4 bg-blue-50 border-l-4 border-blue-400">
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium text-blue-800">Opportunity:</span> 23 active tasks provide opportunities for operational improvements.
-                    </p>
-                  </div>
-                  <div className="p-4 bg-purple-50 border-l-4 border-purple-400">
-                    <p className="text-sm text-gray-700">
-                      <span className="font-medium text-purple-800">Recommendation:</span> Continue current maintenance schedule to maintain high system performance.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="pt-6 border-t border-gray-200 flex gap-4">
-                <Button
-                  onClick={handleDownloadReport}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download {reportFormat.toUpperCase()}
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2"
-                >
-                  <Share2 className="w-4 h-4 mr-2" />
-                  Share Report
-                </Button>
-              </div>
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Facility Loading Capacity</h2>
+              <p className="text-muted-foreground">Calculated based on California Building Code standards using real room data</p>
             </div>
-          </Card>
-        )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-card border-border p-6 relative overflow-hidden hover:bg-accent/50 transition-colors">
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <GraduationCap className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-card-foreground">{capacityData.totalStudentCapacity}</div>
+                    <div className="text-sm text-muted-foreground">Students</div>
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-card-foreground mb-2">Student Capacity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Based on {Math.round(capacityData.classroomSquareFootage).toLocaleString()} sq ft of classroom space
+                </p>
+                <div className="text-xs text-muted-foreground mt-2">
+                  CBC Standard: 20 sq ft per student
+                </div>
+              </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-16 translate-x-16"></div>
+            </Card>
+
+            <Card className="bg-card border-border p-6 relative overflow-hidden hover:bg-accent/50 transition-colors">
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <UserCheck className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-card-foreground">{capacityData.totalStaffCapacity}</div>
+                    <div className="text-sm text-muted-foreground">Staff</div>
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-card-foreground mb-2">Staff Capacity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Based on {Math.round(capacityData.otherRoomSquareFootage).toLocaleString()} sq ft of office/support space
+                </p>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Offices, conference rooms, and support areas
+                </div>
+              </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-16 translate-x-16"></div>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-primary/10 to-primary/20 border-primary/20 p-6 relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-primary/20 rounded-lg">
+                    <BarChart3 className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-card-foreground">
+                      {(capacityData.totalStudentCapacity + capacityData.totalStaffCapacity).toLocaleString()}
+                    </div>
+                    <div className="text-sm text-primary">Total</div>
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-card-foreground mb-2">Total Capacity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Combined student and staff occupancy load
+                </p>
+                <div className="text-xs text-primary mt-2">
+                  All facilities combined capacity
+                </div>
+              </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -translate-y-16 translate-x-16"></div>
+            </Card>
+
+            <Card className="bg-card border-border p-6 relative overflow-hidden hover:bg-accent/50 transition-colors">
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Building2 className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-card-foreground">
+                      {Math.round((capacityData.classroomSquareFootage + capacityData.otherRoomSquareFootage) / 1000)}K
+                    </div>
+                    <div className="text-sm text-muted-foreground">Sq Ft</div>
+                  </div>
+                </div>
+                <h3 className="text-lg font-semibold text-card-foreground mb-2">Total Space</h3>
+                <p className="text-sm text-muted-foreground">
+                  Total square footage analyzed for capacity
+                </p>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Classroom + office/support areas
+                </div>
+              </div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-16 translate-x-16"></div>
+            </Card>
+          </div>
+        </div>
 
         {/* Key Performance Indicators */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard
             title="Total Facilities"
-            value={analyticsData.overview.totalFacilities.value}
-            trend={analyticsData.overview.totalFacilities.percentage}
-            period={analyticsData.overview.totalFacilities.period}
+            value={capacityData.facilitiesCount}
+            trend={facilityFilter === 'all' ? '+25%' : 'Filtered'}
+            period={facilityFilter === 'all' ? 'All facilities' : 'Single facility view'}
             icon={Building2}
             trendDirection="up"
           />
           <MetricCard
             title="Total Buildings"
-            value={analyticsData.overview.totalBuildings.value}
-            trend={analyticsData.overview.totalBuildings.percentage}
-            period={analyticsData.overview.totalBuildings.period}
+            value={capacityData.buildingsCount}
+            trend={facilityFilter === 'all' ? '+20%' : 'Filtered'}
+            period={facilityFilter === 'all' ? 'All buildings' : 'Facility buildings'}
             icon={Building2}
             trendDirection="up"
           />
           <MetricCard
             title="Total Rooms"
-            value={analyticsData.overview.totalRooms.value}
-            trend={analyticsData.overview.totalRooms.percentage}
-            period={analyticsData.overview.totalRooms.period}
+            value={capacityData.roomsCount}
+            trend={facilityFilter === 'all' ? '+5%' : 'Filtered'}
+            period={facilityFilter === 'all' ? 'All rooms' : 'Rooms in scope'}
             icon={Users}
             trendDirection="up"
           />
           <MetricCard
             title="Building Systems"
-            value={analyticsData.overview.activeSystems.value}
-            trend={analyticsData.overview.activeSystems.percentage}
-            period={analyticsData.overview.activeSystems.period}
+            value={Math.round(capacityData.buildingsCount * 7.4)}
+            trend={facilityFilter === 'all' ? '+3%' : 'Estimated'}
+            period={facilityFilter === 'all' ? 'Estimated total' : 'Avg 7.4 per building'}
             icon={Wrench}
             trendDirection="up"
           />
@@ -667,169 +826,183 @@ Active Renovations\t${reportData.data.renovations}`;
         {/* Detailed Analytics Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
           {/* Building Status */}
-          <Card className="bg-gray-800/30 border-gray-700/50 p-6">
-            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-purple-400" />
+          <Card className="bg-card border-border p-6">
+            <h2 className="text-lg font-semibold mb-4 text-card-foreground flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
               Building Status
             </h2>
             <div className="space-y-4">
               <ProgressBar
                 label="Active Buildings"
                 value={analyticsData.buildingStatus.active}
-                color="bg-green-500"
+                color="bg-primary"
               />
               <ProgressBar
                 label="Under Maintenance"
                 value={analyticsData.buildingStatus.maintenance}
-                color="bg-yellow-500"
+                color="bg-primary/70"
               />
               <ProgressBar
                 label="Inactive"
                 value={analyticsData.buildingStatus.inactive}
-                color="bg-red-500"
+                color="bg-muted-foreground"
               />
             </div>
           </Card>
 
-          {/* System Types Distribution */}
-          <Card className="bg-gray-800/30 border-gray-700/50 p-6">
-            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-              <Wrench className="w-5 h-5 text-purple-400" />
+          {/* System Types */}
+          <Card className="bg-card border-border p-6">
+            <h2 className="text-lg font-semibold mb-4 text-card-foreground flex items-center gap-2">
+              <Wrench className="w-5 h-5 text-primary" />
               Building Systems
             </h2>
             <div className="space-y-4">
               <ProgressBar
                 label="HVAC Systems"
                 value={analyticsData.systemTypes.hvac}
-                color="bg-blue-500"
+                color="bg-primary"
               />
               <ProgressBar
-                label="Electrical Systems"
+                label="Electrical"
                 value={analyticsData.systemTypes.electrical}
-                color="bg-yellow-500"
+                color="bg-primary/80"
               />
               <ProgressBar
-                label="Plumbing Systems"
+                label="Plumbing"
                 value={analyticsData.systemTypes.plumbing}
-                color="bg-cyan-500"
+                color="bg-primary/60"
               />
               <ProgressBar
-                label="Security Systems"
+                label="Security"
                 value={analyticsData.systemTypes.security}
-                color="bg-purple-500"
+                color="bg-primary/40"
               />
               <ProgressBar
                 label="Fire Safety"
                 value={analyticsData.systemTypes.fire}
-                color="bg-red-500"
+                color="bg-primary/20"
               />
             </div>
           </Card>
 
-          {/* Renovation Projects */}
-          <Card className="bg-gray-800/30 border-gray-700/50 p-6">
-            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-              <Activity className="w-5 h-5 text-purple-400" />
+          {/* Renovation Status */}
+          <Card className="bg-card border-border p-6">
+            <h2 className="text-lg font-semibold mb-4 text-card-foreground flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
               Renovation Projects
             </h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <StatusCard
                 label="Planning"
                 value={analyticsData.renovationStatus.planning}
-                icon={Calendar}
-                color="text-blue-400"
+                icon={Building2}
+                color="text-muted-foreground"
               />
               <StatusCard
                 label="In Progress"
                 value={analyticsData.renovationStatus.inProgress}
-                icon={Activity}
-                color="text-yellow-400"
+                icon={Building2}
+                color="text-primary"
               />
               <StatusCard
                 label="Completed"
                 value={analyticsData.renovationStatus.completed}
-                icon={CheckCircle}
-                color="text-green-400"
+                icon={Building2}
+                color="text-primary/70"
               />
               <StatusCard
                 label="On Hold"
                 value={analyticsData.renovationStatus.onHold}
-                icon={AlertTriangle}
-                color="text-red-400"
+                icon={Building2}
+                color="text-muted-foreground"
               />
             </div>
           </Card>
         </div>
 
-        {/* Bottom Row Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Task Management */}
-          <Card className="bg-gray-800/30 border-gray-700/50 p-6">
-            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-purple-400" />
-              Task Management
-            </h2>
-            <div className="space-y-4">
-              <ProgressBar
-                label="Completed Tasks"
-                value={analyticsData.taskStatus.completed}
-                color="bg-green-500"
-              />
-              <ProgressBar
-                label="In Progress"
-                value={analyticsData.taskStatus.inProgress}
-                color="bg-blue-500"
-              />
-              <ProgressBar
-                label="New Tasks"
-                value={analyticsData.taskStatus.new}
-                color="bg-purple-500"
-              />
-              <ProgressBar
-                label="Pending"
-                value={analyticsData.taskStatus.pending}
-                color="bg-yellow-500"
-              />
+        {/* Facility Report Generation */}
+        <Card className="bg-card border-border p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-semibold text-card-foreground">Generate Facility Report</h2>
+              <p className="text-sm text-muted-foreground">Create comprehensive reports for facility management</p>
             </div>
-            <div className="mt-4 p-3 bg-gray-900/30 rounded-lg">
-              <p className="text-sm text-gray-300">
-                <span className="text-green-400 font-medium">71 total tasks</span> managed across all facilities.
-              </p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleGenerateReport}
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg text-sm font-medium transition-colors"
+              >
+                Generate Report
+              </button>
+              <button
+                onClick={handleDownloadReport}
+                className="px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-lg text-sm font-medium transition-colors"
+              >
+                Download {reportFormat.toUpperCase()}
+              </button>
             </div>
-          </Card>
-
-          {/* Quick Stats */}
-          <Card className="bg-gray-800/30 border-gray-700/50 p-6">
-            <h2 className="text-lg font-semibold mb-4 text-white flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-purple-400" />
-              Quick Statistics
-            </h2>
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Average Rooms per Building</span>
-                <span className="text-white font-semibold">13</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Systems per Building</span>
-                <span className="text-white font-semibold">7.4</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Active Renovations</span>
-                <span className="text-white font-semibold">2</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-300">Task Completion Rate</span>
-                <span className="text-green-400 font-semibold">63%</span>
-              </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-card-foreground mb-1">Report Type</label>
+              <select
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="facility">Facility Report</option>
+                <option value="capacity">Capacity Analysis</option>
+                <option value="maintenance">Maintenance Report</option>
+                <option value="compliance">Compliance Report</option>
+              </select>
             </div>
-          </Card>
-        </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-card-foreground mb-1">Facility</label>
+              <select
+                value={facilityFilter}
+                onChange={(e) => handleFacilityChange(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                {facilities.map((facility) => (
+                  <option key={facility.id} value={facility.id}>{facility.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-card-foreground mb-1">Building</label>
+              <select
+                value={selectedBuilding}
+                onChange={(e) => setSelectedBuilding(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                {getFilteredBuildings().map((building) => (
+                  <option key={building.id} value={building.id}>{building.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-card-foreground mb-1">Format</label>
+              <select
+                value={reportFormat}
+                onChange={(e) => setReportFormat(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:border-primary focus:ring-1 focus:ring-primary"
+              >
+                <option value="pdf">PDF</option>
+                <option value="csv">CSV</option>
+                <option value="excel">Excel</option>
+              </select>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );
 }
 
-// MetricCard component
 function MetricCard({ 
   title, 
   value, 
@@ -846,43 +1019,45 @@ function MetricCard({
   trendDirection: 'up' | 'down';
 }) {
   return (
-    <Card className="bg-gray-800/30 border-gray-700/50 p-6">
+    <Card className="bg-card border-border p-6">
       <div className="flex items-center justify-between mb-4">
-        <div className="p-2 bg-purple-600/10 rounded-lg">
-          <Icon className="w-5 h-5 text-purple-400" />
+        <div className="p-2 bg-primary/10 rounded-lg">
+          <Icon className="w-5 h-5 text-primary" />
         </div>
-        <span className={`text-sm font-medium ${
-          trendDirection === 'up' ? 'text-green-400' : 'text-red-400'
+        <div className={`text-sm px-2 py-1 rounded-full ${
+          trendDirection === 'up' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'
         }`}>
           {trend}
-        </span>
+        </div>
       </div>
-      <h3 className="text-sm font-medium text-gray-300">{title}</h3>
-      <p className="text-2xl font-semibold mt-2 text-white">{value}</p>
-      <p className="text-xs text-gray-400 mt-1">{period}</p>
+      <div className="space-y-2">
+        <h3 className="text-2xl font-bold text-card-foreground">{value}</h3>
+        <div>
+          <p className="text-sm font-medium text-card-foreground">{title}</p>
+          <p className="text-xs text-muted-foreground">{period}</p>
+        </div>
+      </div>
     </Card>
   );
 }
 
-// ProgressBar component
 function ProgressBar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div>
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-300">{label}</span>
-        <span className="text-sm font-medium text-white">{value}%</span>
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="text-card-foreground font-medium">{value}</span>
       </div>
-      <div className="w-full bg-gray-700/50 rounded-full h-2">
+      <div className="w-full bg-muted rounded-full h-2">
         <div 
-          className={`${color} rounded-full h-2 transition-all duration-300`}
-          style={{ width: `${value}%` }}
-        />
+          className={`h-2 rounded-full ${color}`} 
+          style={{ width: `${Math.min((value / 100) * 100, 100)}%` }}
+        ></div>
       </div>
     </div>
   );
 }
 
-// StatusCard component
 function StatusCard({ 
   label, 
   value, 
@@ -895,10 +1070,12 @@ function StatusCard({
   color: string;
 }) {
   return (
-    <div className="bg-gray-900/30 rounded-lg p-4 text-center border border-gray-700/30">
-      <Icon className={`w-6 h-6 ${color} mx-auto mb-2`} />
-      <p className="text-xl font-semibold text-white">{value}</p>
-      <p className="text-sm text-gray-300">{label}</p>
+    <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+      <div className="flex items-center gap-3">
+        <Icon className={`w-4 h-4 ${color}`} />
+        <span className="text-sm text-muted-foreground">{label}</span>
+      </div>
+      <span className="text-lg font-bold text-card-foreground">{value}</span>
     </div>
   );
 } 

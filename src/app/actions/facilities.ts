@@ -6,7 +6,7 @@ import type { FacilityFormData, FacilityType, FacilityStatus, Facility } from '@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
-import { getMockFacilities, addMockFacility, getMockFacilityById } from '@/lib/mock-data';
+
 
 // Create a direct Supabase client for server-side operations
 const supabaseClient = createClient(
@@ -23,101 +23,74 @@ const supabaseClient = createClient(
 // System user UUID for when no authenticated user is available
 const SYSTEM_USER_UUID = '00000000-0000-0000-0000-000000000000';
 
-export async function createFacility(formData: FormData): Promise<void> {
+// Create service role client for direct database operations
+function getServiceRoleSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+}
+
+export async function createFacility(formData: FormData) {
   try {
-    // Log the form data for debugging
-    console.log('Creating facility with form data:');
-    for (const [key, value] of formData.entries()) {
-      console.log(`${key}: ${value}`);
-    }
+    const serviceRoleClient = getServiceRoleSupabase();
 
-    // Get and validate form data with better error handling
-    const name = formData.get('name');
-    const address = formData.get('address');
-    const city = formData.get('city');
-    const state = formData.get('state');
-    const zip = formData.get('zip');
-    const type = formData.get('type') as FacilityType;
-    const status = formData.get('status') as FacilityStatus;
-    const squareFootage = formData.get('squareFootage') ? Number(formData.get('squareFootage')) : null;
-    const yearBuilt = formData.get('yearBuilt') ? formData.get('yearBuilt')?.toString() : null;
-    const facilityConditionIndex = formData.get('facilityConditionIndex') ? Number(formData.get('facilityConditionIndex')) : null;
-    const notes = formData.get('notes');
+    // Extract form data
+    const name = formData.get('name') as string;
+    const address = formData.get('address') as string;
+    const city = formData.get('city') as string;
+    const state = formData.get('state') as string;
+    const zip = formData.get('zip') as string;
+    const type = formData.get('type') as string;
+    const status = formData.get('status') as string;
+    const squareFootage = formData.get('squareFootage') as string;
+    const yearBuilt = formData.get('yearBuilt') as string;
+    const facilityConditionIndex = formData.get('facilityConditionIndex') as string;
+    const notes = formData.get('notes') as string;
 
-    if (!name || !address || !city || !state || !zip || !type || !status || !squareFootage || !facilityConditionIndex) {
-      throw new Error('Missing required facility information');
-    }
+    console.log('Form data extracted:', {
+      name, address, city, state, zip, type, status, 
+      squareFootage, yearBuilt, facilityConditionIndex, 
+      notes
+    });
 
-    // Create a minimal facility data object with only the fields we know exist in the database
-    const facilityData: any = {
-      name: name.toString(),
+    // Prepare facility data
+    const facilityData = {
+      name,
       address: `${address}, ${city}, ${state} ${zip}`,
-      facility_type: type.toString(),
-      status: status?.toString() || 'active',
-      square_footage: squareFootage ? parseFloat(squareFootage.toString()) : 0,
-      year_built: yearBuilt ? parseInt(yearBuilt.toString()) : null,
-      facility_condition_index: facilityConditionIndex ? parseFloat(facilityConditionIndex.toString()) : 0,
-      description: notes?.toString() || '',
-      rooms: 0,
-      active_issues: 0,
-      occupancy_rate: 0,
-      created_by: null, // Start with null
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      facility_type: type as FacilityType,
+      status: status as FacilityStatus,
+      square_footage: parseInt(squareFootage || '0'),
+      year_built: yearBuilt ? parseInt(yearBuilt) : null,
+      facility_condition_index: parseInt(facilityConditionIndex || '0'),
+      description: notes || null,
     };
 
-    console.log('Facility data object:', facilityData);
+    console.log('Creating facility with data:', facilityData);
 
-    // Try to get the current user, but continue if it fails
-    try {
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (user) {
-        facilityData.created_by = user.id;
-        console.log('Setting created_by to user ID:', user.id);
-      } else {
-        console.log('No authenticated user found, using null for created_by');
-      }
-    } catch (authError) {
-      console.error('Error getting authenticated user:', authError);
-      console.log('Proceeding with null created_by');
+    const { data, error } = await serviceRoleClient
+      .from('facilities')
+      .insert([facilityData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error details:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      console.error('Error details:', error.details);
+      console.error('Error hint:', error.hint);
+      throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
     }
 
-    try {
-      // First try using the service
-      console.log('Attempting to create facility using FacilityService...');
-      await FacilityService.createFacility(facilityData as any);
-      console.log('Facility created successfully in database!');
-    } catch (serviceError) {
-      console.error('Service error:', serviceError);
-      
-      // Only use mock data as absolute last resort
-      console.log('Database operation failed, using mock data as fallback');
-      
-      // Create mock facility
-      const newFacility: Facility = {
-        id: `mock-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: name.toString(),
-        facility_type: type,
-        address: `${address}, ${city}, ${state} ${zip}`,
-        description: notes?.toString() || '',
-        status: status,
-        square_footage: squareFootage,
-        facility_condition_index: facilityConditionIndex,
-        rooms: 0,
-        active_issues: 0,
-        occupancy_rate: 0,
-        created_by: facilityData.created_by,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      
-      // Add to mock data
-      addMockFacility(newFacility);
-      console.log('Facility created in mock data:', newFacility);
-    }
-
-    // Revalidate the facilities page to reflect the new data
-    revalidatePath('/facilities');
+    console.log('Facility created successfully:', data);
+    return data;
   } catch (error) {
     console.error('Error creating facility:', error);
     throw error;
@@ -127,45 +100,35 @@ export async function createFacility(formData: FormData): Promise<void> {
 export async function getAllFacilities() {
   try {
     console.log('Fetching all facilities...');
-    // Always try database first
     const facilities = await FacilityService.getAllFacilities();
     console.log(`Found ${facilities.length} facilities in database`);
     return facilities;
   } catch (error) {
     console.error('Error fetching facilities from database:', error);
-    
-    // Only use mock data as fallback
-    console.log('Using mock data as fallback');
-    return getMockFacilities();
+    throw error;
   }
 }
 
 export async function getFacilityById(id: string) {
   try {
     console.log(`Fetching facility with ID ${id}...`);
-    // Always try database first
     const facility = await FacilityService.getFacilityById(id);
     if (facility) {
       console.log('Found facility in database');
       return facility;
     }
+    throw new Error(`Facility with ID ${id} not found`);
   } catch (error) {
     console.error(`Error fetching facility with ID ${id} from database:`, error);
+    throw error;
   }
-  
-  // Check mock data as fallback
-  console.log('Checking mock data for facility');
-  const mockFacility = getMockFacilityById(id);
-  if (mockFacility) {
-    console.log('Found facility in mock data');
-    return mockFacility;
-  }
-  
-  throw new Error(`Facility with ID ${id} not found`);
 }
 
 export async function updateFacility(id: string, formData: FormData) {
   try {
+    const serviceRoleClient = getServiceRoleSupabase();
+
+    // Extract form data
     const name = formData.get('name');
     const address = formData.get('address');
     const city = formData.get('city');
@@ -182,19 +145,33 @@ export async function updateFacility(id: string, formData: FormData) {
       throw new Error('Missing required facility information');
     }
 
-    const facilityData: FacilityFormData = {
+    // Update facility with all fields
+    const updateData = {
       name: name.toString(),
       facility_type: type,
       address: `${address}, ${city}, ${state} ${zip}`,
-      total_square_footage: squareFootage,
-      year_built: yearBuilt || new Date().getFullYear().toString(),
+      square_footage: squareFootage,
+      year_built: yearBuilt ? parseInt(yearBuilt) : null,
       facility_condition_index: facilityConditionIndex,
       status: status,
+      description: notes?.toString() || '',
     };
 
-    await FacilityService.updateFacility(id, facilityData);
+    console.log('Updating facility with data:', updateData);
+
+    const { error } = await serviceRoleClient
+      .from('facilities')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating facility:', error);
+      throw error;
+    }
+
+    console.log('Facility updated successfully');
     revalidatePath('/facilities');
-    revalidatePath(`/facilities/${id}`);
+    revalidatePath(`/facility/${id}`);
   } catch (error) {
     console.error(`Error updating facility with ID ${id}:`, error);
     throw error;
@@ -240,5 +217,118 @@ export async function updateFacilityMatterportUrl(id: string, matterportUrl: str
   } catch (error) {
     console.error(`Error updating Matterport URL for facility ${id}:`, error);
     throw error;
+  }
+} 
+
+export async function getFacilitiesForAnalytics() {
+  try {
+    console.log('Fetching facilities for analytics...');
+    const serviceRoleClient = getServiceRoleSupabase();
+    
+    const { data, error } = await serviceRoleClient
+      .from('facilities')
+      .select('id, name')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching facilities for analytics:', error);
+      throw error;
+    }
+
+    console.log(`Found ${data?.length || 0} facilities for analytics`);
+    return data || [];
+  } catch (error) {
+    console.error('Error in getFacilitiesForAnalytics:', error);
+    throw error;
+  }
+} 
+
+export async function getFacilitiesForMap() {
+  try {
+    console.log('Getting facilities for map...');
+    
+    const serviceRoleClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    const { data, error } = await serviceRoleClient
+      .from('facilities')
+      .select('id, name, address, facility_type, status, square_footage, year_built')
+      .eq('status', 'active');
+
+    if (error) {
+      console.error('Error fetching facilities for map:', error);
+      console.error('Error details:', error.message);
+      return []; // Return empty array instead of throwing
+    }
+
+    console.log(`Found ${data?.length || 0} facilities for map`);
+    return data || [];
+  } catch (error) {
+    console.error('Failed to get facilities for map:', error);
+    return []; // Return empty array on error
+  }
+}
+
+export async function getFacilitiesForCurrentUser() {
+  try {
+    console.log('Getting facilities for current user...');
+    
+    // Get current user
+    const supabase = await createServerSupabaseClient();
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.log('No authenticated user, returning all facilities');
+      return getFacilitiesForMap(); // Fallback for unauthenticated users
+    }
+
+    // Get user profile to check role
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('email', user.email)
+      .single();
+
+    const userRole = userProfile?.role;
+    console.log(`User role: ${userRole}`);
+
+    // Use the service role client with proper fallback
+    const serviceRoleClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    let query = serviceRoleClient
+      .from('facilities')
+      .select('id, name, address, facility_type, status, square_footage, year_built')
+      .eq('status', 'active');
+
+    // Apply role-based filtering - for now, let renters see all facilities
+    // This can be refined later based on actual facility types in the database
+    if (userRole === 'renter') {
+      console.log('Renter user - showing all available facilities');
+      // For now, show all active facilities to renter users
+      // Later we can add more specific filtering based on actual facility types
+    }
+    // Staff, managers, coordinators, and admins can see all facilities
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching facilities for user:', error);
+      console.error('Error details:', error.message);
+      // Return all facilities as fallback instead of throwing
+      return getFacilitiesForMap();
+    }
+
+    console.log(`Found ${data?.length || 0} facilities for user role: ${userRole}`);
+    return data || [];
+  } catch (error) {
+    console.error('Failed to get facilities for current user:', error);
+    // Fallback to all facilities if there's an error
+    console.log('Falling back to getFacilitiesForMap()');
+    return getFacilitiesForMap();
   }
 } 

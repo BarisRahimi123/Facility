@@ -1,0 +1,26 @@
+# Instructions to Fix Mapbox Token
+
+## Problem:
+You're using a secret token (sk.) instead of a public token (pk.)
+
+## Solution:
+
+1. Go to https://account.mapbox.com/access-tokens/
+2. Find or create a PUBLIC token (starts with pk.)
+3. Copy that token
+4. Open your .env.local file
+5. Find the line with NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN
+6. Replace it with:
+
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.your-actual-public-token-here
+
+7. Save the file
+8. Restart your dev server (Ctrl+C then npm run dev)
+
+## Example of what it should look like:
+NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoieW91ci11c2VybmFtZSIsImEiOiJjbGV2ZXIxMjMifQ.AbCdEfGhIjKlMnOpQrStUv
+
+The key points:
+- Must start with "pk." (not "sk.")
+- Must be on its own line
+- No spaces around the = sign 

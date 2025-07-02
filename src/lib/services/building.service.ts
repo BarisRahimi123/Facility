@@ -119,7 +119,8 @@ export class BuildingService {
    */
   static async getBuildingsByFacilityId(facilityId: string): Promise<Building[]> {
     try {
-      console.log(`Fetching buildings for facility ${facilityId}`);
+      console.log(`🔍 BuildingService: Fetching buildings for facility ${facilityId}`);
+      console.log(`🔍 BuildingService: facilityId type: ${typeof facilityId}, value: "${facilityId}"`);
       
       const { data, error } = await supabase
         .from('buildings')
@@ -128,25 +129,49 @@ export class BuildingService {
         .order('name');
 
       if (error) {
-        console.error('Supabase error fetching buildings:', {
+        console.error('❌ BuildingService: Supabase error fetching buildings:', {
           message: error.message,
           details: error.details,
           hint: error.hint,
-          code: error.code
+          code: error.code,
+          facilityId: facilityId
         });
         
         // Check if it's a foreign key error
         if (error.code === '23503') {
-          console.error(`Facility with ID ${facilityId} does not exist in the database`);
+          console.error(`❌ BuildingService: Facility with ID ${facilityId} does not exist in the database`);
         }
         
         throw error;
       }
       
-      console.log(`Found ${data?.length || 0} buildings`);
+      console.log(`✅ BuildingService: Found ${data?.length || 0} buildings`);
+      console.log(`🔍 BuildingService: Raw data from database:`, data);
+      
+      if (data && data.length > 0) {
+        console.log(`🏗️ BuildingService: Buildings details:`, data.map(b => ({
+          id: b.id,
+          name: b.name,
+          facility_id: b.facility_id,
+          building_type: b.building_type
+        })));
+      } else {
+        console.warn(`⚠️ BuildingService: No buildings found in database for facility_id: ${facilityId}`);
+        
+        // Let's also check if there are any buildings in the database at all
+        const { data: allBuildings, error: allError } = await supabase
+          .from('buildings')
+          .select('id, name, facility_id')
+          .limit(10);
+          
+        if (!allError && allBuildings) {
+          console.log(`🔍 BuildingService: Sample of all buildings in database:`, allBuildings);
+        }
+      }
+      
       return data || [];
     } catch (error) {
-      console.error('Error in getBuildingsByFacilityId:', error);
+      console.error('❌ BuildingService: Error in getBuildingsByFacilityId:', error);
       // Return empty array on error to prevent page crash
       return [];
     }

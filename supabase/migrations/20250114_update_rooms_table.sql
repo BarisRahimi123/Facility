@@ -13,6 +13,9 @@ CREATE TABLE rooms (
     floor TEXT,
     furniture_details JSONB,
     accessibility_notes TEXT,
+    
+    -- Usage categories for public rental
+    possible_uses JSONB, -- Array of possible uses like ['Meetings', 'Events', 'Training', 'Conferences']
     created_by UUID REFERENCES auth.users(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

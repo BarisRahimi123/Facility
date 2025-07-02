@@ -11,7 +11,7 @@ export default function MaintenanceSettingsPage() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <div className="p-6 max-w-[1600px] mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

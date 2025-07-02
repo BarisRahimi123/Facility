@@ -203,6 +203,14 @@ const mockRenovations: Renovation[] = [
     start_date: '2023-01-01',
     completion_date: '2023-03-01',
     status: 'completed',
+    budget: 500000,
+    actual_cost: 525000,
+    contractor_name: 'ABC Contractors',
+    contractor_contact: '555-0124',
+    permit_numbers: 'PERMIT-123',
+    permit_issue_date: '2022-12-15',
+    inspection_dates: '2023-02-15',
+    inspection_results: 'Passed',
     funding_source: 'Capital Budget',
     dsa_approval_status: 'approved',
     inspector_of_record: {
@@ -253,101 +261,103 @@ let inMemoryRooms: Room[] = [...mockRooms];
 let inMemoryBuildingSystems: BuildingSystem[] = [...mockBuildingSystems];
 let inMemoryRenovations: Renovation[] = [...mockRenovations];
 
-export async function createBuilding(formData: FormData): Promise<void> {
+// Add BuildingFormData type export
+export type BuildingFormData = {
+  name: string;
+  building_number?: string;
+  construction_date: string;
+  building_type: BuildingType;
+  square_footage: number;
+  number_of_rooms: number;
+  facility_id: string;
+  notes?: string;
+  image_description?: string;
+  status: 'active' | 'inactive' | 'maintenance';
+  created_by: string;
+  boys_toilets?: number;
+  girls_toilets?: number;
+  unisex_toilets?: number;
+  boys_urinals?: number;
+  girls_urinals?: number;
+  boys_sinks?: number;
+  girls_sinks?: number;
+  unisex_sinks?: number;
+  boys_restrooms_count?: number;
+  girls_restrooms_count?: number;
+  unisex_restrooms_count?: number;
+  staff_toilets?: number;
+  staff_sinks?: number;
+  staff_restrooms_count?: number;
+};
+
+export async function createBuilding(formData: FormData): Promise<Building | null> {
   try {
     // Get and validate form data
-    const name = formData.get('name');
-    const buildingNumber = formData.get('buildingNumber');
-    const constructionDate = formData.get('constructionDate');
-    const buildingType = formData.get('buildingType');
-    const squareFootage = formData.get('squareFootage');
-    const numberOfRooms = formData.get('numberOfRooms') || '0';
-    const facilityId = formData.get('facilityId');
-    const notes = formData.get('notes');
+    const name = formData.get('name')?.toString();
+    const buildingNumber = formData.get('building_number')?.toString();
+    const constructionDate = formData.get('construction_date')?.toString();
+    const buildingType = formData.get('building_type')?.toString();
+    const squareFootage = formData.get('square_footage')?.toString();
+    const numberOfRooms = formData.get('number_of_rooms')?.toString();
+    const facilityId = formData.get('facility_id')?.toString();
+    const notes = formData.get('notes')?.toString();
+    const imageDescription = formData.get('image_description')?.toString();
 
-    // Validate required fields
-    if (!name || !buildingType || !squareFootage || !constructionDate || !facilityId) {
+    if (!name || !buildingType || !facilityId || !squareFootage || !numberOfRooms || !constructionDate) {
       throw new Error('Missing required fields');
     }
 
-    console.log('Creating building with data:', {
-      name: name.toString(),
-      facilityId: facilityId.toString(),
-      buildingType: buildingType.toString()
-    });
-
-    // Prepare building data
     const buildingData = {
-      facility_id: facilityId.toString(),
-      name: name.toString(),
-      building_number: buildingNumber?.toString() || null,
-      construction_date: new Date(constructionDate.toString()).toISOString().split('T')[0],
-      building_type: buildingType.toString() as BuildingType,
-      square_footage: parseFloat(squareFootage.toString()),
-      number_of_rooms: parseInt(numberOfRooms.toString(), 10),
+      name,
+      building_number: buildingNumber || '',
+      construction_date: constructionDate,
+      building_type: buildingType as BuildingType,
+      square_footage: parseInt(squareFootage),
+      number_of_rooms: parseInt(numberOfRooms),
+      facility_id: facilityId,
+      notes: notes || null,
+      image_description: imageDescription || null,
       status: 'active' as const,
-      notes: notes?.toString() || null,
-      created_by: null, // Use null to avoid foreign key constraint
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      created_by: 'system',
+      // Optional restroom information
+      boys_toilets: parseInt(formData.get('boys_toilets')?.toString() || '0'),
+      girls_toilets: parseInt(formData.get('girls_toilets')?.toString() || '0'),
+      unisex_toilets: parseInt(formData.get('unisex_toilets')?.toString() || '0'),
+      boys_urinals: parseInt(formData.get('boys_urinals')?.toString() || '0'),
+      girls_urinals: parseInt(formData.get('girls_urinals')?.toString() || '0'),
+      boys_sinks: parseInt(formData.get('boys_sinks')?.toString() || '0'),
+      girls_sinks: parseInt(formData.get('girls_sinks')?.toString() || '0'),
+      unisex_sinks: parseInt(formData.get('unisex_sinks')?.toString() || '0'),
+      boys_restrooms_count: parseInt(formData.get('boys_restrooms_count')?.toString() || '0'),
+      girls_restrooms_count: parseInt(formData.get('girls_restrooms_count')?.toString() || '0'),
+      unisex_restrooms_count: parseInt(formData.get('unisex_restrooms_count')?.toString() || '0'),
+      staff_toilets: parseInt(formData.get('staff_toilets')?.toString() || '0'),
+      staff_sinks: parseInt(formData.get('staff_sinks')?.toString() || '0'),
+      staff_restrooms_count: parseInt(formData.get('staff_restrooms_count')?.toString() || '0'),
     };
 
-    // Try to use service role client for direct database access
-    try {
-      console.log('Attempting to create building in database...');
-      
-      const client = getServiceRoleClient();
-      if (!client) {
-        throw new Error('Supabase client not initialized');
-      }
-      
-      const { data, error } = await client
-        .from('buildings')
-        .insert([buildingData])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error:', error);
-        throw error;
-      }
-      
-      console.log('Building created successfully in database:', data);
-      
-      // Revalidate the facility page to show the new building
-      revalidatePath(`/facility/${facilityId}`);
-      return;
-    } catch (dbError) {
-      console.error('Database operation failed:', dbError);
-      
-      // Fall back to in-memory storage
-      console.log('Using in-memory storage as fallback');
-      const inMemoryBuilding: Building = {
-        id: `building_${Date.now()}`,
-        facility_id: facilityId.toString(),
-        name: name.toString(),
-        building_number: buildingNumber?.toString() || undefined,
-        construction_date: new Date(constructionDate.toString()).toISOString().split('T')[0],
-        building_type: buildingType.toString() as BuildingType,
-        square_footage: parseFloat(squareFootage.toString()),
-        number_of_rooms: parseInt(numberOfRooms.toString(), 10),
-        status: 'active',
-        notes: notes?.toString() || null,
-        created_by: 'mock-user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        rooms: [],
-        building_systems: [],
-        renovations: []
-      };
-
-      inMemoryBuildings.push(inMemoryBuilding);
-      console.log('Building created successfully in memory:', inMemoryBuilding);
-      
-      // Revalidate the facility page
-      revalidatePath(`/facility/${facilityId}`);
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
     }
     
+    const { data: newBuilding, error } = await client
+      .from('buildings')
+      .insert([buildingData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+    
+    // Revalidate paths
+    revalidatePath('/buildings');
+    revalidatePath(`/facility/${facilityId}`);
+    revalidatePath(`/facility/${facilityId}/buildings`);
+    
+    return newBuilding;
   } catch (error) {
     console.error('Error in createBuilding:', error);
     throw error;
@@ -395,6 +405,11 @@ export async function createRoom(formData: FormData): Promise<void> {
     }
 
     // Use service role client to bypass RLS
+    const serviceRoleClient = getServiceRoleClient();
+    if (!serviceRoleClient) {
+      throw new Error('Supabase client not initialized');
+    }
+    
     const { data, error } = await serviceRoleClient
       .from('rooms')
       .insert([roomData])
@@ -440,6 +455,11 @@ export async function updateBuilding(buildingId: string, formData: FormData): Pr
     console.log('Building data to update:', buildingData);
 
     // Update in database using service role client
+    const serviceRoleClient = getServiceRoleClient();
+    if (!serviceRoleClient) {
+      throw new Error('Supabase client not initialized');
+    }
+    
     const { data, error } = await serviceRoleClient
       .from('buildings')
       .update(buildingData)
@@ -461,6 +481,11 @@ export async function updateBuilding(buildingId: string, formData: FormData): Pr
 
 export async function updateRoom(roomId: string, formData: FormData): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     // Validate required fields - using correct field names with underscores
     const roomNumber = formData.get('room_number')?.toString();
     const roomFunction = formData.get('room_function')?.toString();
@@ -497,7 +522,7 @@ export async function updateRoom(roomId: string, formData: FormData): Promise<vo
     }
 
     // Use service role client to bypass RLS
-    const { data, error } = await serviceRoleClient
+    const { data, error } = await client
       .from('rooms')
       .update(roomData)
       .eq('id', roomId)
@@ -520,8 +545,12 @@ export async function deleteRoom(roomId: string): Promise<void> {
   try {
     console.log('Deleting room with ID:', roomId);
 
-    // Use service role client to bypass RLS
-    const { error } = await serviceRoleClient
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+    
+    const { error } = await client
       .from('rooms')
       .delete()
       .eq('id', roomId);
@@ -540,6 +569,11 @@ export async function deleteRoom(roomId: string): Promise<void> {
 
 export async function updateBuildingSystem(systemId: string, formData: FormData): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     const buildingId = formData.get('buildingId')?.toString();
     
     if (!buildingId) {
@@ -597,7 +631,7 @@ export async function updateBuildingSystem(systemId: string, formData: FormData)
     // Try to update in database
     try {
       // First try with maintenance_contact
-      const { data, error } = await serviceRoleClient
+      const { data, error } = await client
         .from('building_systems')
         .update(systemDataWithContact)
         .eq('id', systemId)
@@ -608,7 +642,7 @@ export async function updateBuildingSystem(systemId: string, formData: FormData)
         // If error mentions maintenance_contact column, retry without it
         if (error.message?.includes('maintenance_contact')) {
           console.log('Maintenance contact column not found, retrying without it...');
-          const { data: retryData, error: retryError } = await serviceRoleClient
+          const { data: retryData, error: retryError } = await client
             .from('building_systems')
             .update(systemData)
             .eq('id', systemId)
@@ -642,10 +676,15 @@ export async function updateBuildingSystem(systemId: string, formData: FormData)
 
 export async function deleteBuildingSystem(systemId: string): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     console.log('Deleting building system with ID:', systemId);
 
     // Use service role client to bypass RLS
-    const { error } = await serviceRoleClient
+    const { error } = await client
       .from('building_systems')
       .delete()
       .eq('id', systemId);
@@ -664,6 +703,11 @@ export async function deleteBuildingSystem(systemId: string): Promise<void> {
 
 export async function updateRenovation(renovationId: string, formData: FormData): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     const buildingId = formData.get('buildingId')?.toString();
     
     if (!buildingId) {
@@ -709,7 +753,7 @@ export async function updateRenovation(renovationId: string, formData: FormData)
 
     // Try to update in database
     try {
-      const { data, error } = await serviceRoleClient
+      const { data, error } = await client
         .from('renovations')
         .update(renovationData)
         .eq('id', renovationId)
@@ -734,10 +778,15 @@ export async function updateRenovation(renovationId: string, formData: FormData)
 
 export async function deleteRenovation(renovationId: string): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     console.log('Deleting renovation with ID:', renovationId);
 
     // Use service role client to bypass RLS
-    const { error } = await serviceRoleClient
+    const { error } = await client
       .from('renovations')
       .delete()
       .eq('id', renovationId);
@@ -756,6 +805,11 @@ export async function deleteRenovation(renovationId: string): Promise<void> {
 
 export async function createBuildingSystem(formData: FormData): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     const buildingId = formData.get('buildingId')?.toString();
     
     if (!buildingId) {
@@ -811,7 +865,7 @@ export async function createBuildingSystem(formData: FormData): Promise<void> {
 
     // Save to database
     // First try with maintenance_contact
-    let { data, error } = await serviceRoleClient
+    let { data, error } = await client
       .from('building_systems')
       .insert([systemDataWithContact])
       .select()
@@ -821,7 +875,7 @@ export async function createBuildingSystem(formData: FormData): Promise<void> {
       // If error mentions maintenance_contact column, retry without it
       if (error.message?.includes('maintenance_contact')) {
         console.log('Maintenance contact column not found, retrying without it...');
-        const retryResult = await serviceRoleClient
+        const retryResult = await client
           .from('building_systems')
           .insert([systemData])
           .select()
@@ -851,13 +905,16 @@ export async function createBuildingSystem(formData: FormData): Promise<void> {
   }
 }
 
-
-
 export async function getBuildings(): Promise<Building[]> {
   try {
     console.log('Fetching all buildings from database...');
     
     // Use service role client for direct database access
+    const serviceRoleClient = getServiceRoleClient();
+    if (!serviceRoleClient) {
+      throw new Error('Supabase client not initialized');
+    }
+    
     const { data, error } = await serviceRoleClient
       .from('buildings')
       .select('*')
@@ -865,36 +922,15 @@ export async function getBuildings(): Promise<Building[]> {
 
     if (error) {
       console.error('Error fetching buildings from Supabase:', error);
-      // Return mock data as fallback
-      return prepareMockBuildingsData();
+      throw error;
     }
 
-    if (!data || data.length === 0) {
-      console.log('No buildings found in database, returning mock data');
-      return prepareMockBuildingsData();
-    }
-
-    console.log(`Found ${data.length} buildings in database`);
-    return data;
+    console.log(`Found ${data?.length || 0} buildings in database`);
+    return data || [];
   } catch (error) {
     console.error('Unexpected error in getBuildings:', error);
-    // Return mock data as fallback
-    return prepareMockBuildingsData();
+    throw error;
   }
-}
-
-// Helper function to prepare mock data with relationships
-function prepareMockBuildingsData(): Building[] {
-  return inMemoryBuildings.map(building => {
-    // Create an extended building object with additional properties
-    const extendedBuilding: any = {
-      ...building,
-      rooms: inMemoryRooms.filter(room => room.building_id === building.id),
-      building_systems: inMemoryBuildingSystems.filter(system => system.building_id === building.id),
-      renovations: inMemoryRenovations.filter(renovation => renovation.building_id === building.id)
-    };
-    return extendedBuilding;
-  });
 }
 
 export async function getBuilding(id: string): Promise<Building | null> {
@@ -909,9 +945,32 @@ export async function getBuildingRooms(buildingId: string): Promise<Room[]> {
 }
 
 export async function getRooms(buildingId: string): Promise<Room[]> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 200));
-  return inMemoryRooms.filter(room => room.building_id === buildingId);
+  try {
+    console.log('Fetching rooms for building:', buildingId);
+    
+    // Use service role client for direct database access
+    const serviceRoleClient = getServiceRoleClient();
+    if (!serviceRoleClient) {
+      throw new Error('Supabase client not available');
+    }
+    
+    const { data: rooms, error } = await serviceRoleClient
+      .from('rooms')
+      .select('*')
+      .eq('building_id', buildingId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching rooms from database:', error);
+      throw error;
+    }
+
+    console.log(`Found ${rooms?.length || 0} rooms in database for building ${buildingId}`);
+    return rooms || [];
+  } catch (error) {
+    console.error('Error in getRooms:', error);
+    throw error;
+  }
 }
 
 export async function getBuildingSystems(buildingId: string): Promise<any[]> {
@@ -919,6 +978,11 @@ export async function getBuildingSystems(buildingId: string): Promise<any[]> {
     console.log('Fetching building systems for building:', buildingId);
     
     // Try to fetch from database first
+    const serviceRoleClient = getServiceRoleClient();
+    if (!serviceRoleClient) {
+      throw new Error('Supabase client not initialized');
+    }
+    
     const { data: systems, error } = await serviceRoleClient
       .from('building_systems')
       .select('*')
@@ -965,6 +1029,11 @@ export async function seedDummyData() {
 
 export async function createRenovation(buildingId: string, formData: FormData): Promise<void> {
   try {
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+
     const scopeOfWork = formData.get('scope_of_work')?.toString() || '';
     const squareFootageAffected = Number(formData.get('square_footage_affected')) || 0;
     const startDate = formData.get('start_date')?.toString() || '';
@@ -1003,7 +1072,7 @@ export async function createRenovation(buildingId: string, formData: FormData): 
 
     // Try to save to database
     try {
-      const { data, error } = await serviceRoleClient
+      const { data, error } = await client
         .from('renovations')
         .insert([renovationData])
         .select()
@@ -1034,8 +1103,41 @@ export async function createRenovation(buildingId: string, formData: FormData): 
   }
 }
 
-
-
 export async function getRenovations(buildingId: string): Promise<any[]> {
   return inMemoryRenovations.filter(renovation => renovation.building_id === buildingId);
+}
+
+export async function deleteBuilding(buildingId: string): Promise<void> {
+  try {
+    console.log('Deleting building with ID:', buildingId);
+    
+    const client = getServiceRoleClient();
+    if (!client) {
+      throw new Error('Supabase client not initialized');
+    }
+    
+    // Delete all related records first
+    await client.from('rooms').delete().eq('building_id', buildingId);
+    await client.from('building_systems').delete().eq('building_id', buildingId);
+    await client.from('renovations').delete().eq('building_id', buildingId);
+    
+    // Then delete the building
+    const { error } = await client
+      .from('buildings')
+      .delete()
+      .eq('id', buildingId);
+
+    if (error) {
+      console.error('Database error:', error);
+      throw error;
+    }
+    
+    // Revalidate paths
+    revalidatePath('/buildings');
+    
+    console.log('Building deleted successfully');
+  } catch (error) {
+    console.error('Error in deleteBuilding:', error);
+    throw error;
+  }
 } 
