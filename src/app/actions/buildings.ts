@@ -307,34 +307,29 @@ export async function createBuilding(formData: FormData): Promise<Building | nul
       throw new Error('Missing required fields');
     }
 
-    const buildingData = {
-      name,
-      building_number: buildingNumber || '',
-      construction_date: constructionDate,
-      building_type: buildingType as BuildingType,
-      square_footage: parseInt(squareFootage),
-      number_of_rooms: parseInt(numberOfRooms),
+    // Create building data object - only include fields that exist in the database
+    const buildingData: any = {
       facility_id: facilityId,
-      notes: notes || null,
-      image_description: imageDescription || null,
-      status: 'active' as const,
-      created_by: 'system',
-      // Optional restroom information
-      boys_toilets: parseInt(formData.get('boys_toilets')?.toString() || '0'),
-      girls_toilets: parseInt(formData.get('girls_toilets')?.toString() || '0'),
-      unisex_toilets: parseInt(formData.get('unisex_toilets')?.toString() || '0'),
-      boys_urinals: parseInt(formData.get('boys_urinals')?.toString() || '0'),
-      girls_urinals: parseInt(formData.get('girls_urinals')?.toString() || '0'),
-      boys_sinks: parseInt(formData.get('boys_sinks')?.toString() || '0'),
-      girls_sinks: parseInt(formData.get('girls_sinks')?.toString() || '0'),
-      unisex_sinks: parseInt(formData.get('unisex_sinks')?.toString() || '0'),
-      boys_restrooms_count: parseInt(formData.get('boys_restrooms_count')?.toString() || '0'),
-      girls_restrooms_count: parseInt(formData.get('girls_restrooms_count')?.toString() || '0'),
-      unisex_restrooms_count: parseInt(formData.get('unisex_restrooms_count')?.toString() || '0'),
-      staff_toilets: parseInt(formData.get('staff_toilets')?.toString() || '0'),
-      staff_sinks: parseInt(formData.get('staff_sinks')?.toString() || '0'),
-      staff_restrooms_count: parseInt(formData.get('staff_restrooms_count')?.toString() || '0'),
+      name: name,
+      building_number: formData.get('building_number')?.toString() || null,
+      building_type: buildingType,
+      square_footage: parseInt(squareFootage),
+      construction_date: constructionDate,
+      number_of_rooms: parseInt(numberOfRooms),
+      year_built: formData.get('year_built') ? parseInt(formData.get('year_built') as string) : null,
+      notes: formData.get('notes')?.toString() || null,
+      status: 'active',
+      created_by: null // Will be set when we have user context
     };
+
+    // Remove all the bathroom-related fields that don't exist in the database
+    // These were causing the database error:
+    // boys_toilets, girls_toilets, unisex_toilets, boys_urinals, girls_urinals,
+    // boys_sinks, girls_sinks, unisex_sinks, boys_restrooms_count, 
+    // girls_restrooms_count, unisex_restrooms_count, staff_toilets, 
+    // staff_sinks, staff_restrooms_count
+
+    console.log('Creating building with data:', buildingData);
 
     const client = getServiceRoleClient();
     if (!client) {

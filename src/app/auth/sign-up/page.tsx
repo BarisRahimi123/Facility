@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NoSSR } from '@/components/ui/no-ssr';
+import { AuthLoadingSkeleton } from '@/components/ui/auth-loading-skeleton';
 import {
   Select,
   SelectContent,
@@ -24,7 +26,7 @@ import {
 import { ArrowLeft, Check, Building2, Users } from 'lucide-react';
 import Link from 'next/link';
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const [accountType, setAccountType] = useState<'individual' | 'organization'>('individual');
   const [isLoading, setIsLoading] = useState(false);
@@ -667,5 +669,13 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <NoSSR fallback={<AuthLoadingSkeleton />}>
+      <SignUpForm />
+    </NoSSR>
   );
 } 

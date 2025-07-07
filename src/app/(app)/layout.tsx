@@ -3,15 +3,8 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import TopBar from '@/components/layout/TopBar';
 import Sidebar from '@/components/layout/Sidebar';
-
-// Use dynamic imports for heavy components
-const ChatAssistant = dynamic(() => import('@/components/chat/ChatAssistant'), {
-  loading: () => null,
-  ssr: false
-});
 
 export default function AppLayout({
   children,
@@ -53,10 +46,7 @@ export default function AppLayout({
         </main>
       </div>
 
-      {/* Chat Assistant */}
-      <Suspense fallback={null}>
-        <ChatAssistant />
-      </Suspense>
+
     </div>
   );
 } 

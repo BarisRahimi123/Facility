@@ -41,7 +41,7 @@ class AuthErrorBoundary extends Component<Props, State> {
               There was a problem with the authentication system.
             </p>
             <button 
-              onClick={() => window.location.href = '/auth/sign-in-simple'}
+              onClick={() => window.location.href = '/auth/sign-in'}
               className="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
             >
               Go to Login

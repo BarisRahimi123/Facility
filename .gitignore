@@ -80,3 +80,7 @@ Thumbs.db
 /scripts/test-*
 /scripts/debug-*
 /scripts/generate-test-*
+
+# Cleanup files
+cleanup-backup.json
+cleanup-backup-v2.json

@@ -41,6 +41,8 @@ import Image from 'next/image';
 import { Field, FieldType, SurfaceType, CreateFieldRequest } from '@/types/field';
 import { Room } from '@/types/building';
 import { getFields, createField, deleteField, checkFieldsTableExists } from '@/app/actions/fields';
+import { getStaffFieldAssignments } from '@/app/actions/staff';
+import type { StaffFieldAssignment } from '@/types/staff';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { AddressInput } from '@/components/ui/address-input';
@@ -50,8 +52,8 @@ import { EditFieldModal } from '@/components/facility/EditFieldModal';
 import { ReservationsView } from '@/components/facility/ReservationsView';
 import AssignStaffToFieldModal from '@/components/facility/AssignStaffToFieldModal';
 import { FacilityRentalModal } from '@/components/facility/FacilityRentalModal';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { FieldCalendarView } from '@/components/facility/FieldCalendarView';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 // Dynamic import for Mapbox component (requires browser APIs)
@@ -82,9 +84,10 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingField, setEditingField] = useState<Field | null>(null);
 
-  // Staff assignment modal state
+  // Staff assignment state
   const [assigningStaffField, setAssigningStaffField] = useState<Field | null>(null);
   const [isStaffAssignModalOpen, setIsStaffAssignModalOpen] = useState(false);
+  const [staffAssignments, setStaffAssignments] = useState<StaffFieldAssignment[]>([]);
 
   // Full-screen rental modal state
   const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
@@ -122,8 +125,23 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
         return;
       }
       
-      const fieldsData = await getFields(facilityId);
+      // Load fields and staff assignments in parallel
+      const [fieldsData, assignmentsResponse] = await Promise.all([
+        getFields(facilityId),
+        getStaffFieldAssignments()
+      ]);
+      
       setFields(fieldsData);
+      
+      // Filter assignments for fields in this facility
+      if (assignmentsResponse.data) {
+        const facilityFieldIds = fieldsData.map(f => f.id);
+        const facilityAssignments = assignmentsResponse.data.filter(
+          assignment => facilityFieldIds.includes(assignment.field_id)
+        );
+        setStaffAssignments(facilityAssignments);
+      }
+      
       setNeedsSetup(false);
     } catch (error) {
       console.error('Error loading fields:', error);
@@ -150,16 +168,22 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
           description: "Please apply the fields migration first. See setup instructions on screen.",
           variant: "destructive",
         });
-        return;
+        throw new Error("Database setup needed");
       }
 
       const field = await createField(fieldData);
+      
+      // Update fields list
       setFields(prev => [field, ...prev]);
       
-      toast({
-        title: "Field created",
-        description: "Your field has been created successfully.",
-      });
+      // Reload fields in background - don't let this prevent success
+      try {
+        await loadFields();
+      } catch (error) {
+        console.warn('Failed to reload fields:', error);
+      }
+      
+      // Don't close modal - let AddFieldModal handle its own success state
     } catch (error) {
       console.error('Error creating field:', error);
       throw error; // Let the AddFieldModal handle the error display
@@ -239,6 +263,10 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
     }
   };
 
+  const getFieldAssignmentCount = (fieldId: string) => {
+    return staffAssignments.filter(assignment => assignment.field_id === fieldId).length;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available':
@@ -259,6 +287,7 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
   // Handle field interactions
   const handleFieldClick = (field: Field) => {
     setSelectedField(field);
+    setIsDetailModalOpen(true);  // Open the detail modal on single click
   };
 
   const handleFieldDoubleClick = (field: Field) => {
@@ -503,6 +532,7 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
                     <Card 
                       key={field.id} 
                       className="group bg-white dark:bg-white border-0 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-200 overflow-hidden cursor-pointer"
+                      onClick={() => handleFieldClick(field)}
                       onDoubleClick={() => handleFieldDoubleClick(field)}
                     >
                       <div className="relative">
@@ -545,7 +575,8 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
                               className="h-8 w-8 p-0 rounded-full bg-white/90 hover:bg-white border-0 shadow-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleFieldDoubleClick(field);
+                                setSelectedField(field);
+                                setIsDetailModalOpen(true);
                               }}
                             >
                               <Eye className="h-4 w-4 text-gray-600" />
@@ -592,10 +623,21 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
                       <CardContent className="p-4">
                         <div className="space-y-3">
                           {/* Rating - Hipcamp Style with thumbs up */}
-                          <div className="flex items-center space-x-1">
-                            <ThumbsUp className="h-4 w-4 text-gray-700" />
-                            <span className="text-sm font-medium text-gray-900">96%</span>
-                            <span className="text-sm text-gray-500">(127)</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-1">
+                              <ThumbsUp className="h-4 w-4 text-gray-700" />
+                              <span className="text-sm font-medium text-gray-900">96%</span>
+                              <span className="text-sm text-gray-500">(127)</span>
+                            </div>
+                            {/* Assigned Staff Count */}
+                            {getFieldAssignmentCount(field.id) > 0 && (
+                              <div className="flex items-center space-x-1 text-blue-600">
+                                <Users className="h-4 w-4" />
+                                <span className="text-sm font-medium">
+                                  {getFieldAssignmentCount(field.id)} Staff
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           {/* Title - Bold and prominent */}
@@ -679,7 +721,14 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
                                   <span className="text-lg">{getFieldTypeIcon(field.type)}</span>
                                 </div>
                                 <div>
-                                  <p className="font-medium text-foreground">{field.name}</p>
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium text-foreground">{field.name}</p>
+                                    {getFieldAssignmentCount(field.id) > 0 && (
+                                      <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                                        {getFieldAssignmentCount(field.id)} Staff
+                                      </Badge>
+                                    )}
+                                  </div>
                                   <p className="text-sm text-muted-foreground">
                                     {field.full_address || field.street_address || 'No address set'}
                                   </p>
@@ -743,7 +792,8 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
                                   className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleFieldRowDoubleClick(field);
+                                    setSelectedField(field);
+                                    setIsDetailModalOpen(true);
                                   }}
                                 >
                                   <Eye className="h-4 w-4" />
@@ -1051,10 +1101,10 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
           }}
           fieldId={assigningStaffField.id}
           fieldName={assigningStaffField.name}
-          facilityName={assigningStaffField.full_address || 'Unknown Facility'}
+          facilityName="Unknown Facility"
           onAssignmentChange={() => {
-            // Optionally reload field data or show a success message
-            console.log('Staff assignment changed for field:', assigningStaffField.name);
+            // Reload fields when assignments change
+            loadFields();
           }}
         />
       )}

@@ -9,9 +9,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { GlassNavbar } from '@/components/ui/glass-navbar';
+import { NoSSR } from '@/components/ui/no-ssr';
+import { AuthLoadingSkeleton } from '@/components/ui/auth-loading-skeleton';
 import { createClient } from '@/lib/supabase/client';
 
-export default function SignInPage() {
+function SignInForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,26 +23,49 @@ export default function SignInPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Sign in attempt started...'); // Debug log
     setLoading(true);
 
     try {
+      // Check if Supabase is configured
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      
+      console.log('Supabase URL:', supabaseUrl ? 'Set' : 'Missing');
+      console.log('Supabase Key:', supabaseKey ? 'Set' : 'Missing');
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase is not configured. Please check your environment variables.');
+      }
+
       const supabase = createClient();
+      console.log('Supabase client created');
       
       // Authenticate with Supabase
+      console.log('Attempting sign in with email:', email.trim());
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password,
       });
 
+      console.log('Sign in response received');
+      console.log('Auth data:', data);
+      console.log('Auth error:', error);
+
       if (error) {
+        console.error('Authentication error:', error);
         throw error;
       }
 
       if (!data.user) {
+        console.error('No user returned from authentication');
         throw new Error('Authentication failed - no user returned');
       }
 
+      console.log('User authenticated:', data.user.email);
+
       // Wait a moment for session to be established
+      console.log('Waiting for session to establish...');
       await new Promise(resolve => setTimeout(resolve, 500));
 
       toast({
@@ -50,34 +75,39 @@ export default function SignInPage() {
 
       // Check user role and redirect appropriately
       try {
-        const { data: userProfile } = await supabase
+        console.log('Fetching user profile...');
+        const { data: userProfile, error: profileError } = await supabase
           .from('users')
           .select('role')
           .eq('email', data.user.email)
           .single();
 
+        console.log('Profile data:', userProfile);
+        console.log('Profile error:', profileError);
+
         const userRole = userProfile?.role;
+        console.log('User role:', userRole);
         
         // Use window.location.href for full page reload to ensure auth state is picked up
+        let redirectUrl = '/facilities-map'; // default
+        
         if (userRole === 'master_admin' || userRole === 'district_approver') {
-          // Master admins go to people management
-          window.location.href = '/people';
+          redirectUrl = '/people';
         } else if (userRole === 'sub_master' || userRole === 'site_approver') {
-          // Sub-masters go to facilities
-          window.location.href = '/facilities';
+          redirectUrl = '/facilities';
         } else if (userRole === 'staff' || userRole === 'manager' || userRole === 'coordinator') {
-          // Staff members go to staff dashboard
-          window.location.href = '/staff';
+          redirectUrl = '/staff';
         } else if (userRole === 'renter') {
-          // Renters go to facilities map to book
-          window.location.href = '/facilities-map';
-        } else {
-          // Default fallback
-          window.location.href = '/facilities-map';
+          redirectUrl = '/facilities-map';
         }
+        
+        console.log('Redirecting to:', redirectUrl);
+        window.location.href = redirectUrl;
+        
       } catch (roleError) {
         console.error('Error determining user role:', roleError);
         // Default fallback - redirect to facilities map
+        console.log('Using fallback redirect to /facilities-map');
         window.location.href = '/facilities-map';
       }
 
@@ -113,6 +143,7 @@ export default function SignInPage() {
         variant: 'destructive',
       });
     } finally {
+      console.log('Sign in process completed, setting loading to false');
       setLoading(false);
     }
   };
@@ -135,6 +166,10 @@ export default function SignInPage() {
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
                 Sign in to your account to continue
+              </p>
+              {/* Debug link */}
+              <p className="mt-2 text-xs text-muted-foreground">
+                Having issues? <Link href="/auth/debug" className="text-primary hover:underline">Check debug info</Link>
               </p>
             </div>
 
@@ -246,5 +281,13 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <NoSSR fallback={<AuthLoadingSkeleton />}>
+      <SignInForm />
+    </NoSSR>
   );
 } 

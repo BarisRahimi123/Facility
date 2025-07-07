@@ -129,6 +129,67 @@ export async function getStaffUsers(): Promise<UserResponse> {
 export async function createUser(userData: CreateUserData): Promise<UserResponse> {
   try {
     const supabase = createClient();
+    
+    // For renters, send invitation instead of creating directly
+    if (userData.role === 'renter') {
+      // Get current user to be the inviter
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return { data: null, error: 'Not authenticated' };
+      }
+
+      // Get current user's role from database
+      const { data: currentUser } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (!currentUser || !['master_admin', 'sub_master'].includes(currentUser.role)) {
+        return { data: null, error: 'You do not have permission to invite renters' };
+      }
+
+      // Create invitation for renter
+      const { data: invitationData, error: invitationError } = await supabase.rpc('send_user_invitation', {
+        p_email: userData.email,
+        p_role: userData.role,
+        p_invited_by: user.id,
+        p_organization_id: userData.organization_id || null,
+        p_metadata: {
+          fullName: userData.full_name,
+          phone: userData.phone,
+          organizationId: userData.organization_id,
+          organizationName: userData.organization_name
+        }
+      });
+
+      if (invitationError) {
+        // Check if the error is due to missing database functions
+        if (invitationError.message?.includes('function') && invitationError.message?.includes('does not exist')) {
+          return { data: null, error: 'Invitation system not configured. Please apply database updates first.' };
+        }
+        return { data: null, error: invitationError.message };
+      }
+
+      // Return invitation data as if it were user data for consistency
+      return { 
+        data: {
+          id: invitationData.id,
+          email: userData.email,
+          full_name: userData.full_name,
+          role: userData.role,
+          phone: userData.phone,
+          is_active: false, // Will be activated when invitation is accepted
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          organization_id: userData.organization_id,
+          organization_name: userData.organization_name
+        } as User, 
+        error: null 
+      };
+    }
+
+    // For non-renters, create directly as before
     const { data, error } = await supabase
       .from('users')
       .insert([userData])

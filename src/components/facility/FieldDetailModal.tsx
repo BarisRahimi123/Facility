@@ -99,8 +99,6 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
   });
   const { user, loading: userLoading } = useUser();
 
-  if (!field) return null;
-
   const fieldTypeEmoji = {
     soccer: '⚽',
     football: '🏈', 
@@ -121,7 +119,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
   };
 
   const calculateCost = () => {
-    if (!reservationData.date || !reservationData.startTime || !reservationData.endTime) {
+    if (!reservationData.date || !reservationData.startTime || !reservationData.endTime || !field) {
       return { subtotal: 0, taxAmount: 0, depositAmount: 0, totalCost: 0 };
     }
     
@@ -208,7 +206,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
     }
     
     // Capacity validation
-    if (field.capacity && reservationData.estimatedAttendees > field.capacity) {
+    if (field && field.capacity && reservationData.estimatedAttendees > field.capacity) {
       errors.push(`Number of attendees cannot exceed field capacity (${field.capacity})`);
     }
     
@@ -236,6 +234,9 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
       }));
     }
   }, [user, userLoading]);
+
+  // Early return after all hooks to comply with Rules of Hooks
+  if (!field) return null;
 
   const handleReservationSubmit = async () => {
     if (!field) return;
@@ -389,7 +390,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
         {currentStep === 'details' && (
           <div className="space-y-6">
             {/* Field Images */}
-            {field.gallery_images && field.gallery_images.length > 0 && (
+            {field.gallery_images && Array.isArray(field.gallery_images) && field.gallery_images.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {field.gallery_images.slice(0, 3).map((image: string, index: number) => (
                   <div key={index} className="relative h-48 rounded-lg overflow-hidden">
@@ -419,7 +420,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
                     </div>
                     <div>
                       <span className="text-gray-400 text-sm">Surface:</span>
-                      <p className="text-white font-medium capitalize">{field.surface_type?.replace('_', ' ')}</p>
+                      <p className="text-white font-medium capitalize">{field.surface_type?.replace('_', ' ') || 'Not specified'}</p>
                     </div>
                     <div>
                       <span className="text-gray-400 text-sm">Dimensions:</span>
@@ -486,7 +487,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
                   {field.has_parking && (
                     <div className="flex items-center gap-2">
                       <Car className="h-4 w-4 text-blue-400" />
-                      <span className="text-gray-300 text-sm">Parking ({field.parking_spots} spots)</span>
+                      <span className="text-gray-300 text-sm">Parking {field.parking_spots ? `(${field.parking_spots} spots)` : ''}</span>
                     </div>
                   )}
                   {field.ada_compliant && (

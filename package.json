@@ -9,11 +9,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "cleanup": "node scripts/cleanup-unused-code.js",
     "deploy:supabase": "node scripts/deploy-supabase.js",
     "deploy:manual": "node scripts/manual-deploy.js",
     "deploy:direct": "node scripts/direct-sql.js"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.6",
     "@fullcalendar/core": "^6.1.15",
     "@fullcalendar/daygrid": "^6.1.15",
     "@fullcalendar/interaction": "^6.1.15",
@@ -79,6 +81,7 @@
     "sonner": "^2.0.1",
     "styled-jsx": "^5.1.6",
     "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
     "twilio": "4.19.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"

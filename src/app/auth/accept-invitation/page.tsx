@@ -19,6 +19,7 @@ interface InvitationData {
   expires_at: string;
   metadata: any;
   facility_id?: string;
+  organization_id?: string;
 }
 
 export default function AcceptInvitationPage() {
@@ -48,7 +49,7 @@ export default function AcceptInvitationPage() {
       // Verify invitation token
       const { data, error } = await supabase
         .from('user_invitations')
-        .select('*')
+        .select('*, organizations(name)')
         .eq('token', token)
         .is('accepted_at', null)
         .single();
@@ -109,19 +110,28 @@ export default function AcceptInvitationPage() {
       if (!authData.user) throw new Error('Failed to create account');
 
       // Create user record in database
+      const userData: any = {
+        id: authData.user.id,
+        email: invitation!.email,
+        full_name: invitation!.metadata?.fullName || '',
+        role: invitation!.role,
+        invited_by: invitation!.invited_by,
+        invited_at: new Date().toISOString(),
+        is_active: true
+      };
+
+      // Add role-specific fields
+      if (invitation!.role === 'renter') {
+        userData.organization_id = invitation!.organization_id;
+        userData.phone = invitation!.metadata?.phone;
+      } else {
+        userData.department = invitation!.metadata?.department || '';
+        userData.position = invitation!.metadata?.position || '';
+      }
+
       const { error: userError } = await supabase
         .from('users')
-        .insert({
-          id: authData.user.id,
-          email: invitation!.email,
-          full_name: invitation!.metadata?.fullName || '',
-          role: invitation!.role,
-          department: invitation!.metadata?.department || '',
-          position: invitation!.metadata?.position || '',
-          invited_by: invitation!.invited_by,
-          invited_at: new Date().toISOString(),
-          is_active: true
-        });
+        .insert(userData);
 
       if (userError) {
         console.error('Error creating user record:', userError);
@@ -151,7 +161,8 @@ export default function AcceptInvitationPage() {
       coordinator: { label: 'Coordinator', description: 'Coordinate facility operations' },
       staff: { label: 'Staff', description: 'General facility staff member' },
       maintenance: { label: 'Maintenance', description: 'Maintenance team member' },
-      vendor: { label: 'Vendor', description: 'External vendor or contractor' }
+      vendor: { label: 'Vendor', description: 'External vendor or contractor' },
+      renter: { label: 'Renter', description: 'Can book and rent facilities' }
     };
 
     return roleMap[role] || { label: role, description: '' };
@@ -231,6 +242,20 @@ export default function AcceptInvitationPage() {
                   <div>
                     <p className="text-sm text-gray-400">Position</p>
                     <p className="text-white font-medium">{invitation.metadata.position}</p>
+                  </div>
+                )}
+
+                {invitation.role === 'renter' && invitation.organization_id && (
+                  <div>
+                    <p className="text-sm text-gray-400">Organization</p>
+                    <p className="text-white font-medium">{(invitation as any).organizations?.name || 'Organization'}</p>
+                  </div>
+                )}
+
+                {invitation.metadata?.phone && (
+                  <div>
+                    <p className="text-sm text-gray-400">Phone</p>
+                    <p className="text-white font-medium">{invitation.metadata.phone}</p>
                   </div>
                 )}
 

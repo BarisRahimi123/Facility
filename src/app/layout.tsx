@@ -7,6 +7,8 @@ import { Providers } from "./providers";
 const inter = Inter({ 
   subsets: ["latin"],
   display: 'swap',
+  preload: true,
+  fallback: ['system-ui', 'arial'],
 });
 
 export const metadata: Metadata = {
@@ -24,7 +26,7 @@ export default function RootLayout({
       <head>
         <script src="/safari-polyfill.js" />
       </head>
-      <body className={`${inter.className} antialiased`}>
+      <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         <Providers>
           <div className="min-h-screen">
             {children}

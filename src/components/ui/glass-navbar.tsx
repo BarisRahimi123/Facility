@@ -17,7 +17,7 @@ export function GlassNavbar() {
           <Link href="/" className="text-muted-foreground hover:text-foreground transition font-medium">Home</Link>
           <a href="#features" className="text-muted-foreground hover:text-foreground transition font-medium">Features</a>
           <Link href="/pricing" className="text-muted-foreground hover:text-foreground transition font-medium">Pricing</Link>
-          <Link href="/auth/sign-in-simple" className="text-muted-foreground hover:text-foreground transition font-medium">Sign In</Link>
+          <Link href="/auth/sign-in" className="text-muted-foreground hover:text-foreground transition font-medium">Sign In</Link>
           <Button 
             onClick={() => router.push('/auth/sign-up')}
             className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 rounded-full px-6"

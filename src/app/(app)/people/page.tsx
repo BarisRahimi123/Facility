@@ -403,8 +403,8 @@ export default function PeoplePage() {
                 if (activeTab === 'organizations') {
                   setIsAddOrgModalOpen(true);
                 } else if (activeTab === 'renter') {
-                  // Renters sign up through the public page
-                  toast.info('Renters sign up through the public registration page');
+                  // Allow admin creation of renter accounts for testing
+                  setIsAddModalOpen(true);
                 } else {
                   setIsInviteModalOpen(true);
                 }
@@ -413,7 +413,7 @@ export default function PeoplePage() {
             >
               <Plus className="h-4 w-4" />
               {activeTab === 'organizations' ? 'Add Organization' : 
-               activeTab === 'renter' ? 'Renters Sign Up Publicly' : 
+               activeTab === 'renter' ? 'Add Renter' : 
                'Invite ' + getTabLabel(activeTab).slice(0, -1)}
             </Button>
           ) : (

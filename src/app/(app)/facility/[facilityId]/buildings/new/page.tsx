@@ -73,7 +73,7 @@ export default function NewBuildingPage() {
       const formData = new FormData(e.currentTarget);
       
       // Add facility ID to form data
-      formData.append('facilityId', facilityId);
+      formData.append('facility_id', facilityId);
       
       // Call the server action
       await createBuilding(formData);
@@ -81,7 +81,7 @@ export default function NewBuildingPage() {
       toast.dismiss(loadingToast);
       toast.success('Building created successfully');
 
-      // Redirect back to facility page
+      // Redirect back to facility page immediately after success
       router.push(`/facility/${facilityId}`);
     } catch (error) {
       console.error('Error creating building:', error);
@@ -166,7 +166,7 @@ export default function NewBuildingPage() {
                 <Label htmlFor="buildingNumber" className="text-gray-300 font-medium">Building Number</Label>
                 <Input
                   id="buildingNumber"
-                  name="buildingNumber"
+                  name="building_number"
                   placeholder="Enter building number"
                   className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
                 />
@@ -174,7 +174,7 @@ export default function NewBuildingPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="buildingType" className="text-gray-300 font-medium">Building Type</Label>
-                <Select name="buildingType" required>
+                <Select name="building_type" required>
                   <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500 data-[placeholder]:text-gray-500">
                     <SelectValue placeholder="Select building type" />
                   </SelectTrigger>
@@ -192,7 +192,7 @@ export default function NewBuildingPage() {
                 <Label htmlFor="constructionDate" className="text-gray-300 font-medium">Construction Date</Label>
                 <Input
                   id="constructionDate"
-                  name="constructionDate"
+                  name="construction_date"
                   type="date"
                   required
                   className="bg-gray-800/50 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500"
@@ -203,7 +203,7 @@ export default function NewBuildingPage() {
                 <Label htmlFor="dsaNumber" className="text-gray-300 font-medium">DSA Number</Label>
                 <Input
                   id="dsaNumber"
-                  name="dsaNumber"
+                  name="dsa_number"
                   placeholder="Enter DSA number"
                   className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
                 />
@@ -213,7 +213,7 @@ export default function NewBuildingPage() {
                 <Label htmlFor="squareFootage" className="text-gray-300 font-medium">Square Footage</Label>
                 <Input
                   id="squareFootage"
-                  name="squareFootage"
+                  name="square_footage"
                   type="number"
                   min="0"
                   placeholder="Enter square footage"
@@ -226,7 +226,7 @@ export default function NewBuildingPage() {
                 <Label htmlFor="numberOfRooms" className="text-gray-300 font-medium">Number of Rooms</Label>
                 <Input
                   id="numberOfRooms"
-                  name="numberOfRooms"
+                  name="number_of_rooms"
                   type="number"
                   min="0"
                   placeholder="Enter number of rooms"
@@ -235,8 +235,6 @@ export default function NewBuildingPage() {
                 />
               </div>
             </div>
-
-
 
             <div className="space-y-2">
               <Label htmlFor="notes" className="text-gray-300 font-medium">Notes</Label>

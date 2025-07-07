@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient as createClient } from '@/lib/supabase/server';
 import type { 
   StaffFacilityAssignment, 
   StaffFieldAssignment,
@@ -95,6 +95,47 @@ export async function getStaffFieldAssignments(): Promise<StaffFieldAssignmentRe
   } catch (error) {
     console.error('Error in getStaffFieldAssignments:', error);
     return { data: null, error: 'Failed to fetch field assignments' };
+  }
+}
+
+// Get all staff assignments for a specific field
+export async function getFieldStaffAssignments(fieldId: string): Promise<StaffFieldAssignmentResponse> {
+  try {
+    const supabase = await createClient();
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { data: null, error: 'User not authenticated' };
+    }
+
+    const { data, error } = await supabase
+      .from('staff_field_assignments')
+      .select(`
+        *,
+        users:user_id (
+          id,
+          email,
+          full_name,
+          role
+        ),
+        fields:field_id (
+          id,
+          name,
+          facility_id
+        )
+      `)
+      .eq('field_id', fieldId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching field staff assignments:', error);
+      return { data: null, error: error.message };
+    }
+
+    return { data: data as StaffFieldAssignment[], error: null };
+  } catch (error) {
+    console.error('Error in getFieldStaffAssignments:', error);
+    return { data: null, error: 'Failed to fetch field staff assignments' };
   }
 }
 
@@ -418,16 +459,27 @@ export async function createBlockout(formData: CreateBlockoutFormData): Promise<
         return { data: null, error: 'Field not found' };
       }
 
-      // Check if user has permission to create blockouts for this field
-      const { data: hasPermission, error: permissionError } = await supabase
-        .from('staff_field_assignments')
-        .select('permissions')
-        .eq('user_id', user.id)
-        .eq('field_id', formData.field_id)
+      // Check if user is a master admin or has permission to create blockouts for this field
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
         .single();
 
-      if (permissionError || !hasPermission?.permissions?.create_blockouts) {
-        return { data: null, error: 'Insufficient permissions' };
+      const isMasterAdmin = userData?.role === 'master_admin' || userData?.role === 'district_approver';
+
+      if (!isMasterAdmin) {
+        // Check if user has permission through staff assignment
+        const { data: hasPermission, error: permissionError } = await supabase
+          .from('staff_field_assignments')
+          .select('permissions')
+          .eq('user_id', user.id)
+          .eq('field_id', formData.field_id)
+          .single();
+
+        if (permissionError || !hasPermission?.permissions?.create_blockouts) {
+          return { data: null, error: 'Insufficient permissions' };
+        }
       }
 
       const { data, error } = await supabase
@@ -601,15 +653,27 @@ export async function deleteBlockout(blockoutId: string): Promise<{ error: strin
       return { error: 'Blockout not found' };
     }
 
-    const { data: hasPermission, error: permissionError } = await supabase
-      .from('staff_facility_assignments')
-      .select('permissions')
-      .eq('user_id', user.id)
-      .eq('facility_id', (blockout as any).fields.facility_id)
+    // Check if user is a master admin or has permission to delete this blockout
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
       .single();
 
-    if (permissionError || !hasPermission?.permissions?.create_blockouts) {
-      return { error: 'Insufficient permissions' };
+    const isMasterAdmin = userData?.role === 'master_admin' || userData?.role === 'district_approver';
+
+    if (!isMasterAdmin) {
+      // Check if user has permission through facility assignment
+      const { data: hasPermission, error: permissionError } = await supabase
+        .from('staff_facility_assignments')
+        .select('permissions')
+        .eq('user_id', user.id)
+        .eq('facility_id', (blockout as any).fields.facility_id)
+        .single();
+
+      if (permissionError || !hasPermission?.permissions?.create_blockouts) {
+        return { error: 'Insufficient permissions' };
+      }
     }
 
     // Instead of deleting, mark as cancelled to maintain history

@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { X, Plus } from 'lucide-react';
-import { createUser, getOrganizationsByType, Organization } from '@/app/actions/users';
+import { createUser, getOrganizationsByType } from '@/app/actions/users';
+import { Organization } from '@/types/organization';
 import { InsuranceDocument } from '@/app/actions/insurance';
 import InsuranceUpload from '@/components/common/InsuranceUpload';
 import { toast } from 'sonner';
@@ -141,15 +142,22 @@ export default function AddUserModal({
       }
 
       const user = result.data as any;
-      toast.success(`${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)} user created successfully!`);
       
-      // For renters, show insurance upload option
+      // For renters, show invitation sent message
       if (formData.role === 'renter') {
-        setCreatedUserId(user.id);
-        setShowInsuranceUpload(true);
-      } else {
-        // For non-renters, complete immediately
+        toast.success(`Invitation sent to ${formData.email}! They will receive an email to complete their account setup.`);
         handleCompleteCreation();
+      } else {
+        toast.success(`${formData.role.charAt(0).toUpperCase() + formData.role.slice(1)} user created successfully!`);
+        
+        // For vendors, show insurance upload option
+        if (formData.role === 'vendor') {
+          setCreatedUserId(user.id);
+          setShowInsuranceUpload(true);
+        } else {
+          // For others, complete immediately
+          handleCompleteCreation();
+        }
       }
     } catch (error) {
       console.error('Error creating user:', error);
@@ -241,10 +249,10 @@ export default function AddUserModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleCloseModal}>
-      <DialogContent className="sm:max-w-[700px] bg-gray-900 border-gray-700 max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseModal()}>
+      <DialogContent className="sm:max-w-[700px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white">
+          <DialogTitle className="text-card-foreground">
             {!showInsuranceUpload ? (
               `Add ${getRoleLabel(formData.role)}`
             ) : (
@@ -257,34 +265,34 @@ export default function AddUserModal({
           <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Basic Information</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Basic Information</h3>
             
             {/* Role Selection */}
             <div className="space-y-2">
-              <Label htmlFor="role" className="text-gray-300">Role *</Label>
+              <Label htmlFor="role" className="text-card-foreground">Role *</Label>
               <Select
                 value={formData.role}
                 onValueChange={(value: 'staff' | 'manager' | 'coordinator' | 'vendor') => 
                   setFormData(prev => ({ ...prev, role: value }))
                 }
               >
-                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-600">
-                  <SelectItem value="staff" className="text-white hover:bg-gray-700">
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="staff" className="text-card-foreground hover:bg-accent">
                     Staff Member
                   </SelectItem>
-                  <SelectItem value="manager" className="text-white hover:bg-gray-700">
+                  <SelectItem value="manager" className="text-card-foreground hover:bg-accent">
                     Manager
                   </SelectItem>
-                  <SelectItem value="coordinator" className="text-white hover:bg-gray-700">
+                  <SelectItem value="coordinator" className="text-card-foreground hover:bg-accent">
                     Coordinator
                   </SelectItem>
-                  <SelectItem value="vendor" className="text-white hover:bg-gray-700">
+                  <SelectItem value="vendor" className="text-card-foreground hover:bg-accent">
                     Vendor
                   </SelectItem>
-                  <SelectItem value="renter" className="text-white hover:bg-gray-700">
+                  <SelectItem value="renter" className="text-card-foreground hover:bg-accent">
                     Renter
                   </SelectItem>
                 </SelectContent>
@@ -293,7 +301,7 @@ export default function AddUserModal({
 
             {/* Full Name */}
             <div className="space-y-2">
-              <Label htmlFor="full_name" className="text-gray-300">
+              <Label htmlFor="full_name" className="text-card-foreground">
                 {formData.role === 'vendor' ? 'Company/Contact Name' : 'Full Name'} *
               </Label>
               <Input
@@ -301,7 +309,7 @@ export default function AddUserModal({
                 type="text"
                 value={formData.full_name}
                 onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                 placeholder={formData.role === 'vendor' ? 'e.g., ABC Construction' : 'e.g., John Smith'}
                 required
               />
@@ -309,13 +317,13 @@ export default function AddUserModal({
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-300">Email *</Label>
+              <Label htmlFor="email" className="text-card-foreground">Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="e.g., john@company.com"
                 required
               />
@@ -323,13 +331,13 @@ export default function AddUserModal({
 
             {/* Phone */}
             <div className="space-y-2">
-              <Label htmlFor="phone" className="text-gray-300">Phone</Label>
+              <Label htmlFor="phone" className="text-card-foreground">Phone</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                 placeholder="e.g., +1 (555) 123-4567"
               />
             </div>
@@ -338,11 +346,11 @@ export default function AddUserModal({
           {/* Renter organization selection */}
           {formData.role === 'renter' && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-300">Organization Assignment</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Organization Assignment</h3>
               
               {/* Organization Selection */}
               <div className="space-y-2">
-                <Label htmlFor="organization_id" className="text-gray-300">Organization *</Label>
+                <Label htmlFor="organization_id" className="text-card-foreground">Organization *</Label>
                 <Select
                   value={formData.organization_id}
                   onValueChange={(value) => {
@@ -354,15 +362,15 @@ export default function AddUserModal({
                     }));
                   }}
                 >
-                  <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                  <SelectTrigger className="bg-background border-border text-foreground">
                     <SelectValue placeholder={loadingOrganizations ? "Loading organizations..." : "Select organization"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-600">
+                  <SelectContent className="bg-card border-border">
                     {organizations.map((org) => (
-                      <SelectItem key={org.id} value={org.id} className="text-white hover:bg-gray-700">
+                      <SelectItem key={org.id} value={org.id} className="text-card-foreground hover:bg-accent">
                         <div className="flex flex-col">
                           <span className="font-medium">{org.name}</span>
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-muted-foreground">
                             {org.subtype === 'individual' ? 'Individual' : 
                              org.subtype === 'commercial' ? 'Commercial' : 'Non-Profit'}
                           </span>
@@ -372,7 +380,7 @@ export default function AddUserModal({
                   </SelectContent>
                 </Select>
                 {organizations.length === 0 && !loadingOrganizations && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     No organizations found. Please create an organization first.
                   </p>
                 )}
@@ -383,30 +391,30 @@ export default function AddUserModal({
           {/* Role-specific fields */}
           {['staff', 'manager', 'coordinator'].includes(formData.role) && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-300">Work Information</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Work Information</h3>
               
               {/* Department */}
               <div className="space-y-2">
-                <Label htmlFor="department" className="text-gray-300">Department</Label>
+                <Label htmlFor="department" className="text-card-foreground">Department</Label>
                 <Input
                   id="department"
                   type="text"
                   value={formData.department}
                   onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., Maintenance, Operations, Events"
                 />
               </div>
 
               {/* Position */}
               <div className="space-y-2">
-                <Label htmlFor="position" className="text-gray-300">Position</Label>
+                <Label htmlFor="position" className="text-card-foreground">Position</Label>
                 <Input
                   id="position"
                   type="text"
                   value={formData.position}
                   onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., Facility Coordinator, Event Manager"
                 />
               </div>
@@ -416,24 +424,24 @@ export default function AddUserModal({
           {/* Vendor-specific fields */}
           {formData.role === 'vendor' && (
             <div className="space-y-4">
-              <h3 className="text-sm font-medium text-gray-300">Vendor Information</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Vendor Information</h3>
               
               {/* Company */}
               <div className="space-y-2">
-                <Label htmlFor="company" className="text-gray-300">Company Name</Label>
+                <Label htmlFor="company" className="text-card-foreground">Company Name</Label>
                 <Input
                   id="company"
                   type="text"
                   value={formData.company}
                   onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., ABC Construction Inc."
                 />
               </div>
 
               {/* Services */}
               <div className="space-y-2">
-                <Label className="text-gray-300">Services Provided</Label>
+                <Label className="text-card-foreground">Services Provided</Label>
                 
                 {/* Add Service Input */}
                 <div className="flex gap-2">
@@ -441,7 +449,7 @@ export default function AddUserModal({
                     type="text"
                     value={newService}
                     onChange={(e) => setNewService(e.target.value)}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="e.g., Construction, Maintenance"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
@@ -453,7 +461,7 @@ export default function AddUserModal({
                   <Button
                     type="button"
                     onClick={handleAddService}
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    className="bg-primary hover:bg-primary/80 text-primary-foreground"
                     disabled={!newService.trim()}
                   >
                     <Plus className="h-4 w-4" />
@@ -467,13 +475,13 @@ export default function AddUserModal({
                       <Badge 
                         key={index} 
                         variant="secondary" 
-                        className="bg-purple-600/20 text-purple-300 border-purple-500/30"
+                        className="bg-primary/20 text-primary border-primary/30"
                       >
                         {service}
                         <button
                           type="button"
                           onClick={() => handleRemoveService(service)}
-                          className="ml-2 hover:text-purple-100"
+                          className="ml-2 hover:text-primary/80"
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -486,19 +494,19 @@ export default function AddUserModal({
           )}
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
               onClick={handleCloseModal}
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="border-border text-muted-foreground hover:bg-accent"
               disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-primary hover:bg-primary/80 text-primary-foreground"
               disabled={isLoading}
             >
               {isLoading ? 'Creating...' : `Create ${getRoleLabel(formData.role)}`}
@@ -509,7 +517,7 @@ export default function AddUserModal({
           // Insurance Upload Section for Renters
           <div className="space-y-6">
             <div className="text-center">
-              <p className="text-gray-300 mb-4">
+              <p className="text-card-foreground mb-4">
                 Renter created successfully! You can now upload insurance documents.
               </p>
             </div>
@@ -523,12 +531,12 @@ export default function AddUserModal({
             )}
 
             {/* Insurance Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleSkipInsurance}
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="border-border text-muted-foreground hover:bg-accent"
               >
                 Skip for Now
               </Button>

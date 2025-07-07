@@ -41,8 +41,22 @@ export default function TopBar() {
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth/sign-in');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Error signing out:', error);
+      }
+      
+      // Add a small delay to ensure the session is cleared
+      setTimeout(() => {
+        // Use window.location.href for full page reload to ensure auth state is cleared
+        window.location.href = '/auth/sign-in';
+      }, 100);
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Still redirect even if there's an error
+      window.location.href = '/auth/sign-in';
+    }
   };
 
   const getUserDisplay = () => {

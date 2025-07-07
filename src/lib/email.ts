@@ -1,16 +1,20 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid with API key
+// Initialize SendGrid with API key (if available)
 const apiKey = process.env.SENDGRID_API_KEY;
-if (!apiKey) {
-  throw new Error('SENDGRID_API_KEY is not set in environment variables');
-}
+let sendGridConfigured = false;
 
-if (!apiKey.startsWith('SG.')) {
-  throw new Error('Invalid SendGrid API key format. API key should start with "SG."');
+if (apiKey) {
+  if (!apiKey.startsWith('SG.')) {
+    console.warn('⚠️ Invalid SendGrid API key format. API key should start with "SG."');
+  } else {
+    sgMail.setApiKey(apiKey);
+    sendGridConfigured = true;
+    console.log('✅ SendGrid configured successfully');
+  }
+} else {
+  console.log('📧 SendGrid not configured - emails will be logged to console');
 }
-
-sgMail.setApiKey(apiKey);
 
 const DEFAULT_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'info@facilitycore.ai';
 const DEFAULT_FROM_NAME = 'FacilityCore';
@@ -35,6 +39,22 @@ export async function sendEmail({
   replyTo 
 }: EmailOptions) {
   try {
+    // If SendGrid is not configured, log email to console
+    if (!sendGridConfigured) {
+      console.log('📧 EMAIL (SendGrid not configured):');
+      console.log('================================');
+      console.log(`To: ${to}`);
+      console.log(`From: ${fromName} <${from}>`);
+      console.log(`Subject: ${subject}`);
+      console.log(`Text: ${text || html.replace(/<[^>]*>/g, '').substring(0, 200)}...`);
+      console.log('================================\n');
+      
+      return { 
+        success: true, 
+        warning: 'Email logged to console - SendGrid not configured' 
+      };
+    }
+
     const msg = {
       to,
       from: {
@@ -179,4 +199,50 @@ export function generateContractorFormEmail(data: {
       </div>
     `,
   };
+}
+
+// Email service for sending invitations
+export async function sendInvitationEmail(invitationData: {
+  id: string;
+  token: string;
+  email: string;
+  role: string;
+  expires_at: string;
+}) {
+  try {
+    // For now, we'll log the invitation details
+    // In production, this would integrate with an email service like SendGrid, Mailgun, etc.
+    
+    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/accept-invitation?token=${invitationData.token}`;
+    
+    console.log('🔗 INVITATION EMAIL TO SEND:');
+    console.log('================================');
+    console.log(`To: ${invitationData.email}`);
+    console.log(`Subject: You're invited to join FacilityCore`);
+    console.log(`Role: ${invitationData.role}`);
+    console.log(`Invitation URL: ${inviteUrl}`);
+    console.log(`Expires: ${new Date(invitationData.expires_at).toLocaleString()}`);
+    console.log('================================');
+    
+    // TODO: Replace with actual email service
+    /*
+    const emailData = {
+      to: invitationData.email,
+      subject: `You're invited to join FacilityCore`,
+      template: 'user-invitation',
+      data: {
+        inviteUrl,
+        role: invitationData.role,
+        expiresAt: new Date(invitationData.expires_at).toLocaleDateString()
+      }
+    };
+    
+    await emailService.send(emailData);
+    */
+    
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending invitation email:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
 } 

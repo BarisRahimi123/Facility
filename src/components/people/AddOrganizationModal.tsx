@@ -158,10 +158,10 @@ export default function AddOrganizationModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[800px] bg-gray-900 border-gray-700 max-h-[90vh] overflow-y-auto">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+      <DialogContent className="sm:max-w-[800px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center gap-2">
+          <DialogTitle className="text-card-foreground flex items-center gap-2">
             {!showInsuranceUpload ? (
               <>
                 {getSubtypeIcon(formData.subtype || 'commercial')}
@@ -180,33 +180,33 @@ export default function AddOrganizationModal({
           <form onSubmit={handleSubmit} className="space-y-6">
           {/* Organization Type */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Organization Type</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Organization Type</h3>
             
             <div className="space-y-2">
-              <Label htmlFor="subtype" className="text-gray-300">Type *</Label>
+              <Label htmlFor="subtype" className="text-card-foreground">Type *</Label>
               <Select
                 value={formData.subtype}
                 onValueChange={(value: 'individual' | 'commercial' | 'nonprofit') => 
                   setFormData(prev => ({ ...prev, subtype: value }))
                 }
               >
-                <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
+                <SelectTrigger className="bg-background border-border text-foreground">
                   <SelectValue placeholder="Select organization type" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-600">
-                  <SelectItem value="individual" className="text-white hover:bg-gray-700">
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="individual" className="text-card-foreground hover:bg-accent">
                     <div className="flex items-center gap-2">
                       <Users className="w-4 h-4" />
                       Individual Renter
                     </div>
                   </SelectItem>
-                  <SelectItem value="commercial" className="text-white hover:bg-gray-700">
+                  <SelectItem value="commercial" className="text-card-foreground hover:bg-accent">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-4 h-4" />
                       Commercial Organization
                     </div>
                   </SelectItem>
-                  <SelectItem value="nonprofit" className="text-white hover:bg-gray-700">
+                  <SelectItem value="nonprofit" className="text-card-foreground hover:bg-accent">
                     <div className="flex items-center gap-2">
                       <Briefcase className="w-4 h-4" />
                       Non-Profit Organization
@@ -219,12 +219,12 @@ export default function AddOrganizationModal({
 
           {/* Basic Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Basic Information</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Basic Information</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Organization Name */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-300">
+                <Label htmlFor="name" className="text-card-foreground">
                   {formData.subtype === 'individual' ? 'Full Name' : 'Organization Name'} *
                 </Label>
                 <Input
@@ -232,7 +232,7 @@ export default function AddOrganizationModal({
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder={formData.subtype === 'individual' ? 'e.g., John Smith' : 'e.g., ABC Sports Club'}
                   required
                 />
@@ -241,13 +241,13 @@ export default function AddOrganizationModal({
               {/* Display Name */}
               {formData.subtype !== 'individual' && (
                 <div className="space-y-2">
-                  <Label htmlFor="display_name" className="text-gray-300">Display Name</Label>
+                  <Label htmlFor="display_name" className="text-card-foreground">Display Name</Label>
                   <Input
                     id="display_name"
                     type="text"
                     value={formData.display_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, display_name: e.target.value }))}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="e.g., ABC Sports"
                   />
                 </div>
@@ -256,13 +256,13 @@ export default function AddOrganizationModal({
               {/* Tax ID */}
               {formData.subtype !== 'individual' && (
                 <div className="space-y-2">
-                  <Label htmlFor="tax_id" className="text-gray-300">Tax ID / EIN</Label>
+                  <Label htmlFor="tax_id" className="text-card-foreground">Tax ID / EIN</Label>
                   <Input
                     id="tax_id"
                     type="text"
                     value={formData.tax_id}
                     onChange={(e) => setFormData(prev => ({ ...prev, tax_id: e.target.value }))}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="e.g., 12-3456789"
                   />
                 </div>
@@ -272,55 +272,55 @@ export default function AddOrganizationModal({
 
           {/* Primary Contact */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Primary Contact</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Primary Contact</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="primary_contact_name" className="text-gray-300">Contact Name *</Label>
+                <Label htmlFor="primary_contact_name" className="text-card-foreground">Contact Name *</Label>
                 <Input
                   id="primary_contact_name"
                   type="text"
                   value={formData.primary_contact_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, primary_contact_name: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., John Smith"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="primary_contact_phone" className="text-gray-300">Phone</Label>
+                <Label htmlFor="primary_contact_phone" className="text-card-foreground">Phone</Label>
                 <Input
                   id="primary_contact_phone"
                   type="tel"
                   value={formData.primary_contact_phone}
                   onChange={(e) => setFormData(prev => ({ ...prev, primary_contact_phone: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., +1 (555) 123-4567"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="primary_contact_email" className="text-gray-300">Email *</Label>
+                <Label htmlFor="primary_contact_email" className="text-card-foreground">Email *</Label>
                 <Input
                   id="primary_contact_email"
                   type="email"
                   value={formData.primary_contact_email}
                   onChange={(e) => setFormData(prev => ({ ...prev, primary_contact_email: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., contact@company.com"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="billing_email" className="text-gray-300">Billing Email</Label>
+                <Label htmlFor="billing_email" className="text-card-foreground">Billing Email</Label>
                 <Input
                   id="billing_email"
                   type="email"
                   value={formData.billing_email}
                   onChange={(e) => setFormData(prev => ({ ...prev, billing_email: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., billing@company.com"
                 />
               </div>
@@ -329,55 +329,55 @@ export default function AddOrganizationModal({
 
           {/* Address */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Address</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Address</h3>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="street_address" className="text-gray-300">Street Address</Label>
+                <Label htmlFor="street_address" className="text-card-foreground">Street Address</Label>
                 <Input
                   id="street_address"
                   type="text"
                   value={formData.street_address}
                   onChange={(e) => setFormData(prev => ({ ...prev, street_address: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., 123 Main Street"
                 />
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="city" className="text-gray-300">City</Label>
+                  <Label htmlFor="city" className="text-card-foreground">City</Label>
                   <Input
                     id="city"
                     type="text"
                     value={formData.city}
                     onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="e.g., San Francisco"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="state" className="text-gray-300">State</Label>
+                  <Label htmlFor="state" className="text-card-foreground">State</Label>
                   <Input
                     id="state"
                     type="text"
                     value={formData.state}
                     onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="CA"
                     maxLength={2}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="zip_code" className="text-gray-300">ZIP Code</Label>
+                  <Label htmlFor="zip_code" className="text-card-foreground">ZIP Code</Label>
                   <Input
                     id="zip_code"
                     type="text"
                     value={formData.zip_code}
                     onChange={(e) => setFormData(prev => ({ ...prev, zip_code: e.target.value }))}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="94102"
                   />
                 </div>
@@ -387,13 +387,13 @@ export default function AddOrganizationModal({
 
           {/* Insurance Requirements */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Insurance Requirements</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Insurance Requirements</h3>
             
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-gray-300">Requires Insurance</Label>
-                  <p className="text-xs text-gray-500">Does this organization need to provide insurance?</p>
+                  <Label className="text-card-foreground">Requires Insurance</Label>
+                  <p className="text-xs text-muted-foreground">Does this organization need to provide insurance?</p>
                 </div>
                 <Switch
                   checked={formData.requires_insurance}
@@ -403,13 +403,13 @@ export default function AddOrganizationModal({
 
               {formData.requires_insurance && (
                 <div className="space-y-2">
-                  <Label htmlFor="minimum_liability_coverage" className="text-gray-300">Minimum Liability Coverage ($)</Label>
+                  <Label htmlFor="minimum_liability_coverage" className="text-card-foreground">Minimum Liability Coverage ($)</Label>
                   <Input
                     id="minimum_liability_coverage"
                     type="number"
                     value={formData.minimum_liability_coverage}
                     onChange={(e) => setFormData(prev => ({ ...prev, minimum_liability_coverage: parseInt(e.target.value) || 0 }))}
-                    className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                    className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                     placeholder="1000000"
                   />
                 </div>
@@ -419,28 +419,28 @@ export default function AddOrganizationModal({
 
           {/* Additional Information */}
           <div className="space-y-4">
-            <h3 className="text-sm font-medium text-gray-300">Additional Information</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Additional Information</h3>
             
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="payment_terms" className="text-gray-300">Payment Terms</Label>
+                <Label htmlFor="payment_terms" className="text-card-foreground">Payment Terms</Label>
                 <Input
                   id="payment_terms"
                   type="text"
                   value={formData.payment_terms}
                   onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="e.g., Net 30, Payment on booking"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes" className="text-gray-300">Notes</Label>
+                <Label htmlFor="notes" className="text-card-foreground">Notes</Label>
                 <Textarea
                   id="notes"
                   value={formData.notes}
                   onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                  className="bg-gray-800 border-gray-600 text-white placeholder-gray-400"
+                  className="bg-background border-border text-foreground placeholder:text-muted-foreground"
                   placeholder="Additional notes about this organization..."
                   rows={3}
                 />
@@ -449,19 +449,19 @@ export default function AddOrganizationModal({
           </div>
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
             <Button
               type="button"
               variant="outline"
               onClick={handleClose}
-              className="border-gray-600 text-gray-300 hover:bg-gray-800"
+              className="border-border text-muted-foreground hover:bg-accent"
               disabled={isLoading}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-purple-600 hover:bg-purple-700 text-white"
+              className="bg-primary hover:bg-primary/80 text-primary-foreground"
               disabled={isLoading}
             >
               {isLoading ? 'Creating...' : `Create ${getSubtypeLabel(formData.subtype || 'commercial')}`}
@@ -472,7 +472,7 @@ export default function AddOrganizationModal({
           // Insurance Upload Section
           <div className="space-y-6">
             <div className="text-center">
-              <p className="text-gray-300 mb-4">
+              <p className="text-card-foreground mb-4">
                 Organization created successfully! Now you can upload insurance documents.
               </p>
             </div>
@@ -486,12 +486,12 @@ export default function AddOrganizationModal({
             )}
 
             {/* Insurance Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
               <Button
                 type="button"
                 variant="outline"
                 onClick={handleSkipInsurance}
-                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                className="border-border text-muted-foreground hover:bg-accent"
               >
                 Skip for Now
               </Button>

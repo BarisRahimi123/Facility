@@ -17,7 +17,11 @@ import {
   Trash2,
   Eye
 } from 'lucide-react';
-import { Field, Reservation, FieldBlackoutDate } from '@/types/field';
+import { Field, Reservation } from '@/types/field';
+import type { FieldBlackoutDate } from '@/types/field';
+import { createBlockout, deleteBlockout, getFieldBlockouts } from '@/app/actions/staff';
+import { useToast } from '@/components/ui/use-toast';
+import type { CreateBlockoutFormData, FieldBlockoutDate as StaffFieldBlockoutDate } from '@/types/staff';
 import { BlackoutDateModal } from './BlackoutDateModal';
 
 interface FieldCalendarViewProps {
@@ -40,6 +44,25 @@ export function FieldCalendarView({ facilityId, fields, reservations }: FieldCal
   const [blackoutDates, setBlackoutDates] = useState<FieldBlackoutDate[]>([]);
   const [isBlackoutModalOpen, setIsBlackoutModalOpen] = useState(false);
   const [selectedBlackout, setSelectedBlackout] = useState<FieldBlackoutDate | null>(null);
+  const [isLoadingBlockouts, setIsLoadingBlockouts] = useState(false);
+  const { toast } = useToast();
+
+  // Convert staff blockout date to field blockout date format
+  const convertStaffToFieldBlockout = (staffBlockout: StaffFieldBlockoutDate): FieldBlackoutDate => {
+    return {
+      id: staffBlockout.id,
+      field_id: staffBlockout.field_id,
+      start_date: staffBlockout.start_date,
+      end_date: staffBlockout.end_date,
+      start_time: staffBlockout.start_time,
+      end_time: staffBlockout.end_time,
+      reason: staffBlockout.reason,
+      recurring: staffBlockout.recurring,
+      recurring_pattern: staffBlockout.recurring_pattern ? 'weekly' : undefined, // Simple conversion
+      created_at: staffBlockout.created_at,
+      created_by: staffBlockout.created_by || undefined
+    };
+  };
 
   // Generate calendar days for the current month
   const generateCalendarDays = (): CalendarDay[] => {
@@ -137,33 +160,106 @@ export function FieldCalendarView({ facilityId, fields, reservations }: FieldCal
     setIsBlackoutModalOpen(true);
   };
 
-  const handleBlackoutSave = (blackoutData: Partial<FieldBlackoutDate>) => {
-    // In a real implementation, this would call an API
-    if (selectedBlackout) {
-      // Update existing blackout
-      setBlackoutDates(prev => prev.map(b => 
-        b.id === selectedBlackout.id ? { ...b, ...blackoutData } as FieldBlackoutDate : b
-      ));
-    } else {
-      // Create new blackout
-      const newBlackout: FieldBlackoutDate = {
-        id: `blackout-${Date.now()}`,
-        field_id: selectedField!.id,
-        start_date: selectedDate!.toISOString().split('T')[0],
-        end_date: selectedDate!.toISOString().split('T')[0],
-        reason: blackoutData.reason || 'Unavailable',
-        recurring: false,
-        created_at: new Date().toISOString(),
-        ...blackoutData
-      } as FieldBlackoutDate;
+  // Load blackout dates from the database
+  const loadBlackoutDates = async () => {
+    if (!fields || fields.length === 0) return;
+    
+    setIsLoadingBlockouts(true);
+    try {
+      const allBlackouts: FieldBlackoutDate[] = [];
       
-      setBlackoutDates(prev => [...prev, newBlackout]);
+      // Load blackouts for each field
+      for (const field of fields) {
+        const response = await getFieldBlockouts(field.id);
+        if (response.data) {
+          // Filter out room blockouts and convert to field blockout format
+          const fieldBlockouts = response.data
+            .filter((b): b is StaffFieldBlockoutDate => 'field_id' in b)
+            .map(convertStaffToFieldBlockout);
+          allBlackouts.push(...fieldBlockouts);
+        }
+      }
+      
+      setBlackoutDates(allBlackouts);
+    } catch (error) {
+      console.error('Error loading blackout dates:', error);
+    } finally {
+      setIsLoadingBlockouts(false);
     }
-    setIsBlackoutModalOpen(false);
   };
 
-  const handleBlackoutDelete = (blackoutId: string) => {
-    setBlackoutDates(prev => prev.filter(b => b.id !== blackoutId));
+  const handleBlackoutSave = async (blackoutData: Partial<FieldBlackoutDate>) => {
+    if (!selectedField) return;
+    
+    try {
+      // Create the blockout data in the format expected by the server action
+      const createData: CreateBlockoutFormData = {
+        field_id: selectedField.id,
+        start_date: blackoutData.start_date || selectedDate?.toISOString().split('T')[0] || '',
+        end_date: blackoutData.end_date || blackoutData.start_date || selectedDate?.toISOString().split('T')[0] || '',
+        reason: blackoutData.reason || '',
+        description: '',
+        recurring: blackoutData.recurring || false,
+        // Don't include recurring_pattern for now since the types are incompatible
+        start_time: blackoutData.start_time,
+        end_time: blackoutData.end_time
+      };
+
+      const response = await createBlockout(createData);
+      
+      if (response.error) {
+        toast({
+          title: "Error creating blockout",
+          description: response.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Blackout created",
+          description: "Field availability has been blocked successfully.",
+        });
+        
+        // Reload blockout dates
+        await loadBlackoutDates();
+        setIsBlackoutModalOpen(false);
+      }
+    } catch (error) {
+      console.error('Error saving blockout:', error);
+      toast({
+        title: "Failed to save blackout",
+        description: "There was an error saving the blackout period. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBlackoutDelete = async (blackoutId: string) => {
+    try {
+      const response = await deleteBlockout(blackoutId);
+      
+      if (response.error) {
+        toast({
+          title: "Error deleting blockout",
+          description: response.error,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Blackout deleted",
+          description: "The blockout period has been removed successfully.",
+        });
+        
+        // Reload blockout dates
+        await loadBlackoutDates();
+      }
+    } catch (error) {
+      console.error('Error deleting blockout:', error);
+      toast({
+        title: "Failed to delete blackout",
+        description: "There was an error deleting the blackout period. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatMonthYear = (date: Date): string => {
@@ -182,33 +278,9 @@ export function FieldCalendarView({ facilityId, fields, reservations }: FieldCal
   const calendarDays = generateCalendarDays();
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Mock blackout dates for demo
+  // Load blackout dates when component mounts or fields change
   useEffect(() => {
-    if (fields.length > 0) {
-      const mockBlackouts: FieldBlackoutDate[] = [
-        {
-          id: 'blackout-1',
-          field_id: fields[0].id,
-          start_date: '2025-01-25',
-          end_date: '2025-01-27',
-          reason: 'Maintenance',
-          recurring: false,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 'blackout-2',
-          field_id: fields[1]?.id || fields[0].id,
-          start_date: '2025-01-22',
-          end_date: '2025-01-22',
-          start_time: '18:00',
-          end_time: '22:00',
-          reason: 'Private Event',
-          recurring: false,
-          created_at: new Date().toISOString()
-        }
-      ];
-      setBlackoutDates(mockBlackouts);
-    }
+    loadBlackoutDates();
   }, [fields]);
 
   return (

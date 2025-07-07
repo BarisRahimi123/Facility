@@ -59,11 +59,14 @@ export default function Sidebar() {
 
       toast({
         title: "Signed out successfully",
-        variant: "success"
+        variant: "default"
       });
 
-      // Use router.push instead of replace to ensure proper navigation
-      router.push('/auth/sign-in');
+      // Add a small delay to ensure the session is cleared and toast is shown
+      setTimeout(() => {
+        // Use window.location.href for full page reload to ensure auth state is cleared
+        window.location.href = '/auth/sign-in';
+      }, 500);
     } catch (error) {
       console.error('Error signing out:', error);
       toast({
@@ -71,6 +74,11 @@ export default function Sidebar() {
         description: "Please try again",
         variant: "destructive"
       });
+      
+      // Still redirect even if there's an error, after showing the error toast
+      setTimeout(() => {
+        window.location.href = '/auth/sign-in';
+      }, 1000);
     }
   };
 

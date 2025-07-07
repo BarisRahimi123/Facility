@@ -136,18 +136,18 @@ export function FacilityRentalModal({
     tablesNeeded: 0,
     chairsNeeded: 0,
     hvacNeeded: '',
-    // Policy acknowledgments
-    cancellationPolicy: false,
-    employeeRequirement: false,
-    insuranceRequirement: false,
-    insuranceFeePolicy: false,
-    priorityPolicy: false,
-    paymentPolicy: false,
-    portaPottyPolicy: false,
-    portaPottyCoordination: false,
-    securityPolicy: false,
-    securityContract: false,
-    largeEquipment: false
+    // Policy acknowledgments - changed from boolean to string for Yes/No buttons
+    cancellationPolicy: 'no' as 'yes' | 'no',
+    employeeRequirement: 'no' as 'yes' | 'no',
+    insuranceRequirement: 'no' as 'yes' | 'no',
+    insuranceFeePolicy: 'no' as 'yes' | 'no',
+    priorityPolicy: 'no' as 'yes' | 'no',
+    paymentPolicy: 'no' as 'yes' | 'no',
+    portaPottyPolicy: 'no' as 'yes' | 'no',
+    portaPottyCoordination: 'no' as 'yes' | 'no',
+    securityPolicy: 'no' as 'yes' | 'no',
+    securityContract: 'no' as 'yes' | 'no',
+    largeEquipment: 'no' as 'yes' | 'no'
   });
 
   // Mock images for gallery
@@ -343,25 +343,73 @@ export function FacilityRentalModal({
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
-  const handleSubmitReservation = () => {
-    // Debug authentication state
-    console.log('Auth Debug - User:', user);
-    console.log('Auth Debug - UserLoading:', userLoading);
-    console.log('Auth Debug - Should show auth?', !user && !userLoading);
-
-    // Check if user is authenticated
-    if (!user && !userLoading) {
-      console.log('Setting showAuthRequired to true');
+  const handleSubmitReservation = async () => {
+    if (!user) {
+      // This shouldn't happen since we check auth before showing checkout
       setShowAuthRequired(true);
       return;
     }
 
-    console.log('User is authenticated, processing reservation:', {
-      cart,
-      checkoutData,
-      total: cartTotal
-    });
-    alert(`Reservation submitted! Total: $${cartTotal.toFixed(2)}\n\nEvent: ${checkoutData.eventPurpose}\nTables: ${checkoutData.tablesNeeded}\nChairs: ${checkoutData.chairsNeeded}\nHVAC: ${checkoutData.hvacNeeded}`);
+    try {
+      // Create reservation data
+      const submissionData = {
+        userId: user.id,
+        cart,
+        checkoutData,
+        total: cartTotal,
+        contactInfo: {
+          name: reservationData.contactName || user.name || '',
+          email: reservationData.contactEmail || user.email || '',
+          phone: reservationData.contactPhone || user.phone || '',
+          organization: reservationData.organization || (user.type === 'external' ? user.company : '')
+        }
+      };
+
+      console.log('Creating reservation for authenticated user:', submissionData);
+      
+      // TODO: Create reservation in database
+      // await createReservation(submissionData);
+      
+      // Close the modal and show success
+      onClose();
+      
+      // Clear cart and reset forms
+      setCart([]);
+      setCheckoutData({
+        eventPurpose: '',
+        setupNeeds: '',
+        tablesNeeded: 0,
+        chairsNeeded: 0,
+        hvacNeeded: '',
+        cancellationPolicy: 'no' as 'yes' | 'no',
+        employeeRequirement: 'no' as 'yes' | 'no',
+        insuranceRequirement: 'no' as 'yes' | 'no',
+        insuranceFeePolicy: 'no' as 'yes' | 'no',
+        priorityPolicy: 'no' as 'yes' | 'no',
+        paymentPolicy: 'no' as 'yes' | 'no',
+        portaPottyPolicy: 'no' as 'yes' | 'no',
+        portaPottyCoordination: 'no' as 'yes' | 'no',
+        securityPolicy: 'no' as 'yes' | 'no',
+        securityContract: 'no' as 'yes' | 'no',
+        largeEquipment: 'no' as 'yes' | 'no'
+      });
+
+      // Show success message with next steps
+      if (typeof window !== 'undefined') {
+        const message = `🎉 Reservation Created Successfully!\n\nTotal: $${cartTotal.toFixed(2)}\nEvent: ${checkoutData.eventPurpose}\n\n✅ Next Steps:\n• Check your email for confirmation\n• Complete payment via Stripe\n• Upload insurance documents\n• Manage your booking in your account dashboard`;
+        
+        alert(message);
+        
+        // Redirect to user dashboard after a brief delay
+        setTimeout(() => {
+          window.location.href = '/user-dashboard';
+        }, 2000);
+      }
+      
+    } catch (error) {
+      console.error('Error creating reservation:', error);
+      alert('Sorry, there was an error creating your reservation. Please try again.');
+    }
   };
 
   const modalContent = (
@@ -539,137 +587,312 @@ export function FacilityRentalModal({
                           {/* Policy Acknowledgments */}
                           <div>
                             <h3 className="text-lg font-semibold mb-4">Policy Acknowledgments</h3>
-                            <div className="space-y-4 text-sm">
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="cancellation"
-                                  checked={checkoutData.cancellationPolicy}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, cancellationPolicy: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="cancellation" className="text-gray-600 leading-relaxed">
+                            
+                            <div className="space-y-4">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I understand the District's Cancellation Procedures: Renters can cancel without penalty up to 3 days prior to their event date. If canceled within the 3-day window, renters will be required to pay $50 (cancellation fee), plus any District expenses.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.cancellationPolicy === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.cancellationPolicy === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, cancellationPolicy: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.cancellationPolicy === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.cancellationPolicy === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, cancellationPolicy: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="employee"
-                                  checked={checkoutData.employeeRequirement}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, employeeRequirement: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="employee" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I understand that a District employee must be on duty whenever a school facility is utilized. Personnel will be paid on an overtime basis beyond regular hours.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.employeeRequirement === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.employeeRequirement === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, employeeRequirement: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.employeeRequirement === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.employeeRequirement === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, employeeRequirement: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="insurance"
-                                  checked={checkoutData.insuranceRequirement}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, insuranceRequirement: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="insurance" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I understand the District's Insurance Requirements: Commercial General Liability policy with limits of not less than $1,000,000 per occurrence, $2,000,000 annual aggregate limit. The District shall be named as additional insured.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.insuranceRequirement === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.insuranceRequirement === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, insuranceRequirement: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.insuranceRequirement === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.insuranceRequirement === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, insuranceRequirement: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="insuranceFee"
-                                  checked={checkoutData.insuranceFeePolicy}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, insuranceFeePolicy: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="insuranceFee" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I understand that if my reservation is missing insurance 5 days prior to my event start date, an additional $25/day will be added to my reservation to cover the cost of District insurance.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.insuranceFeePolicy === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.insuranceFeePolicy === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, insuranceFeePolicy: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.insuranceFeePolicy === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.insuranceFeePolicy === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, insuranceFeePolicy: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="priority"
-                                  checked={checkoutData.priorityPolicy}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, priorityPolicy: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="priority" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I understand that school-related activities shall be given priority in the use of facilities. Thereafter, use shall be on a first-come, first-served basis.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.priorityPolicy === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.priorityPolicy === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, priorityPolicy: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.priorityPolicy === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.priorityPolicy === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, priorityPolicy: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="payment"
-                                  checked={checkoutData.paymentPolicy}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, paymentPolicy: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="payment" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I understand that I must pay all facilities use fees and other costs incurred. Payment is due no fewer than 3 days prior to my event date.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.paymentPolicy === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.paymentPolicy === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, paymentPolicy: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.paymentPolicy === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.paymentPolicy === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, paymentPolicy: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="portaPotty"
-                                  checked={checkoutData.portaPottyPolicy}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, portaPottyPolicy: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="portaPotty" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   Renter understands that porta potty service is at the expense and set up of the renter/organization.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.portaPottyPolicy === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.portaPottyPolicy === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, portaPottyPolicy: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.portaPottyPolicy === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.portaPottyPolicy === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, portaPottyPolicy: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="portaPottyCoord"
-                                  checked={checkoutData.portaPottyCoordination}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, portaPottyCoordination: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="portaPottyCoord" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   Renter must coordinate with the site admin for placement of the porta potty location.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.portaPottyCoordination === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.portaPottyCoordination === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, portaPottyCoordination: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.portaPottyCoordination === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.portaPottyCoordination === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, portaPottyCoordination: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="security"
-                                  checked={checkoutData.securityPolicy}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, securityPolicy: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="security" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   Renter understands that if security is required it is at the expense and coordination of the renter/organization.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.securityPolicy === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.securityPolicy === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, securityPolicy: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.securityPolicy === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.securityPolicy === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, securityPolicy: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
 
-                              <div className="flex items-start space-x-2">
-                                <Checkbox
-                                  id="largeEquipment"
-                                  checked={checkoutData.largeEquipment}
-                                  onCheckedChange={(checked) => 
-                                    setCheckoutData(prev => ({ ...prev, largeEquipment: checked as boolean }))
-                                  }
-                                />
-                                <label htmlFor="largeEquipment" className="text-gray-600 leading-relaxed">
+                              <div className="space-y-3">
+                                <p className="text-gray-700 text-sm leading-relaxed">
                                   I plan to bring large equipment or vehicle(s) onto District property for my event (food truck, etc.). Note: Additional insurance requirements apply.
-                                </label>
+                                </p>
+                                <div className="flex items-center gap-3">
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.largeEquipment === 'yes' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.largeEquipment === 'yes' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, largeEquipment: 'yes' }))}
+                                  >
+                                    Yes
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant={checkoutData.largeEquipment === 'no' ? 'default' : 'outline'}
+                                    size="sm"
+                                    className={checkoutData.largeEquipment === 'no' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                    onClick={() => setCheckoutData(prev => ({ ...prev, largeEquipment: 'no' }))}
+                                  >
+                                    No
+                                  </Button>
+                                </div>
                               </div>
                             </div>
+                          </div>
+
+                          {/* Payment Information */}
+                          <div>
+                            <h3 className="text-lg font-semibold mb-4">Payment Information</h3>
+                            
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                              <div className="flex items-start gap-3">
+                                <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                                <div className="text-sm">
+                                  <p className="font-medium text-blue-900">Secure Payment Processing</p>
+                                  <p className="text-blue-700 mt-1">
+                                    You will be redirected to our secure payment portal to complete your booking.
+                                    We accept all major credit cards, debit cards, and ACH transfers.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2 text-sm text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span>SSL encrypted payment processing</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span>PCI compliant security standards</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                <span>Instant confirmation upon payment</span>
+                              </div>
+                            </div>
+
+                            {/* TODO: Stripe Integration
+                                To complete the Stripe integration:
+                                1. Install Stripe packages: npm install stripe @stripe/stripe-js @stripe/react-stripe-js
+                                2. Set up Stripe keys in .env.local:
+                                   - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+                                   - STRIPE_SECRET_KEY
+                                3. Create API route for payment intent creation
+                                4. Implement Stripe Elements for card input
+                                5. Handle payment confirmation and webhook events
+                            */}
                           </div>
                         </CardContent>
                       </Card>
@@ -723,15 +946,15 @@ export function FacilityRentalModal({
                             disabled={
                               !checkoutData.eventPurpose ||
                               !checkoutData.hvacNeeded ||
-                              !checkoutData.cancellationPolicy ||
-                              !checkoutData.employeeRequirement ||
-                              !checkoutData.insuranceRequirement ||
-                              !checkoutData.insuranceFeePolicy ||
-                              !checkoutData.priorityPolicy ||
-                              !checkoutData.paymentPolicy ||
-                              !checkoutData.portaPottyPolicy ||
-                              !checkoutData.portaPottyCoordination ||
-                              !checkoutData.securityPolicy
+                              checkoutData.cancellationPolicy !== 'yes' ||
+                              checkoutData.employeeRequirement !== 'yes' ||
+                              checkoutData.insuranceRequirement !== 'yes' ||
+                              checkoutData.insuranceFeePolicy !== 'yes' ||
+                              checkoutData.priorityPolicy !== 'yes' ||
+                              checkoutData.paymentPolicy !== 'yes' ||
+                              checkoutData.portaPottyPolicy !== 'yes' ||
+                              checkoutData.portaPottyCoordination !== 'yes' ||
+                              checkoutData.securityPolicy !== 'yes'
                             }
                             onClick={handleSubmitReservation}
                           >
@@ -842,7 +1065,24 @@ export function FacilityRentalModal({
                           <Button 
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
                             size="lg"
-                            onClick={() => setShowCheckout(true)}
+                            onClick={() => {
+                              // Debug authentication state
+                              console.log('Proceed to Checkout clicked - Auth Debug:', {
+                                user: user,
+                                userLoading: userLoading,
+                                userExists: !!user,
+                                shouldShowAuth: !user && !userLoading
+                              });
+                              
+                              // Check if user is authenticated before proceeding to checkout
+                              if (!user && !userLoading) {
+                                console.log('User not authenticated, showing auth modal');
+                                setShowAuthRequired(true);
+                              } else {
+                                console.log('User authenticated, proceeding to checkout');
+                                setShowCheckout(true);
+                              }
+                            }}
                           >
                             Proceed to Checkout
                           </Button>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -183,6 +183,11 @@ export function BlackoutDateModal({
             <Ban className="h-5 w-5 text-destructive" />
             {blackoutDate ? 'Edit Blackout Period' : 'Block Field Availability'}
           </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            {blackoutDate 
+              ? 'Update the blackout period details below.'
+              : 'Create a new blackout period to block field availability for maintenance, events, or other reasons.'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">

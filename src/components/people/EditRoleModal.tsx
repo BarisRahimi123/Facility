@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { Shield, Building } from 'lucide-react';
 
 interface EditRoleModalProps {
@@ -40,6 +40,7 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
   // Load facilities for assignment
   useState(() => {
     async function loadFacilities() {
+      const supabase = createClient();
       const { data } = await supabase
         .from('facilities')
         .select('id, name')
@@ -76,6 +77,8 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
     setLoading(true);
 
     try {
+      const supabase = createClient();
+      
       // Update user role and status
       const { error } = await supabase
         .from('users')
@@ -88,8 +91,8 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
 
       if (error) throw error;
 
-      // Update facility assignment if provided
-      if (formData.facility_id) {
+      // Update facility assignment if provided and not "none"
+      if (formData.facility_id && formData.facility_id !== 'none') {
         const { error: facilityError } = await supabase
           .from('user_facilities')
           .upsert({
@@ -115,7 +118,7 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
   const availableRoles = getAvailableRoles();
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -171,7 +174,7 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
                     <SelectValue placeholder="Select a facility" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No facility assignment</SelectItem>
+                    <SelectItem value="none">No facility assignment</SelectItem>
                     {facilities.map(facility => (
                       <SelectItem key={facility.id} value={facility.id}>
                         {facility.name}

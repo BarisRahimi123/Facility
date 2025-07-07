@@ -37,156 +37,431 @@ function getServiceRoleSupabase() {
   );
 }
 
-export async function createFacility(formData: FormData) {
+export async function createFacility(formData: FormData): Promise<{ success: boolean; error?: string; facility?: Facility }> {
   try {
-    const serviceRoleClient = getServiceRoleSupabase();
+    const supabase = await createServerSupabaseClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Get user profile and check permissions
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      return { success: false, error: 'User profile not found' };
+    }
+
+    const userRole = userProfile.role;
+
+    // Check if user can create facilities (only admins)
+    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    if (!adminRoles.includes(userRole)) {
+      return { success: false, error: 'You do not have permission to create facilities' };
+    }
 
     // Extract form data
     const name = formData.get('name') as string;
     const address = formData.get('address') as string;
     const city = formData.get('city') as string;
     const state = formData.get('state') as string;
-    const zip = formData.get('zip') as string;
-    const type = formData.get('type') as string;
+    const zip_code = formData.get('zip_code') as string;
+    const country = formData.get('country') as string;
+    const phone = formData.get('phone') as string;
+    const email = formData.get('email') as string;
+    const website = formData.get('website') as string;
+    const facility_type = formData.get('facility_type') as string;
     const status = formData.get('status') as string;
-    const squareFootage = formData.get('squareFootage') as string;
-    const yearBuilt = formData.get('yearBuilt') as string;
-    const facilityConditionIndex = formData.get('facilityConditionIndex') as string;
-    const notes = formData.get('notes') as string;
+    const square_footage = formData.get('square_footage') as string;
+    const year_built = formData.get('year_built') as string;
+    const description = formData.get('description') as string;
 
-    console.log('Form data extracted:', {
-      name, address, city, state, zip, type, status, 
-      squareFootage, yearBuilt, facilityConditionIndex, 
-      notes
-    });
+    // Validate required fields
+    if (!name || !address || !facility_type) {
+      return { success: false, error: 'Missing required fields' };
+    }
 
-    // Prepare facility data
-    const facilityData = {
-      name,
-      address: `${address}, ${city}, ${state} ${zip}`,
-      facility_type: type as FacilityType,
-      status: status as FacilityStatus,
-      square_footage: parseInt(squareFootage || '0'),
-      year_built: yearBuilt ? parseInt(yearBuilt) : null,
-      facility_condition_index: parseInt(facilityConditionIndex || '0'),
-      description: notes || null,
-    };
-
-    console.log('Creating facility with data:', facilityData);
-
-    const { data, error } = await serviceRoleClient
+    // Create facility
+    const { data: facility, error: createError } = await supabase
       .from('facilities')
-      .insert([facilityData])
+      .insert([
+        {
+          name,
+          address,
+          city,
+          state,
+          zip_code,
+          country,
+          phone,
+          email,
+          website,
+          facility_type,
+          status: status || 'active',
+          square_footage: square_footage ? parseInt(square_footage) : null,
+          year_built: year_built ? parseInt(year_built) : null,
+          description,
+          occupancy_rate: 0,
+          active_issues: 0
+        }
+      ])
       .select()
       .single();
 
-    if (error) {
-      console.error('Database error details:', error);
-      console.error('Error code:', error.code);
-      console.error('Error message:', error.message);
-      console.error('Error details:', error.details);
-      console.error('Error hint:', error.hint);
-      throw new Error(`Database error: ${error.message} (Code: ${error.code})`);
+    if (createError) {
+      console.error('Error creating facility:', createError);
+      return { success: false, error: 'Failed to create facility' };
     }
 
-    console.log('Facility created successfully:', data);
-    return data;
+    return { success: true, facility };
+
   } catch (error) {
-    console.error('Error creating facility:', error);
-    throw error;
+    console.error('Error in createFacility:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
-export async function getAllFacilities() {
+export async function getAllFacilities(): Promise<Facility[]> {
   try {
-    console.log('Fetching all facilities...');
-    const facilities = await FacilityService.getAllFacilities();
-    console.log(`Found ${facilities.length} facilities in database`);
+    const supabase = await createServerSupabaseClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      throw new Error('User not authenticated');
+    }
+
+    // Get user profile
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      console.error('Profile error:', profileError);
+      throw new Error('User profile not found');
+    }
+
+    const userRole = userProfile.role;
+
+    // Check if user is admin (admins can see all facilities)
+    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    const isAdmin = adminRoles.includes(userRole);
+
+    console.log('Getting facilities for current user...');
+    console.log('User role:', userRole);
+
+    let facilities: Facility[] = [];
+
+    if (isAdmin) {
+      // Admins can see all facilities
+      const { data, error } = await supabase
+        .from('facilities')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching facilities:', error);
+        throw new Error('Failed to fetch facilities');
+      }
+
+      facilities = data || [];
+      console.log(`Found ${facilities.length} facilities for admin user`);
+    } else {
+      // Staff users can only see facilities they're assigned to
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('staff_facility_assignments')
+        .select(`
+          facility_id,
+          facilities (
+            id,
+            name,
+            address,
+            city,
+            state,
+            zip_code,
+            country,
+            phone,
+            email,
+            website,
+            facility_type,
+            status,
+            square_footage,
+            year_built,
+            occupancy_rate,
+            active_issues,
+            description,
+            image_url,
+            image_description,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', user.id);
+
+      if (assignmentsError) {
+        console.error('Error fetching staff assignments:', assignmentsError);
+        throw new Error('Failed to fetch staff assignments');
+      }
+
+             facilities = assignments?.map(assignment => assignment.facilities).filter(Boolean) as Facility[] || [];
+      console.log(`Found ${facilities.length} facilities for staff user`);
+    }
+
     return facilities;
+
   } catch (error) {
-    console.error('Error fetching facilities from database:', error);
+    console.error('Error in getAllFacilities:', error);
     throw error;
   }
 }
 
-export async function getFacilityById(id: string) {
+export async function getFacilityById(id: string): Promise<Facility | null> {
   try {
-    console.log(`Fetching facility with ID ${id}...`);
-    const facility = await FacilityService.getFacilityById(id);
-    if (facility) {
-      console.log('Found facility in database');
-      return facility;
+    const supabase = await createServerSupabaseClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      throw new Error('User not authenticated');
     }
-    throw new Error(`Facility with ID ${id} not found`);
+
+    // Get user profile
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      throw new Error('User profile not found');
+    }
+
+    const userRole = userProfile.role;
+
+    // Check if user is admin (admins can see all facilities)
+    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    const isAdmin = adminRoles.includes(userRole);
+
+    if (isAdmin) {
+      // Admins can access any facility
+      const { data, error } = await supabase
+        .from('facilities')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching facility:', error);
+        return null;
+      }
+
+      return data;
+    } else {
+      // Staff users can only access facilities they're assigned to
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('staff_facility_assignments')
+        .select(`
+          facility_id,
+          facilities (
+            id,
+            name,
+            address,
+            city,
+            state,
+            zip_code,
+            country,
+            phone,
+            email,
+            website,
+            facility_type,
+            status,
+            square_footage,
+            year_built,
+            occupancy_rate,
+            active_issues,
+            description,
+            image_url,
+            image_description,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('user_id', user.id)
+        .eq('facility_id', id)
+        .single();
+
+      if (assignmentError) {
+        console.error('Error fetching staff assignment:', assignmentError);
+        return null;
+      }
+
+      return assignment?.facilities || null;
+    }
+
   } catch (error) {
-    console.error(`Error fetching facility with ID ${id} from database:`, error);
-    throw error;
+    console.error('Error in getFacilityById:', error);
+    return null;
   }
 }
 
-export async function updateFacility(id: string, formData: FormData) {
+export async function updateFacility(id: string, formData: FormData): Promise<{ success: boolean; error?: string; facility?: Facility }> {
   try {
-    const serviceRoleClient = getServiceRoleSupabase();
+    const supabase = await createServerSupabaseClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Get user profile and check permissions
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      return { success: false, error: 'User profile not found' };
+    }
+
+    const userRole = userProfile.role;
+
+    // Check if user can update facilities
+    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    const isAdmin = adminRoles.includes(userRole);
+
+    if (!isAdmin) {
+      // Check if staff has permission to edit this facility
+      const { data: assignment, error: assignmentError } = await supabase
+        .from('staff_facility_assignments')
+        .select('permissions')
+        .eq('user_id', user.id)
+        .eq('facility_id', id)
+        .single();
+
+      if (assignmentError || !assignment) {
+        return { success: false, error: 'You do not have permission to edit this facility' };
+      }
+
+      if (!assignment.permissions.manage_calendar) {
+        return { success: false, error: 'You do not have permission to edit this facility' };
+      }
+    }
 
     // Extract form data
-    const name = formData.get('name');
-    const address = formData.get('address');
-    const city = formData.get('city');
-    const state = formData.get('state');
-    const zip = formData.get('zip');
-    const type = formData.get('type') as FacilityType;
-    const status = formData.get('status') as FacilityStatus;
-    const squareFootage = formData.get('squareFootage') ? Number(formData.get('squareFootage')) : null;
-    const yearBuilt = formData.get('yearBuilt') ? formData.get('yearBuilt')?.toString() : null;
-    const facilityConditionIndex = formData.get('facilityConditionIndex') ? Number(formData.get('facilityConditionIndex')) : null;
-    const notes = formData.get('notes');
+    const name = formData.get('name') as string;
+    const address = formData.get('address') as string;
+    const city = formData.get('city') as string;
+    const state = formData.get('state') as string;
+    const zip_code = formData.get('zip_code') as string;
+    const country = formData.get('country') as string;
+    const phone = formData.get('phone') as string;
+    const email = formData.get('email') as string;
+    const website = formData.get('website') as string;
+    const facility_type = formData.get('facility_type') as string;
+    const status = formData.get('status') as string;
+    const square_footage = formData.get('square_footage') as string;
+    const year_built = formData.get('year_built') as string;
+    const description = formData.get('description') as string;
 
-    if (!name || !address || !city || !state || !zip || !type || !status || !squareFootage || !facilityConditionIndex) {
-      throw new Error('Missing required facility information');
+    // Validate required fields
+    if (!name || !address || !facility_type) {
+      return { success: false, error: 'Missing required fields' };
     }
 
-    // Update facility with all fields
-    const updateData = {
-      name: name.toString(),
-      facility_type: type,
-      address: `${address}, ${city}, ${state} ${zip}`,
-      square_footage: squareFootage,
-      year_built: yearBuilt ? parseInt(yearBuilt) : null,
-      facility_condition_index: facilityConditionIndex,
-      status: status,
-      description: notes?.toString() || '',
-    };
-
-    console.log('Updating facility with data:', updateData);
-
-    const { error } = await serviceRoleClient
+    // Update facility
+    const { data: facility, error: updateError } = await supabase
       .from('facilities')
-      .update(updateData)
-      .eq('id', id);
+      .update({
+        name,
+        address,
+        city,
+        state,
+        zip_code,
+        country,
+        phone,
+        email,
+        website,
+        facility_type,
+        status,
+        square_footage: square_footage ? parseInt(square_footage) : null,
+        year_built: year_built ? parseInt(year_built) : null,
+        description,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Error updating facility:', error);
-      throw error;
+    if (updateError) {
+      console.error('Error updating facility:', updateError);
+      return { success: false, error: 'Failed to update facility' };
     }
 
-    console.log('Facility updated successfully');
-    revalidatePath('/facilities');
-    revalidatePath(`/facility/${id}`);
+    return { success: true, facility };
+
   } catch (error) {
-    console.error(`Error updating facility with ID ${id}:`, error);
-    throw error;
+    console.error('Error in updateFacility:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }
 
-export async function deleteFacility(id: string) {
+export async function deleteFacility(id: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await FacilityService.deleteFacility(id);
-    revalidatePath('/facilities');
+    const supabase = await createServerSupabaseClient();
+    
+    // Get authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Get user profile and check permissions
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError) {
+      return { success: false, error: 'User profile not found' };
+    }
+
+    const userRole = userProfile.role;
+
+    // Check if user can delete facilities (only admins)
+    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    if (!adminRoles.includes(userRole)) {
+      return { success: false, error: 'You do not have permission to delete facilities' };
+    }
+
+    // Delete facility
+    const { error: deleteError } = await supabase
+      .from('facilities')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('Error deleting facility:', deleteError);
+      return { success: false, error: 'Failed to delete facility' };
+    }
+
+    return { success: true };
+
   } catch (error) {
-    console.error(`Error deleting facility with ID ${id}:`, error);
-    throw error;
+    console.error('Error in deleteFacility:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
-} 
+}
 
 export async function updateFacilityMatterportUrl(id: string, matterportUrl: string) {
   try {

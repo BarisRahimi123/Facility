@@ -1,72 +1,68 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Load environment variables
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '../.env.local' });
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing Supabase environment variables');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-async function checkFieldsSchema() {
-  try {
-    console.log('🔍 Checking fields table schema...');
+async function checkFieldsTable() {
+  console.log('Checking fields table schema...');
+  
+  // First, try to query the fields table to see if it exists
+  const { data: fields, error } = await supabase
+    .from('fields')
+    .select('*')
+    .limit(1);
     
-    // Check what fields exist by trying to select all columns
-    const { data: fields, error } = await supabase
-      .from('fields')
-      .select('*')
-      .limit(1);
-    
-    if (error) {
-      console.log('❌ Error querying fields table:', error);
-      return;
+  if (error) {
+    console.error('Error checking fields table:', error);
+    if (error.code === '42P01') {
+      console.log('\n❌ Fields table does not exist!');
+      console.log('You need to apply the fields migration first.');
     }
+    return;
+  }
+  
+  console.log('\n✅ Fields table exists');
+  
+  if (fields && fields.length > 0) {
+    console.log('\nFields table columns:');
+    const columns = Object.keys(fields[0]);
+    columns.forEach(col => {
+      console.log(`- ${col}`);
+    });
     
-    console.log('✅ Fields table exists');
+    // Check specifically for address columns
+    const addressColumns = ['city', 'state', 'full_address', 'street_address', 'zip_code'];
+    const missingColumns = addressColumns.filter(col => !columns.includes(col));
     
-    if (fields && fields.length > 0) {
-      console.log('\n📋 Current fields table columns:');
-      const columns = Object.keys(fields[0]);
-      columns.forEach(col => console.log(`  - ${col}`));
-      
-      console.log('\n🔍 Checking for required columns:');
-      const requiredColumns = [
-        'street_address', 'zip_code', 'city', 'state', 'full_address',
-        'aerial_image_url', 'aerial_image_description', 'virtual_tour_url',
-        'gallery_images', 'latitude', 'longitude'
-      ];
-      
-      requiredColumns.forEach(col => {
-        if (columns.includes(col)) {
-          console.log(`  ✅ ${col}`);
-        } else {
-          console.log(`  ❌ ${col} - MISSING`);
-        }
-      });
+    if (missingColumns.length > 0) {
+      console.log('\n❌ Missing address columns:', missingColumns);
+      console.log('\nThese columns need to be added to fix the field creation error.');
     } else {
-      console.log('📋 Table is empty, checking with describe...');
-      
-      // Try to get table info using information_schema
-      const { data: schemaInfo, error: schemaError } = await supabase
-        .rpc('get_table_columns', { table_name: 'fields' });
-      
-      if (schemaError) {
-        console.log('Could not get schema info:', schemaError);
-      } else {
-        console.log('Schema info:', schemaInfo);
-      }
+      console.log('\n✅ All address columns exist');
     }
+  } else {
+    console.log('\n📋 Table is empty, checking structure by trying to insert test data...');
     
-  } catch (error) {
-    console.error('❌ Error checking schema:', error);
+    // Try to get error details by attempting to insert with missing columns
+    const { error: insertError } = await supabase
+      .from('fields')
+      .insert({
+        facility_id: '00000000-0000-0000-0000-000000000000',
+        name: 'test',
+        type: 'test',
+        city: 'test'
+      });
+    
+    if (insertError) {
+      console.log('Insert error (shows missing columns):', insertError);
+    }
   }
 }
 
 // Run the check
-checkFieldsSchema(); 
+checkFieldsTable().catch(console.error); 

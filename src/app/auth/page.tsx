@@ -9,13 +9,13 @@ export default function AuthPage() {
   const [redirectFailed, setRedirectFailed] = useState(false);
   
   useEffect(() => {
-    // Client-side redirect to the simple sign-in page
+    // Client-side redirect to the sign-in page
     try {
-      console.log('Redirecting to sign-in-simple page...');
+      console.log('Redirecting to sign-in page...');
       
       // Use a timeout to ensure the redirect happens
       const redirectTimeout = setTimeout(() => {
-        router.replace('/auth/sign-in-simple');
+        router.replace('/auth/sign-in');
       }, 100);
       
       // Set a fallback in case the redirect doesn't work
@@ -43,7 +43,7 @@ export default function AuthPage() {
             Please click the button below to continue.
           </p>
           <Link 
-            href="/auth/sign-in-simple"
+            href="/auth/sign-in"
             className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Go to Sign In

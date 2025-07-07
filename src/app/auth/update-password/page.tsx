@@ -99,7 +99,7 @@ export default function UpdatePasswordPage() {
       
       // Add a delay before redirecting
       setTimeout(() => {
-        router.push('/auth/sign-in-simple');
+        router.push('/auth/sign-in');
       }, 3000);
     } catch (err) {
       console.error('Password update error:', err);
@@ -195,7 +195,7 @@ export default function UpdatePasswordPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Remember your password?{' '}
-            <Link href="/auth/sign-in-simple" className="text-blue-600 hover:text-blue-800">
+            <Link href="/auth/sign-in" className="text-blue-600 hover:text-blue-800">
               Sign in
             </Link>
           </p>

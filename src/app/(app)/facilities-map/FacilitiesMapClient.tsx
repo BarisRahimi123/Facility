@@ -181,13 +181,7 @@ export function FacilitiesMapClient({ facilities, fields = [] }: FacilitiesMapCl
       <div className="flex-none px-6 py-4 border-b border-border bg-background">
         <div className="space-y-4">
           {/* Title and Search Row */}
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Facilities & Fields</h1>
-              <p className="text-muted-foreground text-sm">
-                {filteredFacilities.length} facilities • {filteredItems.filter(item => item.itemType === 'field').length} fields
-              </p>
-            </div>
+          <div className="flex items-start gap-6">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -197,6 +191,12 @@ export function FacilitiesMapClient({ facilities, fields = [] }: FacilitiesMapCl
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
               />
+            </div>
+            <div className="flex-none">
+              <h1 className="text-xl font-bold text-foreground">Facilities & Fields</h1>
+              <p className="text-muted-foreground text-sm">
+                {filteredFacilities.length} facilities • {filteredItems.filter(item => item.itemType === 'field').length} fields
+              </p>
             </div>
           </div>
 

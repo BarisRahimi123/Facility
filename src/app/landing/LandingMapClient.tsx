@@ -124,7 +124,7 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
       price: Math.round((facility.square_footage || 0) / 100),
       priceUnit: 'sq ft',
       capacity: Math.floor((facility.square_footage || 0) / 15),
-      amenities: ['WiFi', 'Parking', 'Climate Control', 'Security'].slice(0, Math.floor(Math.random() * 4) + 1)
+      amenities: ['WiFi', 'Parking', 'Climate Control', 'Security']
     }));
 
     const fieldItems = fields.map(field => ({
@@ -137,7 +137,7 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
       price: field.hourly_rate || 0,
       priceUnit: 'hour',
       capacity: (field as any).capacity || 0,
-      amenities: ['Lighting', 'Parking', 'Restrooms', 'Storage'].slice(0, Math.floor(Math.random() * 4) + 1)
+      amenities: ['Lighting', 'Parking', 'Restrooms', 'Storage']
     }));
 
     return [...facilityItems, ...fieldItems];

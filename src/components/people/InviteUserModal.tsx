@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { UserPlus, Mail, Shield, Building, Briefcase } from 'lucide-react';
+import { sendInvitationEmail } from '@/lib/email';
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -26,6 +27,8 @@ interface InviteFormData {
   department: string;
   position: string;
   facility_id?: string;
+  organization_id?: string;
+  phone: string;
   sendEmail: boolean;
   customMessage: string;
 }
@@ -33,12 +36,15 @@ interface InviteFormData {
 export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent }: InviteUserModalProps) {
   const [loading, setLoading] = useState(false);
   const [facilities, setFacilities] = useState<any[]>([]);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
   const [formData, setFormData] = useState<InviteFormData>({
     email: '',
     role: '',
     fullName: '',
     department: '',
     position: '',
+    phone: '',
     sendEmail: true,
     customMessage: ''
   });
@@ -46,6 +52,7 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
   // Load facilities for assignment
   useState(() => {
     async function loadFacilities() {
+      const supabase = createClient();
       const { data } = await supabase
         .from('facilities')
         .select('id, name')
@@ -59,6 +66,35 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
     loadFacilities();
   });
 
+  // Load organizations when role is renter
+  const loadOrganizations = async () => {
+    if (formData.role === 'renter') {
+      setLoadingOrganizations(true);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from('organizations')
+          .select('id, name, subtype')
+          .eq('type', 'renter')
+          .eq('is_active', true)
+          .order('name');
+        
+        if (data) {
+          setOrganizations(data);
+        }
+      } catch (error) {
+        console.error('Error loading organizations:', error);
+      } finally {
+        setLoadingOrganizations(false);
+      }
+    }
+  };
+
+  // Load organizations when role changes to renter
+  useEffect(() => {
+    loadOrganizations();
+  }, [formData.role]);
+
   // Determine available roles based on current user's role
   const getAvailableRoles = () => {
     if (currentUserRole === 'master_admin') {
@@ -68,7 +104,8 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         { value: 'coordinator', label: 'Coordinator', description: 'Coordinate facility operations' },
         { value: 'staff', label: 'Staff', description: 'General facility staff member' },
         { value: 'maintenance', label: 'Maintenance', description: 'Maintenance team member' },
-        { value: 'vendor', label: 'Vendor', description: 'External vendor or contractor' }
+        { value: 'vendor', label: 'Vendor', description: 'External vendor or contractor' },
+        { value: 'renter', label: 'Renter', description: 'Can book and rent facilities' }
       ];
     } else if (currentUserRole === 'sub_master') {
       return [
@@ -87,6 +124,7 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
     setLoading(true);
 
     try {
+      const supabase = createClient();
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -96,20 +134,29 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         p_email: formData.email,
         p_role: formData.role,
         p_invited_by: user.id,
-        p_facility_id: formData.facility_id || null,
+        p_facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
+        p_organization_id: formData.organization_id || null,
         p_metadata: {
           fullName: formData.fullName,
           department: formData.department,
           position: formData.position,
-          customMessage: formData.customMessage
+          phone: formData.phone,
+          customMessage: formData.customMessage,
+          organizationId: formData.organization_id
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if the error is due to missing database functions
+        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+          throw new Error('Invitation system not set up. Please contact administrator to configure database functions.');
+        }
+        throw error;
+      }
 
       // Send email notification if enabled
       if (formData.sendEmail && data) {
-        await sendInvitationEmail(data);
+        await sendInvitationEmailNotification(data);
       }
 
       toast.success(`Invitation sent to ${formData.email}`);
@@ -125,10 +172,11 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
     }
   };
 
-  const sendInvitationEmail = async (invitationData: any) => {
-    // This would integrate with your email service
-    // For now, we'll just log the invitation details
-    console.log('Would send email with invitation:', invitationData);
+  const sendInvitationEmailNotification = async (invitationData: any) => {
+    const result = await sendInvitationEmail(invitationData);
+    if (!result.success) {
+      console.error('Failed to send invitation email:', result.error);
+    }
   };
 
   const resetForm = () => {
@@ -138,6 +186,7 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
       fullName: '',
       department: '',
       position: '',
+      phone: '',
       sendEmail: true,
       customMessage: ''
     });
@@ -146,7 +195,7 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
   const availableRoles = getAvailableRoles();
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -240,8 +289,63 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
               />
             </div>
 
+            {/* Phone */}
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+
+            {/* Organization Assignment (for renters) */}
+            {formData.role === 'renter' && (
+              <div className="md:col-span-2">
+                <Label htmlFor="organization">
+                  <Briefcase className="inline h-3 w-3 mr-1" />
+                  Organization *
+                </Label>
+                <Select
+                  value={formData.organization_id}
+                  onValueChange={(value) => {
+                    const selectedOrg = organizations.find(org => org.id === value);
+                    setFormData({ 
+                      ...formData, 
+                      organization_id: value
+                    });
+                  }}
+                  required={formData.role === 'renter'}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={loadingOrganizations ? "Loading organizations..." : "Select organization"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {organizations.map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">{org.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {org.subtype === 'individual' ? 'Individual' : 
+                             org.subtype === 'commercial' ? 'Commercial' : 'Non-Profit'}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {organizations.length === 0 && !loadingOrganizations && (
+                  <p className="text-xs text-muted-foreground">
+                    No organizations found. Please create an organization first.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Facility Assignment (optional) */}
-            {facilities.length > 0 && (
+            {facilities.length > 0 && formData.role !== 'renter' && (
               <div className="md:col-span-2">
                 <Label htmlFor="facility">
                   <Building className="inline h-3 w-3 mr-1" />
@@ -255,7 +359,7 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
                     <SelectValue placeholder="Select a facility" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No facility assignment</SelectItem>
+                    <SelectItem value="none">No facility assignment</SelectItem>
                     {facilities.map(facility => (
                       <SelectItem key={facility.id} value={facility.id}>
                         {facility.name}

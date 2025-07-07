@@ -21,7 +21,6 @@ import {
 import { GlassNavbar } from '@/components/ui/glass-navbar';
 
 // Import animation data
-const animationData = require('../../public/animations/lottie/anim1.json');
 const penAnimationData = require('../../public/animations/lottie/Pen.json');
 const docusAnimationData = require('../../public/animations/lottie/docs.json');
 const managerAnimationData = require('../../public/animations/lottie/manager.json');
@@ -127,7 +126,7 @@ export default function LandingPage() {
           <div className="relative w-full max-w-2xl mx-auto">
             <div className="aspect-square w-full">
               <LottieAnimation 
-                animationData={animationData}
+                animationData={managerAnimationData}
                 className="w-full h-full"
                 loop={true}
                 autoplay={true}
