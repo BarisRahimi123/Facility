@@ -1538,14 +1538,14 @@ export function FacilityRentalModal({
             </div>
 
             <div className="space-y-3">
-              <Link href="/auth/sign-up">
+              <Link href="/auth/sign-up?returnTo=reservation&type=facility&preserveData=true">
                 <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
                   <UserPlus className="h-4 w-4 mr-2" />
                   Create Account
                 </Button>
               </Link>
               
-              <Link href="/auth/sign-in">
+              <Link href="/auth/sign-in?returnTo=reservation&type=facility&preserveData=true">
                 <Button variant="outline" className="w-full">
                   <LogIn className="h-4 w-4 mr-2" />
                   Sign In
