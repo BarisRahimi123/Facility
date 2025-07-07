@@ -1,45 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { 
   Calendar,
   Clock,
   Users,
   DollarSign,
-  FileText,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  Eye,
-  Download,
-  MessageSquare,
-  Settings,
-  Shield,
-  Building,
-  Mail,
-  Phone,
-  MapPin,
-  ChevronRight,
-  Timer,
-  TrendingUp
+  ChevronRight
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { 
   getReservations, 
   updateReservationStatus, 
-  addReservationFee,
   updateReservation 
 } from '@/app/actions/reservations';
 import { getAllFacilities } from '@/app/actions/facilities';
@@ -61,11 +44,7 @@ export default function AdminReservationsPage() {
   const [facilityFilter, setFacilityFilter] = useState('all');
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [reservationsData, facilitiesData] = await Promise.all([
         getReservations(),
@@ -84,7 +63,11 @@ export default function AdminReservationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
