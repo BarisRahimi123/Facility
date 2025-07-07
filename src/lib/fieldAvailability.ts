@@ -163,7 +163,7 @@ export class FieldAvailabilityService {
   ): AvailabilityCheck[] {
     const availableDates: AvailabilityCheck[] = [];
     const startDate = new Date(fromDate);
-    let currentDate = new Date(startDate);
+    const currentDate = new Date(startDate);
     let daysChecked = 0;
     const maxDaysToCheck = 60; // Limit search to 60 days
     
