@@ -38,7 +38,7 @@ export async function getEmergencyDocuments(facilityId: string, category?: strin
   try {
     const supabase = getServiceRoleSupabase();
     
-    let query = supabase
+    const query = supabase
       .from('emergency_documents')
       .select('*')
       .eq('facility_id', facilityId)
@@ -375,4 +375,4 @@ export async function checkAndCreateEmergencyDocumentsTable() {
       error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
-}    
+}      

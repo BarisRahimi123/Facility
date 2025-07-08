@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script src="/safari-polyfill.js" />
+        <script src="/safari-polyfill.js" async />
       </head>
       <body className={`${inter.className} antialiased`} suppressHydrationWarning>
         <Providers>

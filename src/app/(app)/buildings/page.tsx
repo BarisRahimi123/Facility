@@ -16,7 +16,7 @@ import {
 } from '@/app/actions/buildings';
 import { getAllFacilities, getFacilityById } from '@/app/actions/facilities';
 import { createClient } from '@/lib/supabase/client';
-import { ChevronRight, Plus, MoreVertical, Pencil, Home, ChevronRight as ChevronRightIcon, Building2, Wrench, Hammer, FileText, ChevronUp, ExternalLink, Eye, Trash2, Calendar } from 'lucide-react';
+import { ChevronRight, Plus, MoreVertical, Pencil, Home, ChevronRight as ChevronRightIcon, Building2, Wrench, Hammer, FileText, ChevronUp, ExternalLink, Eye, Trash2, Calendar, ChevronDown } from 'lucide-react';
 import type { Plan } from '@/app/actions/plans';
 import Link from 'next/link';
 import {
@@ -1130,4 +1130,4 @@ export default function BuildingsPage() {
       </div>
     </div>
   );
-}      
+}        

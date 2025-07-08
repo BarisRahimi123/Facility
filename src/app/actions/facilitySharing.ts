@@ -102,7 +102,7 @@ export async function getFacilityInvitations(facilityId?: string): Promise<Facil
   try {
     const supabase = getServiceRoleSupabase();
     
-    let query = supabase
+    const query = supabase
       .from('facility_invitations')
       .select('*')
       .order('created_at', { ascending: false });
@@ -219,4 +219,4 @@ export async function getInvitationByToken(token: string): Promise<{ invitation?
     console.error('Error in getInvitationByToken:', error);
     return { error: 'Failed to fetch invitation' };
   }
-}    
+}      

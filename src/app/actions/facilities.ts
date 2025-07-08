@@ -575,7 +575,7 @@ export async function getFacilitiesForCurrentUser() {
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    let query = serviceRoleClient
+    const query = serviceRoleClient
       .from('facilities')
       .select('id, name, address, facility_type, status, square_footage, year_built')
       .eq('status', 'active');
@@ -606,4 +606,4 @@ export async function getFacilitiesForCurrentUser() {
     console.log('Falling back to getFacilitiesForMap()');
     return getFacilitiesForMap();
   }
-}    
+}      

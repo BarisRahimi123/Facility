@@ -21,10 +21,10 @@ import {
 import { GlassNavbar } from '@/components/ui/glass-navbar';
 
 // Import animation data
-const penAnimationData = require('../../public/animations/lottie/Pen.json');
-const docusAnimationData = require('../../public/animations/lottie/docs.json');
-const managerAnimationData = require('../../public/animations/lottie/manager.json');
-const virtualTourAnimationData = require('../../public/animations/lottie/virtualT.json');
+import penAnimationData from '../../public/animations/lottie/Pen.json';
+import docusAnimationData from '../../public/animations/lottie/docs.json';
+import managerAnimationData from '../../public/animations/lottie/manager.json';
+import virtualTourAnimationData from '../../public/animations/lottie/virtualT.json';
 
 interface Feature {
   icon?: LucideIcon;
@@ -525,4 +525,4 @@ export default function LandingPage() {
       </footer>
     </div>
   );
-} 
+}  

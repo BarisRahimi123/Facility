@@ -756,4 +756,4 @@ export async function addReservationFee(reservationId: string, fee: {
     console.error('Unexpected error adding fee:', error);
     return { error: 'An unexpected error occurred' };
   }
-}    
+}        

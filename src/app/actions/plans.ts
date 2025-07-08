@@ -450,4 +450,4 @@ export async function deleteFolder(id: string): Promise<void> {
     console.error('Error in deleteFolder:', error);
     throw error;
   }
-}      
+}          
