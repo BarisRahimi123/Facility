@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { updateFacility } from '@/app/actions/facilities';
 import type { Facility, FacilityType, FacilityStatus } from '@/types/facility';
-import { Building2, Users, MapPin, Settings } from 'lucide-react';
+import { Building2, Users, MapPin, Settings, Toilet } from 'lucide-react';
 
 interface EditFacilityModalProps {
   facility: Facility;
@@ -45,7 +45,20 @@ export default function EditFacilityModal({
     yearBuilt: facility.year_built?.toString() || '',
     facilityConditionIndex: facility.facility_condition_index?.toString() || '',
     description: facility.description || '',
-
+    boysToilets: facility.boys_toilets?.toString() || '0',
+    boysUrinals: facility.boys_urinals?.toString() || '0',
+    boysSinks: facility.boys_sinks?.toString() || '0',
+    boysRestroomsCount: facility.boys_restrooms_count?.toString() || '0',
+    girlsToilets: facility.girls_toilets?.toString() || '0',
+    girlsUrinals: facility.girls_urinals?.toString() || '0',
+    girlsSinks: facility.girls_sinks?.toString() || '0',
+    girlsRestroomsCount: facility.girls_restrooms_count?.toString() || '0',
+    unisexToilets: facility.unisex_toilets?.toString() || '0',
+    unisexSinks: facility.unisex_sinks?.toString() || '0',
+    unisexRestroomsCount: facility.unisex_restrooms_count?.toString() || '0',
+    staffToilets: facility.staff_toilets?.toString() || '0',
+    staffSinks: facility.staff_sinks?.toString() || '0',
+    staffRestroomsCount: facility.staff_restrooms_count?.toString() || '0'
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,7 +78,20 @@ export default function EditFacilityModal({
       form.append('yearBuilt', formData.yearBuilt);
       form.append('facilityConditionIndex', formData.facilityConditionIndex);
       form.append('description', formData.description);
-
+      form.append('boysToilets', formData.boysToilets);
+      form.append('boysUrinals', formData.boysUrinals);
+      form.append('boysSinks', formData.boysSinks);
+      form.append('boysRestroomsCount', formData.boysRestroomsCount);
+      form.append('girlsToilets', formData.girlsToilets);
+      form.append('girlsUrinals', formData.girlsUrinals);
+      form.append('girlsSinks', formData.girlsSinks);
+      form.append('girlsRestroomsCount', formData.girlsRestroomsCount);
+      form.append('unisexToilets', formData.unisexToilets);
+      form.append('unisexSinks', formData.unisexSinks);
+      form.append('unisexRestroomsCount', formData.unisexRestroomsCount);
+      form.append('staffToilets', formData.staffToilets);
+      form.append('staffSinks', formData.staffSinks);
+      form.append('staffRestroomsCount', formData.staffRestroomsCount);
 
 
 
@@ -82,7 +108,20 @@ export default function EditFacilityModal({
         year_built: formData.yearBuilt || undefined,
         facility_condition_index: parseInt(formData.facilityConditionIndex || '0'),
         description: formData.description,
-
+        boys_toilets: parseInt(formData.boysToilets) || 0,
+        boys_urinals: parseInt(formData.boysUrinals) || 0,
+        boys_sinks: parseInt(formData.boysSinks) || 0,
+        boys_restrooms_count: parseInt(formData.boysRestroomsCount) || 0,
+        girls_toilets: parseInt(formData.girlsToilets) || 0,
+        girls_urinals: parseInt(formData.girlsUrinals) || 0,
+        girls_sinks: parseInt(formData.girlsSinks) || 0,
+        girls_restrooms_count: parseInt(formData.girlsRestroomsCount) || 0,
+        unisex_toilets: parseInt(formData.unisexToilets) || 0,
+        unisex_sinks: parseInt(formData.unisexSinks) || 0,
+        unisex_restrooms_count: parseInt(formData.unisexRestroomsCount) || 0,
+        staff_toilets: parseInt(formData.staffToilets) || 0,
+        staff_sinks: parseInt(formData.staffSinks) || 0,
+        staff_restrooms_count: parseInt(formData.staffRestroomsCount) || 0,
         updated_at: new Date().toISOString(),
       };
 
@@ -504,4 +543,4 @@ export default function EditFacilityModal({
       </DialogContent>
     </Dialog>
   );
-} 
+}        
