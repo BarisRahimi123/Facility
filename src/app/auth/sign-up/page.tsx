@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -28,8 +28,49 @@ import Link from 'next/link';
 
 function SignUpForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [accountType, setAccountType] = useState<'individual' | 'organization'>('individual');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check if user is coming from reservation flow
+  const returnTo = searchParams?.get('returnTo');
+  const reservationType = searchParams?.get('type');
+  const preserveData = searchParams?.get('preserveData') === 'true';
+
+  const saveReservationData = (data: any) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pendingReservationData', JSON.stringify(data));
+    }
+  };
+
+  const getReservationData = () => {
+    if (typeof window !== 'undefined') {
+      const data = localStorage.getItem('pendingReservationData');
+      return data ? JSON.parse(data) : null;
+    }
+    return null;
+  };
+
+  const clearReservationData = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pendingReservationData');
+    }
+  };
+
+  const handlePostSignupRedirect = () => {
+    if (returnTo === 'reservation' && reservationType) {
+      // Redirect back to the appropriate reservation flow
+      if (reservationType === 'facility') {
+        router.push('/facilities-map?resumeReservation=true');
+      } else if (reservationType === 'field') {
+        router.push('/facilities-map?resumeReservation=true');
+      } else {
+        router.push('/facilities-map');
+      }
+    } else {
+      router.push('/facilities-map');
+    }
+  };
 
   // Individual form data
   const [individualData, setIndividualData] = useState({
@@ -93,7 +134,11 @@ function SignUpForm() {
       if (authData.user && !authData.session) {
         // User created but needs email verification
         toast.success('Account created! Please check your email and click the verification link to complete your registration.');
-        router.push(`/auth/verify-email?email=${encodeURIComponent(individualData.email)}`);
+        let verifyUrl = `/auth/verify-email?email=${encodeURIComponent(individualData.email)}`;
+        if (returnTo && reservationType) {
+          verifyUrl += `&returnTo=${returnTo}&type=${reservationType}&preserveData=${preserveData}`;
+        }
+        router.push(verifyUrl);
         return;
       }
 
@@ -117,7 +162,7 @@ function SignUpForm() {
         }
 
         toast.success('Account created successfully! Welcome to FacilityCore.');
-        router.push('/facilities-map');
+        handlePostSignupRedirect();
         return;
       }
 
@@ -192,7 +237,11 @@ function SignUpForm() {
       if (authData.user && !authData.session) {
         // User created but needs email verification
         toast.success('Organization account created! Please check your email and click the verification link to complete your registration.');
-        router.push(`/auth/verify-email?email=${encodeURIComponent(organizationData.contact_email)}`);
+        let verifyUrl = `/auth/verify-email?email=${encodeURIComponent(organizationData.contact_email)}`;
+        if (returnTo && reservationType) {
+          verifyUrl += `&returnTo=${returnTo}&type=${reservationType}&preserveData=${preserveData}`;
+        }
+        router.push(verifyUrl);
         return;
       }
 
@@ -217,7 +266,7 @@ function SignUpForm() {
         }
 
         toast.success('Organization account created successfully! Welcome to FacilityCore.');
-        router.push('/facilities-map');
+        handlePostSignupRedirect();
         return;
       }
 
@@ -678,4 +727,4 @@ export default function SignUpPage() {
       <SignUpForm />
     </NoSSR>
   );
-} 
+}        
