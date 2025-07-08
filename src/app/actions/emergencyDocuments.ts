@@ -375,4 +375,4 @@ export async function checkAndCreateEmergencyDocumentsTable() {
       error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
-} 
+}    

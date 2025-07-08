@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Building as BuildingType, Room, BuildingSystem, RoomFunction, BuildingSystemType, SystemCondition, BuildingStatus, BuildingFormData } from '@/types/building';
+import { Building as BuildingType, Room, BuildingSystem, BuildingStatus, BuildingFormData } from '@/types/building';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { 
@@ -16,7 +16,7 @@ import {
 } from '@/app/actions/buildings';
 import { getAllFacilities, getFacilityById } from '@/app/actions/facilities';
 import { createClient } from '@/lib/supabase/client';
-import { ChevronDown, ChevronRight, Plus, MoreVertical, Pencil, Home, ChevronRight as ChevronRightIcon, Building2, Wrench, Hammer, FileText, ChevronUp, ExternalLink, Eye, Trash2, Calendar } from 'lucide-react';
+import { ChevronRight, Plus, MoreVertical, Pencil, Home, ChevronRight as ChevronRightIcon, Building2, Wrench, Hammer, FileText, ChevronUp, ExternalLink, Eye, Trash2, Calendar } from 'lucide-react';
 import type { Plan } from '@/app/actions/plans';
 import Link from 'next/link';
 import {
@@ -1130,4 +1130,4 @@ export default function BuildingsPage() {
       </div>
     </div>
   );
-} 
+}      

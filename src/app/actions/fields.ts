@@ -118,7 +118,7 @@ export async function createField(fieldData: CreateFieldRequest): Promise<Field>
     console.log('Field created successfully:', field);
 
     // Handle file uploads after field creation
-    let imageUrls: string[] = [];
+    const imageUrls: string[] = [];
     let aerialImageUrl: string | null = null;
 
     // Upload field images if provided
@@ -927,4 +927,4 @@ export async function getAllFieldsForMap(): Promise<Field[]> {
     
     return []; // Return empty array instead of throwing to prevent map from breaking
   }
-} 
+}      

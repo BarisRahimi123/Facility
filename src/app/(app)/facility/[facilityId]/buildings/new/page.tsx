@@ -23,6 +23,28 @@ export default function NewBuildingPage() {
   const [facility, setFacility] = useState<Facility | null>(null);
   const [isLoadingFacility, setIsLoadingFacility] = useState(true);
 
+  // Fetch facility data to show correct name in breadcrumb
+  useEffect(() => {
+    async function loadFacility() {
+      if (!params?.facilityId) return;
+      
+      const facilityId = params.facilityId as string;
+      
+      try {
+        setIsLoadingFacility(true);
+        const facilityData = await getFacilityById(facilityId);
+        setFacility(facilityData);
+      } catch (error) {
+        console.error('Error loading facility:', error);
+        toast.error('Failed to load facility information');
+      } finally {
+        setIsLoadingFacility(false);
+      }
+    }
+
+    loadFacility();
+  }, [params?.facilityId]);
+
   if (!params?.facilityId) {
     return (
       <div className="min-h-screen bg-background">
@@ -42,26 +64,6 @@ export default function NewBuildingPage() {
   }
 
   const facilityId = params.facilityId as string;
-
-  // Fetch facility data to show correct name in breadcrumb
-  useEffect(() => {
-    async function loadFacility() {
-      if (!facilityId) return;
-      
-      try {
-        setIsLoadingFacility(true);
-        const facilityData = await getFacilityById(facilityId);
-        setFacility(facilityData);
-      } catch (error) {
-        console.error('Error loading facility:', error);
-        toast.error('Failed to load facility information');
-      } finally {
-        setIsLoadingFacility(false);
-      }
-    }
-
-    loadFacility();
-  }, [facilityId]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -271,4 +273,4 @@ export default function NewBuildingPage() {
       </div>
     </div>
   );
-} 
+}  

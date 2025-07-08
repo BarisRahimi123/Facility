@@ -141,7 +141,7 @@ export async function createFolder(formData: FormData): Promise<Folder> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Handle mock authentication for development
-    let userId = user?.id || null;
+    const userId = user?.id || null;
     if (authError || !user) {
       console.log('No authenticated user, using null for created_by');
     }
@@ -193,7 +193,7 @@ export async function uploadPlan(file: File, formData: FormData): Promise<Plan> 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Handle mock authentication for development
-    let userId = user?.id || null;
+    const userId = user?.id || null;
     if (authError || !user) {
       console.log('No authenticated user, using null for uploaded_by');
     }
@@ -317,7 +317,7 @@ export async function updatePlan(planId: string, formData: FormData): Promise<Pl
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     // Handle mock authentication for development
-    let userId = user?.id || null;
+    const userId = user?.id || null;
     if (authError || !user) {
       console.log('No authenticated user, using null for uploaded_by check');
     }
@@ -366,7 +366,7 @@ export async function deletePlan(id: string): Promise<void> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     // Handle mock authentication for development
-    let userId = user?.id || null;
+    const userId = user?.id || null;
     if (authError || !user) {
       console.log('No authenticated user, using null for uploaded_by check');
     }
@@ -419,7 +419,7 @@ export async function deleteFolder(id: string): Promise<void> {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     // Handle mock authentication for development
-    let userId = user?.id || null;
+    const userId = user?.id || null;
     if (authError || !user) {
       console.log('No authenticated user, using null for created_by check');
     }
@@ -450,4 +450,4 @@ export async function deleteFolder(id: string): Promise<void> {
     console.error('Error in deleteFolder:', error);
     throw error;
   }
-} 
+}      

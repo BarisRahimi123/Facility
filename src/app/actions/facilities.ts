@@ -606,4 +606,4 @@ export async function getFacilitiesForCurrentUser() {
     console.log('Falling back to getFacilitiesForMap()');
     return getFacilitiesForMap();
   }
-} 
+}    

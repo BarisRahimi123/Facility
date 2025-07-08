@@ -219,4 +219,4 @@ export async function getInvitationByToken(token: string): Promise<{ invitation?
     console.error('Error in getInvitationByToken:', error);
     return { error: 'Failed to fetch invitation' };
   }
-} 
+}    
