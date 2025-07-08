@@ -313,7 +313,6 @@ export default function AnalyticsPage() {
       
       // Make room function checking case-insensitive and more flexible
       const roomFunction = (room.room_function || '').toLowerCase();
-      const originalRoomFunction = room.room_function || 'Other';
       
       // Consider classrooms and educational spaces as student capacity
       if (roomFunction.includes('classroom') || 
@@ -1078,4 +1077,4 @@ function StatusCard({
       <span className="text-lg font-bold text-card-foreground">{value}</span>
     </div>
   );
-} 
+}  

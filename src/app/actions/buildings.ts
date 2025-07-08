@@ -258,8 +258,8 @@ const mockRenovations: Renovation[] = [
 // Initialize in-memory storage
 let inMemoryBuildings: Building[] = [...mockBuildings];
 let inMemoryRooms: Room[] = [...mockRooms];
-let inMemoryBuildingSystems: BuildingSystem[] = [...mockBuildingSystems];
-let inMemoryRenovations: Renovation[] = [...mockRenovations];
+const inMemoryBuildingSystems: BuildingSystem[] = [...mockBuildingSystems];
+const inMemoryRenovations: Renovation[] = [...mockRenovations];
 
 // Add BuildingFormData type export
 export type BuildingFormData = {
@@ -860,7 +860,7 @@ export async function createBuildingSystem(formData: FormData): Promise<void> {
 
     // Save to database
     // First try with maintenance_contact
-    let { data, error } = await client
+    const { data, error } = await client
       .from('building_systems')
       .insert([systemDataWithContact])
       .select()
@@ -1135,4 +1135,4 @@ export async function deleteBuilding(buildingId: string): Promise<void> {
     console.error('Error in deleteBuilding:', error);
     throw error;
   }
-} 
+}    

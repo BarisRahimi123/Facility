@@ -71,7 +71,7 @@ export default function AddSystemModal({ buildingId, isOpen, onClose }: AddSyste
     if (!installDate || !schedule) return '';
     
     const install = new Date(installDate);
-    let nextDate = new Date(install);
+    const nextDate = new Date(install);
     
     switch (schedule) {
       case 'weekly':
@@ -405,4 +405,4 @@ export default function AddSystemModal({ buildingId, isOpen, onClose }: AddSyste
       </DialogContent>
     </Dialog>
   );
-} 
+}  

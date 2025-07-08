@@ -25,7 +25,7 @@ import MaintenanceRequestList from '@/components/maintenance/MaintenanceRequestL
 import AddMaintenanceRequestForm from '@/components/building/AddMaintenanceRequestForm';
 import { MaintenanceRequest, MaintenanceType, MaintenancePriority, MaintenanceStatus } from '@/types/maintenance';
 import { createMaintenanceRequest, updateMaintenanceRequest } from '@/app/actions/maintenance';
-import { Room, BuildingSystem, Renovation, Building as IBuilding, BuildingType, BuildingStatus } from '@/types/building';
+import { Room, BuildingSystem, Renovation, Building as IBuilding, BuildingStatus } from '@/types/building';
 import { Database } from '@/lib/database.types';
 import { BuildingCalendar } from '@/components/calendar/BuildingCalendar';
 
@@ -1218,4 +1218,4 @@ export default function BuildingDetailClient({
       )}
     </div>
   );
-} 
+}  

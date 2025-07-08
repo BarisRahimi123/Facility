@@ -107,7 +107,7 @@ const mockBuildings: PlanBuilding[] = [
 ];
 
 // In-memory storage
-let inMemoryBuildings = [...mockBuildings];
+const inMemoryBuildings = [...mockBuildings];
 
 export async function getPlanBuildings(): Promise<PlanBuilding[]> {
   // Simulate API delay
@@ -170,4 +170,4 @@ export async function createBuilding(formData: FormData): Promise<PlanBuilding> 
     console.error('Error in createBuilding:', error);
     throw error;
   }
-} 
+}  

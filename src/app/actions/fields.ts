@@ -118,7 +118,7 @@ export async function createField(fieldData: CreateFieldRequest): Promise<Field>
     console.log('Field created successfully:', field);
 
     // Handle file uploads after field creation
-    let imageUrls: string[] = [];
+    const imageUrls: string[] = [];
     let aerialImageUrl: string | null = null;
 
     // Upload field images if provided
@@ -381,7 +381,7 @@ export async function searchFields(filters: FieldSearchFilters): Promise<Field[]
       throw new Error('Failed to initialize Supabase client');
     }
 
-    let query = supabase.from('fields').select('*');
+    const query = supabase.from('fields').select('*');
 
     // Apply filters
     if (filters.facility_id) {
@@ -927,4 +927,4 @@ export async function getAllFieldsForMap(): Promise<Field[]> {
     
     return []; // Return empty array instead of throwing to prevent map from breaking
   }
-} 
+}        
