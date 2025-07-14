@@ -1,9 +1,11 @@
 'use server';
 
 import { getServiceRoleClient } from '@/lib/supabase/server';
-import { Field, Reservation, CreateFieldRequest, CreateReservationRequest, FieldSearchFilters } from '@/types/field';
+import { Field, Reservation, CreateFieldRequest, CreateReservationRequest, FieldSearchFilters, FieldBlackoutDate } from '@/types/field';
 import { sendReservationSubmittedNotifications, sendReservationApprovedNotifications } from '@/lib/notifications';
 import { getFacilityById } from './facilities';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { format } from 'date-fns';
 
 // Field Actions
 export async function getFields(facilityId: string): Promise<Field[]> {
@@ -381,7 +383,7 @@ export async function searchFields(filters: FieldSearchFilters): Promise<Field[]
       throw new Error('Failed to initialize Supabase client');
     }
 
-    const query = supabase.from('fields').select('*');
+    let query = supabase.from('fields').select('*');
 
     // Apply filters
     if (filters.facility_id) {
@@ -926,5 +928,198 @@ export async function getAllFieldsForMap(): Promise<Field[]> {
     }
     
     return []; // Return empty array instead of throwing to prevent map from breaking
+  }
+}        
+
+export async function getFieldBlockoutsForLanding(fieldIds: string[]): Promise<{ data: FieldBlackoutDate[] | null; error: string | null }> {
+  try {
+    const supabase = getServiceRoleClient();
+    if (!supabase) {
+      throw new Error('Failed to initialize Supabase client');
+    }
+    
+    // Get all blockout dates for the given field IDs
+    const { data: blockouts, error } = await supabase
+      .from('field_blockout_dates')
+      .select('*')
+      .in('field_id', fieldIds)
+      .eq('status', 'active') // Only get active blockouts
+      .gte('end_date', new Date().toISOString().split('T')[0]); // Only get current/future blockouts
+    
+    if (error) {
+      console.error('Error fetching field blockouts:', error);
+      return { data: null, error: error.message };
+    }
+    
+    return { data: blockouts || [], error: null };
+  } catch (error) {
+    console.error('Unexpected error fetching field blockouts:', error);
+    return { data: null, error: 'Failed to fetch field blockouts' };
+  }
+}        
+
+export async function createFieldReservationFromCart(cartData: {
+  cart: Array<{
+    item: Field;
+    date: Date;
+    timeSlot: string;
+    duration: number;
+    hourlyRate: number;
+    subtotal: number;
+    tax: number;
+    total: number;
+    recurring?: {
+      type: 'weekly' | 'monthly' | 'yearly';
+      occurrences: number;
+      totalCost: number;
+    };
+  }>;
+  checkoutData: {
+    eventPurpose: string;
+    setupNeeds: string;
+    tablesNeeded: number;
+    chairsNeeded: number;
+    hvacNeeded: string;
+  };
+  contactInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    organization: string;
+  };
+}): Promise<{ success: boolean; reservationIds?: string[]; error?: string }> {
+  try {
+    // Use createServerSupabaseClient for authentication check
+    const authClient = await createServerSupabaseClient();
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    if (userError || !user) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    // Use service role client for database operations
+    const supabase = getServiceRoleClient();
+    if (!supabase) {
+      throw new Error('Failed to initialize Supabase client');
+    }
+
+    const reservationIds: string[] = [];
+
+    // Create reservations for each cart item
+    for (const cartItem of cartData.cart) {
+      const field = cartItem.item;
+      
+      // Parse the time slot to get start and end times
+      const [time, period] = cartItem.timeSlot.split(' ');
+      const [hours, minutes] = time.split(':').map(Number);
+      let startHour = hours;
+      if (period === 'PM' && hours !== 12) startHour += 12;
+      if (period === 'AM' && hours === 12) startHour = 0;
+
+      const startTime = new Date(cartItem.date);
+      startTime.setHours(startHour, minutes || 0, 0, 0);
+      
+      const endTime = new Date(startTime);
+      endTime.setHours(startTime.getHours() + cartItem.duration);
+
+      // Create the base reservation
+      const reservationData = {
+        field_id: field.id,
+        facility_id: field.facility_id,
+        user_id: user.id,
+        date: format(cartItem.date, 'yyyy-MM-dd'),
+        start_time: format(startTime, 'HH:mm:ss'),
+        end_time: format(endTime, 'HH:mm:ss'),
+        duration_hours: cartItem.duration,
+        hourly_rate: cartItem.hourlyRate,
+        subtotal: cartItem.subtotal,
+        tax_amount: cartItem.tax,
+        total_amount: cartItem.total,
+        status: 'pending',
+        payment_status: 'pending',
+        purpose: cartData.checkoutData.eventPurpose,
+        setup_requirements: cartData.checkoutData.setupNeeds,
+        tables_needed: cartData.checkoutData.tablesNeeded,
+        chairs_needed: cartData.checkoutData.chairsNeeded,
+        hvac_needed: cartData.checkoutData.hvacNeeded === 'yes',
+        contact_name: cartData.contactInfo.name,
+        contact_email: cartData.contactInfo.email,
+        contact_phone: cartData.contactInfo.phone,
+        organization: cartData.contactInfo.organization,
+        recurring_type: cartItem.recurring?.type || null,
+        recurring_occurrences: cartItem.recurring?.occurrences || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (cartItem.recurring && cartItem.recurring.occurrences > 1) {
+        // Create recurring reservations
+        for (let i = 0; i < cartItem.recurring.occurrences; i++) {
+          const recurringDate = new Date(cartItem.date);
+          
+          // Calculate the recurring date based on type
+          if (cartItem.recurring.type === 'weekly') {
+            recurringDate.setDate(recurringDate.getDate() + (i * 7));
+          } else if (cartItem.recurring.type === 'monthly') {
+            recurringDate.setMonth(recurringDate.getMonth() + i);
+          } else if (cartItem.recurring.type === 'yearly') {
+            recurringDate.setFullYear(recurringDate.getFullYear() + i);
+          }
+
+          const recurringStartTime = new Date(recurringDate);
+          recurringStartTime.setHours(startHour, minutes || 0, 0, 0);
+          
+          const recurringEndTime = new Date(recurringStartTime);
+          recurringEndTime.setHours(recurringStartTime.getHours() + cartItem.duration);
+
+          const { data, error } = await supabase
+            .from('reservations')
+            .insert({
+              ...reservationData,
+              date: format(recurringDate, 'yyyy-MM-dd'),
+              start_time: format(recurringStartTime, 'HH:mm:ss'),
+              end_time: format(recurringEndTime, 'HH:mm:ss'),
+              recurring_index: i
+            })
+            .select('id')
+            .single();
+
+          if (error) {
+            console.error('Error creating recurring reservation:', error);
+            continue;
+          }
+
+          if (data) {
+            reservationIds.push(data.id);
+          }
+        }
+      } else {
+        // Create single reservation
+        const { data, error } = await supabase
+          .from('reservations')
+          .insert(reservationData)
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error('Error creating reservation:', error);
+          return { success: false, error: error.message };
+        }
+
+        if (data) {
+          reservationIds.push(data.id);
+        }
+      }
+    }
+
+    // TODO: Send notification emails after implementing proper notification context
+    console.log('Reservations created successfully:', reservationIds);
+
+    return { success: true, reservationIds };
+  } catch (error) {
+    console.error('Error creating field reservations:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Failed to create reservations' 
+    };
   }
 }        

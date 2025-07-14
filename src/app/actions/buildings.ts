@@ -2,30 +2,12 @@
 
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, getServiceRoleClient } from '@/lib/supabase/server';
 import type { Building, Room, BuildingSystem, BuildingType, RoomFunction, BuildingSystemType, SystemCondition, MaintenanceFrequency, Renovation } from '@/types/building';
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { BuildingTypes } from '@/types/building';
-
-// Create a Supabase client with the service role key for server-side operations
-const getServiceRoleClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    console.warn('Missing Supabase environment variables, using mock data');
-    return null;
-  }
-
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-};
 
 // Mock data for buildings
 const mockBuildings: Building[] = [
@@ -332,9 +314,6 @@ export async function createBuilding(formData: FormData): Promise<Building | nul
     console.log('Creating building with data:', buildingData);
 
     const client = getServiceRoleClient();
-    if (!client) {
-      throw new Error('Supabase client not initialized');
-    }
     
     const { data: newBuilding, error } = await client
       .from('buildings')
@@ -401,9 +380,6 @@ export async function createRoom(formData: FormData): Promise<void> {
 
     // Use service role client to bypass RLS
     const serviceRoleClient = getServiceRoleClient();
-    if (!serviceRoleClient) {
-      throw new Error('Supabase client not initialized');
-    }
     
     const { data, error } = await serviceRoleClient
       .from('rooms')

@@ -17,39 +17,15 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
-import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { toast } = useToast();
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, loading: isLoading } = useAuth();
+  const userRole = user?.role || null;
   const isActive = (href: string) => pathname === href;
-
-  useEffect(() => {
-    async function getUserRole() {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data: userProfile } = await supabase
-            .from('users')
-            .select('role')
-            .eq('email', user.email)
-            .single();
-          
-          setUserRole(userProfile?.role || null);
-        }
-      } catch (error) {
-        console.error('Error fetching user role:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    getUserRole();
-  }, []);
 
   const handleSignOut = async () => {
     try {

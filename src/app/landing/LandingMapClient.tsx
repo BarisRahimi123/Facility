@@ -30,10 +30,12 @@ import {
   Wifi,
   Car,
   Coffee,
-  Utensils
+  Utensils,
+  Ban
 } from 'lucide-react';
-import type { Field } from '@/types/field';
+import type { Field, FieldBlackoutDate } from '@/types/field';
 import type { Room } from '@/types/building';
+import type { Facility } from '@/types/facility';
 import { FacilityRentalModal } from '@/components/facility/FacilityRentalModal';
 import Link from 'next/link';
 
@@ -58,22 +60,13 @@ const FacilitiesMap = dynamic(
   }
 );
 
-interface Facility {
-  id: string;
-  name: string;
-  address: string;
-  facility_type: string;
-  status: string;
-  square_footage?: number;
-  year_built?: string | number;
-}
-
 interface LandingMapClientProps {
   facilities: Facility[];
   fields?: Field[];
+  fieldBlockouts?: FieldBlackoutDate[];
 }
 
-export function LandingMapClient({ facilities, fields = [] }: LandingMapClientProps) {
+export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] }: LandingMapClientProps) {
   const router = useRouter();
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [hoveredFacility, setHoveredFacility] = useState<Facility | null>(null);
@@ -91,6 +84,40 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
     yearBuilt: 'all',
     amenities: [] as string[]
   });
+
+  // Helper function to check if a field has blockouts
+  const isFieldBlockedOut = (fieldId: string): boolean => {
+    const today = new Date().toISOString().split('T')[0];
+    return fieldBlockouts.some(blockout => 
+      blockout.field_id === fieldId && 
+      blockout.start_date <= today && 
+      blockout.end_date >= today
+    );
+  };
+
+  // Helper function to get next available date for a field
+  const getNextAvailableDate = (fieldId: string): string | null => {
+    const today = new Date();
+    const fieldBlockoutsForField = fieldBlockouts
+      .filter(b => b.field_id === fieldId)
+      .sort((a, b) => a.end_date.localeCompare(b.end_date));
+    
+    if (fieldBlockoutsForField.length === 0) return null;
+    
+    // Find the latest blockout that affects today or future
+    const relevantBlockout = fieldBlockoutsForField.find(b => {
+      const endDate = new Date(b.end_date);
+      return endDate >= today;
+    });
+    
+    if (relevantBlockout) {
+      const nextAvailable = new Date(relevantBlockout.end_date);
+      nextAvailable.setDate(nextAvailable.getDate() + 1);
+      return nextAvailable.toLocaleDateString();
+    }
+    
+    return null;
+  };
 
   const handleFacilityClick = (facility: Facility) => {
     setSelectedFacility(facility);
@@ -137,11 +164,13 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
       price: field.hourly_rate || 0,
       priceUnit: 'hour',
       capacity: (field as any).capacity || 0,
-      amenities: ['Lighting', 'Parking', 'Restrooms', 'Storage']
+      amenities: ['Lighting', 'Parking', 'Restrooms', 'Storage'],
+      isBlockedOut: isFieldBlockedOut(field.id),
+      nextAvailableDate: getNextAvailableDate(field.id)
     }));
 
     return [...facilityItems, ...fieldItems];
-  }, [facilities, fields]);
+  }, [facilities, fields, fieldBlockouts]);
 
   // Filter items based on search and filters
   const filteredItems = useMemo(() => {
@@ -502,6 +531,14 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
                         </div>
                       ))}
                     </div>
+                    
+                    {/* Blockout Indicator for Fields */}
+                    {item.itemType === 'field' && (item as any).isBlockedOut && (
+                      <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                        <Ban className="h-3 w-3" />
+                        Blocked Out
+                      </div>
+                    )}
                   </div>
 
                   {/* Content - Airbnb Style */}
@@ -536,9 +573,21 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
                       <span>{item.capacity} people capacity</span>
                     </div>
 
+                    {/* Next Available Date for Blocked Fields */}
+                    {item.itemType === 'field' && (item as any).isBlockedOut && (item as any).nextAvailableDate && (
+                      <div className="flex items-center text-red-600 dark:text-red-400 text-xs mb-3">
+                        <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span>Next available: {(item as any).nextAvailableDate}</span>
+                      </div>
+                    )}
+
                     {/* Price - Airbnb Style */}
                     <div className="flex items-baseline">
-                      <span className="text-lg font-semibold text-gray-900 dark:text-white">
+                      <span className={`text-lg font-semibold ${
+                        item.itemType === 'field' && (item as any).isBlockedOut 
+                          ? 'text-gray-400 dark:text-gray-500 line-through' 
+                          : 'text-gray-900 dark:text-white'
+                      }`}>
                         ${item.price}
                       </span>
                       <span className="text-gray-600 dark:text-gray-400 text-sm ml-1">
@@ -615,6 +664,7 @@ export function LandingMapClient({ facilities, fields = [] }: LandingMapClientPr
         }}
         facilityName="Facility"
         onReserve={handleReserveField}
+        fieldBlockouts={selectedField ? fieldBlockouts.filter(b => b.field_id === selectedField.id) : []}
       />
     </div>
   );

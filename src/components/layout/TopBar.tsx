@@ -26,14 +26,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
-import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 export default function TopBar() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading } = useAuth();
   const supabase = createClient();
 
   useEffect(() => {
@@ -64,9 +64,9 @@ export default function TopBar() {
     if (!user) return { name: 'Guest', email: '', avatar: '' };
     
     return {
-      name: user.name || 'User',
+      name: user.full_name || 'User',
       email: user.email || '',
-      avatar: user.name ? user.name.charAt(0).toUpperCase() : 'U'
+      avatar: user.full_name ? user.full_name.charAt(0).toUpperCase() : 'U'
     };
   };
 

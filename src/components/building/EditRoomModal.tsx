@@ -145,7 +145,7 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
                 <SelectTrigger className="col-span-3 bg-gray-800 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500">
                   <SelectValue placeholder="Select function" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectContent className="bg-gray-800 border-gray-700 max-h-[300px] overflow-y-auto">
                   {roomFunctions.map((func) => (
                     <SelectItem key={func} value={func} className="text-gray-300 focus:bg-gray-700 focus:text-white">
                       {func}

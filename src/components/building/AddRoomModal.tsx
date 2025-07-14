@@ -187,7 +187,7 @@ export default function AddRoomModal({ buildingId, isOpen, onClose }: AddRoomMod
                 <SelectTrigger className="col-span-3 bg-input border-border text-foreground focus:border-primary focus:ring-primary">
                   <SelectValue placeholder="Select function" />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
+                <SelectContent className="bg-popover border-border max-h-[300px] overflow-y-auto">
                   {roomFunctions.map((func) => (
                     <SelectItem key={func} value={func} className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">
                       {func}

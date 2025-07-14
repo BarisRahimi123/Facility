@@ -14,7 +14,7 @@ import {
 import { calculateCapacityByCode } from '@/utils/capacityCalculator';
 import { getBuildings, getRooms } from '@/app/actions/buildings';
 import { getFacilitiesForAnalytics } from '@/app/actions/facilities';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 
 // Analytics data based on what we actually have implemented
@@ -127,6 +127,7 @@ export default function AnalyticsPage() {
   useEffect(() => {
     async function checkAuth() {
       try {
+        const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
           toast.error('Please sign in to access this page');
@@ -145,7 +146,7 @@ export default function AnalyticsPage() {
         setUserRole(role);
         
         // Check if user has admin privileges
-        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver'];
+        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver', 'master_admin', 'sub_admin'];
         
         if (!role || !adminRoles.includes(role)) {
           toast.error('You do not have permission to access this page');

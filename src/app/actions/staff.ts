@@ -447,6 +447,15 @@ export async function createBlockout(formData: CreateBlockoutFormData): Promise<
       return { data: null, error: 'User not authenticated' };
     }
 
+    // Check if user is a master admin or district approver
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const isMasterAdmin = userData?.role === 'master_admin' || userData?.role === 'district_approver';
+
     if (formData.field_id) {
       // Handle field blockout
       const { data: fieldData, error: fieldError } = await supabase
@@ -459,17 +468,9 @@ export async function createBlockout(formData: CreateBlockoutFormData): Promise<
         return { data: null, error: 'Field not found' };
       }
 
-      // Check if user is a master admin or has permission to create blockouts for this field
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      const isMasterAdmin = userData?.role === 'master_admin' || userData?.role === 'district_approver';
-
+      // Skip permission check for master admins
       if (!isMasterAdmin) {
-        // Check if user has permission through staff assignment
+        // Check if user has permission to create blockouts for this field
         const { data: hasPermission, error: permissionError } = await supabase
           .from('staff_field_assignments')
           .select('permissions')

@@ -120,14 +120,10 @@ export function BlackoutDateModal({
         end_time: formData.all_day ? undefined : formData.end_time
       };
 
+      // Call onSave which will handle the API call and modal closing
       await onSave(blackoutData);
       
-      toast({
-        title: blackoutDate ? "Blackout updated" : "Blackout created",
-        description: `Field availability has been ${blackoutDate ? 'updated' : 'blocked'} successfully.`,
-      });
-
-      onClose();
+      // Don't show toast or close modal here - let parent component handle it
     } catch (error) {
       console.error('Error saving blackout:', error);
       toast({
@@ -175,8 +171,14 @@ export function BlackoutDateModal({
     });
   };
 
+  // Reset form and close modal
+  const handleClose = () => {
+    setIsSubmitting(false);
+    onClose();
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-background border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
@@ -364,7 +366,7 @@ export function BlackoutDateModal({
           <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={isSubmitting}
               className="border-border text-muted-foreground hover:bg-accent"
             >

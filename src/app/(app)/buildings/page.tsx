@@ -338,13 +338,15 @@ export default function BuildingsPage() {
       // Fetch buildings from database
       const buildingsData = await getBuildings();
       
-      // Filter buildings by facility if a facility is selected
+      // Filter buildings by facility if a facility is selected and not 'all'
       let filteredBuildings = buildingsData || [];
-      if (selectedFacilityId) {
+      if (selectedFacilityId && selectedFacilityId !== 'all') {
         filteredBuildings = buildingsData.filter(building => building.facility_id === selectedFacilityId);
+        console.log(`Filtered to ${filteredBuildings.length} buildings for facility ${selectedFacilityId}`);
+      } else {
+        console.log(`Showing all ${filteredBuildings.length} buildings from all facilities`);
       }
       
-      console.log(`Loaded ${filteredBuildings.length} buildings`);
       setBuildings(filteredBuildings);
       setIsLoading(false);
     } catch (error) {
@@ -467,22 +469,10 @@ export default function BuildingsPage() {
     }
   }, [selectedFacilityId, buildingForm]);
   
-  // Add a new useEffect to reload buildings when selectedFacilityId changes
+  // Reload buildings when selectedFacilityId changes
   useEffect(() => {
-    // Skip the initial render and avoid infinite loops
-    if (buildings.length > 0 && selectedFacilityId !== null) {
-      // Instead of calling loadBuildings() which might update state again,
-      // just filter the existing buildings client-side
-      const filteredBuildings = buildings.filter(building => 
-        building.facility_id === selectedFacilityId
-      );
-      
-      // Only update if the filtered buildings are different
-      if (JSON.stringify(filteredBuildings) !== JSON.stringify(buildings)) {
-        setBuildings(filteredBuildings);
-      }
-    }
-  }, [selectedFacilityId, buildings]);
+    loadBuildings();
+  }, [selectedFacilityId]);
 
   const toggleBuildingExpansion = async (buildingId: string) => {
     const newExpanded = new Set(expandedBuildings);
@@ -490,16 +480,25 @@ export default function BuildingsPage() {
       newExpanded.delete(buildingId);
     } else {
       newExpanded.add(buildingId);
-      // Load rooms if not already loaded
-      if (!rooms[buildingId]) {
+      // Load rooms and systems if not already loaded
+      if (!rooms[buildingId] || !systems[buildingId]) {
         try {
-          const buildingRooms = await getRooms(buildingId);
-          setRooms(prev => ({ ...prev, [buildingId]: buildingRooms }));
+          // Load rooms
+          if (!rooms[buildingId]) {
+            const buildingRooms = await getRooms(buildingId);
+            setRooms(prev => ({ ...prev, [buildingId]: buildingRooms }));
+          }
+          
+          // Load systems
+          if (!systems[buildingId]) {
+            const buildingSystems = await getBuildingSystems(buildingId);
+            setSystems(prev => ({ ...prev, [buildingId]: buildingSystems }));
+          }
         } catch (error) {
-          console.error('Error loading rooms:', error);
+          console.error('Error loading building details:', error);
           toast({
             title: 'Error',
-            description: 'Failed to load rooms. Please try again.',
+            description: 'Failed to load building details. Please try again.',
             variant: 'destructive',
           });
         }
@@ -863,8 +862,14 @@ export default function BuildingsPage() {
         {/* Header Section */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Buildings</h1>
-            <p className="text-muted-foreground">Manage your facilities and buildings</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              {!selectedFacilityId ? 'All Facilities Buildings' : 'Buildings'}
+            </h1>
+            <p className="text-muted-foreground">
+              {!selectedFacilityId 
+                ? `Viewing buildings from all ${facilities.length} facilities`
+                : 'Manage your facilities and buildings'}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <Select
@@ -897,6 +902,52 @@ export default function BuildingsPage() {
             </Button>
           </div>
         </div>
+
+        {/* Statistics Cards when viewing all facilities */}
+        {!selectedFacilityId && buildings.length > 0 && !isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-card rounded-lg border border-border p-4">
+              <div className="flex items-center gap-3">
+                <Building2 className="w-8 h-8 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Buildings</p>
+                  <p className="text-2xl font-bold text-foreground">{buildings.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-card rounded-lg border border-border p-4">
+              <div className="flex items-center gap-3">
+                <Home className="w-8 h-8 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Facilities</p>
+                  <p className="text-2xl font-bold text-foreground">{facilities.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-card rounded-lg border border-border p-4">
+              <div className="flex items-center gap-3">
+                <DoorOpen className="w-8 h-8 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Rooms</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {buildings.reduce((sum, b) => sum + (b.number_of_rooms || 0), 0)}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-card rounded-lg border border-border p-4">
+              <div className="flex items-center gap-3">
+                <Building2 className="w-8 h-8 text-primary" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Sq Ft</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {buildings.reduce((sum, b) => sum + (b.square_footage || 0), 0).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Loading and Error States */}
         {isLoading && (
@@ -949,6 +1000,7 @@ export default function BuildingsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[300px]">Name</TableHead>
+                  {!selectedFacilityId && <TableHead>Facility</TableHead>}
                   <TableHead>Type</TableHead>
                   <TableHead>Square Footage</TableHead>
                   <TableHead>Rooms</TableHead>
@@ -973,6 +1025,13 @@ export default function BuildingsPage() {
                           {building.name}
                         </button>
                       </TableCell>
+                      {!selectedFacilityId && (
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {facilities.find(f => f.id === building.facility_id)?.name || 'Unknown'}
+                          </span>
+                        </TableCell>
+                      )}
                       <TableCell>{building.building_type}</TableCell>
                       <TableCell>{building.square_footage.toLocaleString()} sq ft</TableCell>
                       <TableCell>{building.number_of_rooms}</TableCell>
@@ -1018,17 +1077,17 @@ export default function BuildingsPage() {
                     </TableRow>
                     {expandedBuildings.has(building.id) && (
                       <TableRow>
-                        <TableCell colSpan={6} className="p-0">
+                        <TableCell colSpan={!selectedFacilityId ? 7 : 6} className="p-0">
                           <div className="bg-accent/50 p-4">
                             <Tabs defaultValue="rooms" className="w-full">
                               <TabsList className="mb-4">
                                 <TabsTrigger value="rooms">
                                   <DoorOpen className="w-4 h-4 mr-2" />
-                                  Rooms
+                                  Rooms ({rooms[building.id]?.length || 0})
                                 </TabsTrigger>
                                 <TabsTrigger value="systems">
                                   <Wrench className="w-4 h-4 mr-2" />
-                                  Systems
+                                  Systems ({systems[building.id]?.length || 0})
                                 </TabsTrigger>
                                 <TabsTrigger value="renovations">
                                   <Hammer className="w-4 h-4 mr-2" />
@@ -1039,17 +1098,56 @@ export default function BuildingsPage() {
                                   Files
                                 </TabsTrigger>
                               </TabsList>
-                              <TabsContent value="rooms">
-                                {/* Rooms content */}
+                              <TabsContent value="rooms" className="space-y-2">
+                                {rooms[building.id] && rooms[building.id].length > 0 ? (
+                                  <div className="grid gap-2">
+                                    {rooms[building.id].map((room) => (
+                                      <div key={room.id} className="bg-card p-3 rounded-lg border border-border">
+                                        <div className="flex justify-between items-start">
+                                          <div>
+                                            <h4 className="font-medium text-sm">Room {room.room_number}</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                              {room.room_function} • Floor {room.floor} • {room.square_footage} sq ft
+                                              {room.capacity && ` • Capacity: ${room.capacity}`}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground text-center py-4">No rooms added yet</p>
+                                )}
                               </TabsContent>
-                              <TabsContent value="systems">
-                                {/* Systems content */}
+                              <TabsContent value="systems" className="space-y-2">
+                                {systems[building.id] && systems[building.id].length > 0 ? (
+                                  <div className="grid gap-2">
+                                    {systems[building.id].map((system) => (
+                                      <div key={system.id} className="bg-card p-3 rounded-lg border border-border">
+                                        <div className="flex justify-between items-start">
+                                          <div>
+                                            <h4 className="font-medium text-sm">{system.name}</h4>
+                                            <p className="text-sm text-muted-foreground">
+                                              {system.system_type} • Condition: {system.condition}
+                                              {system.manufacturer && ` • ${system.manufacturer}`}
+                                            </p>
+                                          </div>
+                                          <Badge variant={system.condition === 'Good' || system.condition === 'Excellent' ? 'default' : 'secondary'}>
+                                            {system.status}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground text-center py-4">No systems added yet</p>
+                                )}
                               </TabsContent>
                               <TabsContent value="renovations">
-                                {/* Renovations content */}
+                                <p className="text-muted-foreground text-center py-4">No renovations scheduled</p>
                               </TabsContent>
                               <TabsContent value="files">
-                                {/* Files content */}
+                                <p className="text-muted-foreground text-center py-4">No files uploaded yet</p>
                               </TabsContent>
                             </Tabs>
                           </div>

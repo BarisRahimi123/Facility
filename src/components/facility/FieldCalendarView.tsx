@@ -207,6 +207,9 @@ export function FieldCalendarView({ facilityId, fields, reservations }: FieldCal
 
       const response = await createBlockout(createData);
       
+      // Close modal immediately after attempting to create blockout
+      setIsBlackoutModalOpen(false);
+      
       if (response.error) {
         toast({
           title: "Error creating blockout",
@@ -219,15 +222,18 @@ export function FieldCalendarView({ facilityId, fields, reservations }: FieldCal
           description: "Field availability has been blocked successfully.",
         });
         
-        // Reload blockout dates
+        // Reload blockout dates in background
         await loadBlackoutDates();
-        setIsBlackoutModalOpen(false);
       }
     } catch (error) {
       console.error('Error saving blockout:', error);
+      
+      // Close modal even if there's an error
+      setIsBlackoutModalOpen(false);
+      
       toast({
         title: "Failed to save blackout",
-        description: "There was an error saving the blackout period. Please try again.",
+        description: "There was an error saving the blockout period. Please try again.",
         variant: "destructive",
       });
     }

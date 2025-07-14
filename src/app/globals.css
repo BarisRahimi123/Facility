@@ -35,6 +35,9 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 95%;
+    
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
@@ -66,6 +69,9 @@
     
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+    
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 10%;
     
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
@@ -251,6 +257,25 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: hsl(var(--muted-foreground));
   border-radius: 3px;
+}
+
+/* Select dropdown scrollbar styles */
+[data-radix-select-viewport]::-webkit-scrollbar {
+  width: 8px;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-track {
+  background: hsl(var(--muted) / 0.5);
+  border-radius: 4px;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.5);
+  border-radius: 4px;
+}
+
+[data-radix-select-viewport]::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.7);
 }
 
 /* Table improvements */

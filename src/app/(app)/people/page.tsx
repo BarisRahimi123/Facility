@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Users, Plus, Search, UserCheck, Settings, Building2, Edit2, Trash2, Briefcase, Shield } from 'lucide-react';
+import { Users, Plus, Search, UserCheck, Settings, Building2, Edit2, Trash2, Briefcase, Shield, Crown } from 'lucide-react';
 import { getUsers, getUsersByRole, deleteUser, checkUsersTableExists, createSampleUsers, getOrganizations, deleteOrganization, User } from '@/app/actions/users';
 import AddUserModal from '@/components/people/AddUserModal';
 import AddOrganizationModal from '@/components/people/AddOrganizationModal';
@@ -17,7 +17,7 @@ import { EditRoleModal } from '@/components/people/EditRoleModal';
 import { UserRole } from '@/types/user';
 import { Organization } from '@/types/organization';
 
-type TabType = UserRole | 'organizations' | 'access-management';
+type TabType = UserRole | 'organizations' | 'access-management' | 'master-users';
 
 export default function PeoplePage() {
   const router = useRouter();
@@ -80,8 +80,8 @@ export default function PeoplePage() {
         const role = userProfile?.role;
         setUserRole(role);
         
-        // Check if user has admin privileges
-        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver', 'master_admin', 'sub_master'];
+        // Check if user has admin privileges - updated for three-tier system
+        const adminRoles = ['master_admin', 'sub_admin'];
         
         if (!role || !adminRoles.includes(role)) {
           toast.error('You do not have permission to access this page');
@@ -89,8 +89,8 @@ export default function PeoplePage() {
           return;
         }
         
-        // Check if user can invite others
-        const canInviteUsers = ['master_admin', 'sub_master', 'district_approver', 'site_approver'].includes(role);
+        // Check if user can invite others based on three-tier system
+        const canInviteUsers = role === 'master_admin' || role === 'sub_admin';
         setCanInvite(canInviteUsers);
         
         setIsAuthorized(true);
@@ -169,22 +169,47 @@ export default function PeoplePage() {
   const filterData = () => {
     if (activeTab === 'organizations') {
       // Filter organizations
-      let filtered = allOrganizations.filter(org => org.type === 'renter');
+      let filtered = allOrganizations;
       
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         filtered = filtered.filter(org => 
           org.name.toLowerCase().includes(query) ||
-          (org.primary_contact_name && org.primary_contact_name.toLowerCase().includes(query)) ||
-          (org.primary_contact_email && org.primary_contact_email.toLowerCase().includes(query)) ||
-          (org.city && org.city.toLowerCase().includes(query))
+          (org.display_name && org.display_name.toLowerCase().includes(query))
         );
       }
 
       setOrganizations(filtered);
+    } else if (activeTab === 'master-users') {
+      // Filter sub-master admins only
+      let filtered = allUsers.filter(user => user.role === 'sub_admin');
+      
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(user => 
+          user.full_name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query) ||
+          (user.organization_id && user.organization_id.toLowerCase().includes(query))
+        );
+      }
+
+      setUsers(filtered);
+    } else if (activeTab === 'access-management') {
+      // Show all admin users
+      let filtered = allUsers.filter(user => user.role === 'master_admin' || user.role === 'sub_admin');
+      
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        filtered = filtered.filter(user => 
+          user.full_name.toLowerCase().includes(query) ||
+          user.email.toLowerCase().includes(query)
+        );
+      }
+
+      setUsers(filtered);
     } else {
-      // Filter users
-      let filtered = allUsers.filter(user => user.role === activeTab);
+      // Filter staff users for staff tab
+      let filtered = allUsers.filter(user => user.role === 'staff');
       
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -255,13 +280,10 @@ export default function PeoplePage() {
 
   const getTabLabel = (tab: TabType) => {
     switch (tab) {
-      case 'staff': return 'Staff';
-      case 'manager': return 'Managers';
-      case 'coordinator': return 'Coordinators';
-      case 'vendor': return 'Vendors';
-      case 'renter': return 'Renters';
+      case 'staff': return 'Staff Members';
       case 'organizations': return 'Organizations';
       case 'access-management': return 'Access Management';
+      case 'master-users': return 'Sub-Master Admins';
       default: return tab;
     }
   };
@@ -269,12 +291,9 @@ export default function PeoplePage() {
   const getTabIcon = (tab: TabType) => {
     switch (tab) {
       case 'staff': return <Users className="w-4 h-4" />;
-      case 'manager': return <UserCheck className="w-4 h-4" />;
-      case 'coordinator': return <Settings className="w-4 h-4" />;
-      case 'vendor': return <Building2 className="w-4 h-4" />;
-      case 'renter': return <Users className="w-4 h-4" />;
       case 'organizations': return <Briefcase className="w-4 h-4" />;
       case 'access-management': return <Shield className="w-4 h-4" />;
+      case 'master-users': return <Crown className="w-4 h-4" />;
       default: return <Users className="w-4 h-4" />;
     }
   };
@@ -285,26 +304,14 @@ export default function PeoplePage() {
       : 'bg-muted text-muted-foreground border-border';
   };
 
-  const getRoleColor = (role: UserRole) => {
+  const getRoleColor = (role: UserRole | string) => {
     switch (role) {
       case 'master_admin':
         return 'bg-primary/10 text-primary border-primary/20';
-      case 'sub_master':
+      case 'sub_admin':
         return 'bg-primary/8 text-primary border-primary/15';
-      case 'district_approver':
-        return 'bg-accent/10 text-accent-foreground border-accent/20';
-      case 'site_approver':
-        return 'bg-accent/8 text-accent-foreground border-accent/15';
       case 'staff':
         return 'bg-muted text-foreground border-border';
-      case 'manager':
-        return 'bg-primary/5 text-primary border-primary/10';
-      case 'coordinator':
-        return 'bg-accent/5 text-accent-foreground border-accent/10';
-      case 'vendor':
-        return 'bg-muted/50 text-muted-foreground border-border';
-      case 'renter':
-        return 'bg-muted text-muted-foreground border-border';
       default:
         return 'bg-muted text-muted-foreground border-border';
     }
@@ -394,7 +401,7 @@ export default function PeoplePage() {
           <div>
             <h1 className="text-3xl font-semibold text-foreground">People</h1>
             <p className="text-muted-foreground mt-2">
-              Manage staff, coordinators, managers, vendors, and rental organizations
+              Manage staff, sub-master admins, and organizations
             </p>
           </div>
           {canInvite ? (
@@ -402,19 +409,28 @@ export default function PeoplePage() {
               onClick={() => {
                 if (activeTab === 'organizations') {
                   setIsAddOrgModalOpen(true);
-                } else if (activeTab === 'renter') {
-                  // Allow admin creation of renter accounts for testing
-                  setIsAddModalOpen(true);
-                } else {
+                } else if (activeTab === 'master-users' && userRole === 'master_admin') {
+                  // Only master admins can invite sub-master admins
+                  setIsInviteModalOpen(true);
+                } else if (activeTab === 'staff' && userRole === 'sub_admin') {
+                  // Sub-master admins can invite staff
+                  setIsInviteModalOpen(true);
+                } else if (activeTab === 'staff' && userRole === 'master_admin') {
+                  // Master admins can also invite staff
                   setIsInviteModalOpen(true);
                 }
               }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 px-5 py-2.5 rounded-lg"
+              disabled={
+                (activeTab === 'master-users' && userRole !== 'master_admin') ||
+                (activeTab === 'access-management')
+              }
             >
               <Plus className="h-4 w-4" />
               {activeTab === 'organizations' ? 'Add Organization' : 
-               activeTab === 'renter' ? 'Add Renter' : 
-               'Invite ' + getTabLabel(activeTab).slice(0, -1)}
+               activeTab === 'master-users' ? 'Invite Sub-Master Admin' : 
+               activeTab === 'staff' ? 'Invite Staff' :
+               'Invite ' + getTabLabel(activeTab)}
             </Button>
           ) : (
             <div className="text-sm text-gray-500 dark:text-gray-400">
@@ -428,26 +444,31 @@ export default function PeoplePage() {
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder={`Search ${activeTab === 'organizations' ? 'organizations' : 'people'} by name, email, ${activeTab === 'organizations' ? 'contact, or city' : 'department, or company'}...`}
+            placeholder={`Search ${activeTab === 'organizations' ? 'organizations' : 'people'} by name, email, ${activeTab === 'organizations' ? 'or type' : 'department, or company'}...`}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-11 h-11 bg-background border-border focus:border-primary/50 focus:ring-2 focus:ring-primary/10 transition-all duration-200"
           />
         </div>
 
-        {/* Tabs */}
+        {/* Tabs - Only show tabs based on user role */}
         <div className="flex gap-1 mb-8 border-b border-border">
-          {(['staff', 'manager', 'coordinator', 'vendor', 'renter', 'organizations', ...(userRole === 'master_admin' ? ['access-management'] : [])] as TabType[]).map((tab) => {
+          {(userRole === 'master_admin' 
+            ? ['staff', 'organizations', 'master-users', 'access-management'] 
+            : ['staff', 'organizations']
+          ).map((tab) => {
             const count = tab === 'organizations' 
-              ? allOrganizations.filter(org => org.type === 'renter').length
+              ? allOrganizations.length
               : tab === 'access-management'
-              ? allUsers.filter(u => ['master_admin', 'sub_master', 'district_approver', 'site_approver'].includes(u.role)).length
-              : allUsers.filter(u => u.role === tab).length;
+              ? allUsers.filter(u => ['master_admin', 'sub_admin'].includes(u.role)).length
+              : tab === 'master-users'
+              ? allUsers.filter(u => u.role === 'sub_admin').length
+              : allUsers.filter(u => u.role === 'staff').length;
             
             return (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => setActiveTab(tab as TabType)}
                 className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 -mb-[2px] transition-all duration-200 ${
                   activeTab === tab
                     ? 'border-primary text-foreground bg-accent/5'
@@ -455,9 +476,9 @@ export default function PeoplePage() {
                 }`}
               >
                 <span className={activeTab === tab ? 'text-primary' : ''}>
-                  {getTabIcon(tab)}
+                  {getTabIcon(tab as TabType)}
                 </span>
-                {getTabLabel(tab)}
+                {getTabLabel(tab as TabType)}
                 <Badge 
                   variant="secondary" 
                   className={`ml-1 text-xs font-normal ${
@@ -484,7 +505,7 @@ export default function PeoplePage() {
             {activeTab === 'access-management' ? (
               // Access Management View
               allUsers
-                .filter(user => ['master_admin', 'sub_master', 'district_approver', 'site_approver'].includes(user.role))
+                .filter(user => ['master_admin', 'sub_admin'].includes(user.role))
                 .map((user) => (
                   <Card key={user.id} className="bg-card border-border hover:shadow-md transition-all duration-200 hover:border-primary/20">
                     <CardHeader className="pb-4">
@@ -526,11 +547,8 @@ export default function PeoplePage() {
                       <div className="space-y-3">
                         {/* Role and Status */}
                         <div className="flex items-center gap-2">
-                          <Badge className={getRoleColor(user.role as UserRole)}>
-                            {user.role === 'master_admin' ? 'Master Admin' :
-                             user.role === 'sub_master' ? 'Sub-Master Admin' :
-                             user.role === 'district_approver' ? 'District Approver' :
-                             'Site Approver'}
+                          <Badge className={getRoleColor(user.role)}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('_', ' ')}
                           </Badge>
                           <Badge className={getStatusColor(user)}>
                             {user.is_active ? 'Active' : 'Inactive'}
@@ -648,6 +666,83 @@ export default function PeoplePage() {
                   </CardContent>
                 </Card>
               ))
+            ) : activeTab === 'master-users' ? (
+              // Master Users View
+              allUsers
+                .filter(user => user.role === 'sub_admin')
+                .map((user) => (
+                  <Card key={user.id} className="bg-card border-border hover:shadow-md transition-all duration-200 hover:border-primary/20">
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg font-semibold text-foreground">
+                            {user.full_name}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {user.email}
+                          </p>
+                        </div>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setIsEditRoleModalOpen(true);
+                            }}
+                            className="h-8 w-8 p-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          {user.role !== 'master_admin' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteUser(user.id, user.full_name)}
+                              className="h-8 w-8 p-0 text-gray-400 hover:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-3">
+                        {/* Role and Status */}
+                        <div className="flex items-center gap-2">
+                          <Badge className={getRoleColor(user.role)}>
+                            Sub-Master Admin
+                          </Badge>
+                          <Badge className={getStatusColor(user)}>
+                            {user.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+
+                        {/* Assigned Facilities */}
+                        {user.facilities && user.facilities.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              Assigned Facilities:
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {user.facilities.map((facility, index) => (
+                                <Badge key={index} variant="outline" className="text-xs">
+                                  {facility.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Created Date */}
+                        <p className="text-xs text-gray-500 dark:text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-700">
+                          Added {new Date(user.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
             ) : (
               // Users cards
               users.map((user) => (
@@ -686,7 +781,7 @@ export default function PeoplePage() {
                       {/* Role and Status */}
                       <div className="flex items-center gap-2">
                         <Badge className={getRoleColor(user.role)}>
-                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          {user.role.charAt(0).toUpperCase() + user.role.slice(1).replace('_', ' ')}
                         </Badge>
                         <Badge className={getStatusColor(user)}>
                           {user.is_active ? 'Active' : 'Inactive'}
@@ -701,7 +796,7 @@ export default function PeoplePage() {
                       )}
 
                       {/* Role-specific Information */}
-                      {(['staff', 'manager', 'coordinator'] as UserRole[]).includes(user.role) && (
+                      {user.role === 'staff' && (
                         <div className="space-y-1">
                           {user.department && (
                             <p className="text-sm text-muted-foreground">
@@ -713,36 +808,18 @@ export default function PeoplePage() {
                               💼 {user.position}
                             </p>
                           )}
-                        </div>
-                      )}
-
-                      {user.role === 'vendor' && (
-                        <div className="space-y-1">
                           {user.company && (
                             <p className="text-sm text-muted-foreground">
                               🏗️ {user.company}
                             </p>
                           )}
-                          {user.services && user.services.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {user.services.slice(0, 3).map((service, index) => (
-                                <Badge key={index} variant="outline" className="text-xs">
-                                  {service}
-                                </Badge>
-                              ))}
-                              {user.services.length > 3 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{user.services.length - 3} more
-                                </Badge>
-                              )}
-                            </div>
-                          )}
                         </div>
                       )}
 
-                      {user.role === 'renter' && user.organization_name && (
+                      {/* Organization Info for Staff */}
+                      {user.organization_id && (
                         <p className="text-sm text-muted-foreground">
-                          🏢 {user.organization_name}
+                          🏢 Organization ID: {user.organization_id}
                         </p>
                       )}
 
@@ -774,6 +851,9 @@ export default function PeoplePage() {
                   onClick={() => {
                     if (activeTab === 'organizations') {
                       setIsAddOrgModalOpen(true);
+                    } else if (activeTab === 'master-users' || activeTab === 'staff') {
+                      // Use invite modal for master-users and staff tabs
+                      setIsInviteModalOpen(true);
                     } else {
                       setIsAddModalOpen(true);
                     }
@@ -781,7 +861,10 @@ export default function PeoplePage() {
                   className="mt-4 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add {activeTab === 'organizations' ? 'Organization' : getTabLabel(activeTab).slice(0, -1)}
+                  {activeTab === 'organizations' ? 'Add Organization' : 
+                   activeTab === 'master-users' ? 'Invite Sub-Master Admin' :
+                   activeTab === 'staff' ? 'Invite Staff Member' :
+                   'Add ' + getTabLabel(activeTab).slice(0, -1)}
                 </Button>
               )}
             </CardContent>
@@ -793,7 +876,7 @@ export default function PeoplePage() {
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           onUserAdded={loadData}
-          defaultRole={isUserTab ? (activeTab as UserRole) : 'renter'}
+          defaultRole={'staff'}
         />
 
         {/* Add Organization Modal */}
@@ -820,6 +903,7 @@ export default function PeoplePage() {
           }}
           user={selectedUser}
           onUserUpdated={loadData}
+          currentUserRole={userRole || ''}
         />
       </div>
     </div>

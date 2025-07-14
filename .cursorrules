@@ -12,6 +12,25 @@ The goal is to help you maintain a big picture as well as the progress of the ta
 
 # Project Structure
 
+## Authentication & User Role Hierarchy
+The platform implements a three-tier authentication system:
+1. **Master Admin** (platform owner) - role: 'master_admin'
+   - Full access to all organizations and data
+   - Can create and manage Sub Admin accounts
+   - Access to platform-level analytics and billing
+   
+2. **Sub Admin** (organization owner) - role: 'sub_admin'
+   - Manages only their organization's data
+   - Can create and manage Staff users
+   - Cannot access other organizations' data
+   
+3. **Staff** (team members) - role: 'staff'
+   - Limited access within their organization
+   - Permissions set by Sub Admin
+   - Cannot invite other users
+
+Data isolation is enforced through organization_id on all resource tables (facilities, buildings, fields) with Row Level Security (RLS) policies. Master admins bypass organization checks, while others are filtered by their organization_id.
+
 ## Data Hierarchy
 The application follows a strict hierarchical structure:
 1. **Facility** (top level)
@@ -145,11 +164,13 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - PDF viewer reliability: CDN-based PDF viewers (like PDF.js Express) can fail due to network issues. Always provide a reliable fallback using iframe-based viewers that leverage the browser's built-in PDF capabilities. Use CDN-based enhanced viewers as optional features, not primary functionality.
 - Room capacity calculation: Implemented automatic capacity calculation based on California Building Code (CBC) requirements. The calculation uses standardized occupancy factors (sq ft per person) for different room types. Features include: automatic calculation when room function or square footage changes, manual override capability, visual indicators for calculated vs manual values, and CBC compliance information display. The calculator is in `src/utils/capacityCalculator.ts`.
 - Room occupancy terminology: Updated all room capacity references to use "Occupancy" terminology for consistency with building code standards. Both AddRoomModal and EditRoomModal now use occupancy fields that automatically calculate based on room type and square footage. The calculation is triggered immediately when both room function and square footage are entered.
+- Server action Supabase client best practice: Always use the centralized Supabase client creation functions from `@/lib/supabase/server` (getServiceRoleClient, createServerSupabaseClient) for server actions. Never create custom implementations that return null when env vars are missing. The centralized functions properly handle Next.js server-side environment variable loading and throw descriptive errors. This prevents "Failed to fetch" errors caused by "Supabase client not initialized" in server actions.
 - Theme system implementation: When implementing light/dark mode themes, always use semantic CSS variables instead of hardcoded colors. This allows for automatic theme switching without component updates. Key variables include: `bg-background`, `text-foreground`, `text-muted-foreground`, `bg-card`, `border-border`, `bg-primary`, `text-primary`, `hover:bg-accent`. All interactive elements should use theme-aware hover states and proper contrast ratios for accessibility.
 - Pipedrive-inspired light theme: The application now uses a clean, professional light theme inspired by Pipedrive's UI design. Key characteristics: 1) White backgrounds (#ffffff) with light gray sections (#f9fafb), 2) Blue primary color (#007aff) for buttons and links, 3) Green accent color (#00b16a) for success states, 4) Dark gray text (#1f2937) for high contrast, 5) Light gray borders (#e5e7eb), 6) Subtle shadows and rounded corners (6px), 7) Professional sans-serif font stack, 8) Clean minimalist design with good spacing. The theme is implemented using next-themes for reliable theme switching.
 - Field edit modal enhancements: When improving modal UX, implement sticky headers and action buttons for better scrolling experience. Use `bg-card/95 backdrop-blur-sm` for sticky elements to maintain context while scrolling. Enhance card styling with subtle shadows (`shadow-sm hover:shadow-md`) and smooth transitions (`transition-all duration-200`). Improve visual hierarchy with semibold headings, consistent icon usage, and proper spacing (`pb-3 mb-6`). Use enhanced button styling with gradient backgrounds and shadow effects (`shadow-lg hover:shadow-xl`) for professional polish.
 - Avoid hardcoded theme colors: Never use hardcoded colors like `bg-gray-900`, `text-white`, `border-gray-700` etc. in components as they break light mode support. Always use semantic CSS variables: `bg-background`, `text-foreground`, `bg-card`, `text-card-foreground`, `border-border`, `text-muted-foreground`, `bg-input`, `text-primary`, `bg-primary`, etc. This ensures components work seamlessly in both light and dark themes without requiring theme-specific conditional styling.
 - Field image upload fix: The updateField function was failing to save uploaded images because it was trying to save File objects directly to the database. Fixed by updating updateField() to: 1) Extract image-related data (field_images, existing_image_urls) before database update, 2) Upload new images to Supabase Storage first, 3) Combine existing and new image URLs, 4) Update the field with image URLs in a separate database call. This ensures image uploads work properly when editing existing fields, with proper error handling and fallback to existing data if image operations fail.
+- Avoid hardcoded theme colors: Never use hardcoded colors like `bg-gray-900`, `text-white`, `border-gray-700` etc. in components as they break light mode support. Always use semantic CSS variables: `bg-background`, `text-foreground`, `bg-card`, `text-card-foreground`, `border-border`, `text-muted-foreground`, `bg-input`, `text-primary`, `bg-primary`, etc. This ensures components work seamlessly in both light and dark themes without requiring theme-specific conditional styling.
 - Supabase chunkedCookie.startsWith error fix: The "chunkedCookie.startsWith is not a function" error occurs when Supabase's cookie handling receives non-string values. Fixed by simplifying the custom cookie handling in `src/lib/supabase/client.ts`: 1) Remove complex base64 encoding/decoding logic that was causing type issues, 2) Always return strings from cookie.get() method (null for missing cookies), 3) Simplify cookie parsing to use standard decodeURIComponent without JSON parsing, 4) Fix SameSite handling for localhost/HTTPS contexts, 5) Remove localStorage fallback from cookie operations to prevent interference. Key principle: Keep cookie handling simple and always return string values to prevent Supabase internal chunking errors.
 - Reservation authentication requirement: Implemented authentication checks for all reservation submission forms to ensure users are signed in before completing reservations. Key implementation: 1) Added `useUser()` hook to reservation components (FieldReservationModal, FacilityRentalModal, FieldDetailModal), 2) Check authentication status before submission with `if (!user && !userLoading)` condition, 3) Show dedicated auth-required step/modal with reservation summary, sign-up/sign-in buttons, and option to continue editing, 4) Pre-fill forms with user data when authenticated (name, email, phone, organization based on user type), 5) Professional auth modal styling with gradient backgrounds, proper spacing, and clear call-to-action buttons, 6) Maintain reservation data when users navigate to sign-in/sign-up pages. This ensures all facility and field reservations require user accounts while providing smooth UX for both new and existing users.
 - Policy acknowledgment Yes/No buttons: Replaced all policy acknowledgment checkboxes with Yes/No buttons for better user experience and clarity. Implementation: 1) Changed boolean state variables to string values ('yes'/'no'), 2) Used Button components with conditional styling (green for Yes, red for No), 3) Updated validation logic to check for 'yes' values instead of true, 4) Applied to all reservation forms (FacilityRentalModal, FieldReservationModal, FieldDetailModal), 5) Maintained visual hierarchy with policy text followed by button pair, 6) Submit button remains disabled until all policies are acknowledged with 'Yes'. This provides clearer user interaction compared to traditional checkboxes.
@@ -188,268 +209,22 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - Renter invitation system implementation: Implemented secure invitation-based renter creation system extending existing invitation infrastructure. Key components: 1) Updated database function can_invite_user() to allow master_admin to invite renters, 2) Extended InviteUserModal with renter role, phone field, and organization selection, 3) Modified createUser() action to send invitations for renters instead of direct creation, 4) Enhanced invitation acceptance flow to handle renter organization assignment, 5) Added email notification system with console logging ready for email service integration, 6) Updated AddUserModal to show invitation sent message for renters. Security benefits: renters control passwords, email verification required, time-limited tokens (7 days), audit trail with invited_by tracking, organization assignment maintained. Testing flow: People page → Renter tab → Add Renter → Fill details → Send Invitation → Renter receives email → Clicks link → Sets password → Account created with proper permissions.
 - Email service error handling: When initializing email services like SendGrid, never throw errors at the module level as it crashes any page that imports the module. Instead, check for configuration at runtime and gracefully fall back to console logging when email services aren't configured. This prevents "SENDGRID_API_KEY is not set" crashes and allows development without email configuration. Always use a boolean flag (like `sendGridConfigured`) to track if the service is available and handle accordingly in email-sending functions.
 - SelectItem empty value error: Never use empty string values (`value=""`) in SelectItem components as newer versions of shadcn/ui Select require non-empty values. Use meaningful values like "none", "unassigned", or "default" instead. Update form submission logic to handle these special values by converting them to null/undefined when needed. This prevents "A <Select.Item /> must have a value prop that is not an empty string" errors.
+- Facility photos table missing error: The facility photos tab shows PostgreSQL error "42P01" (undefined_table) when the `facility_photos` table doesn't exist in the database. The migration file exists at `supabase/migrations/20250115_create_facility_photos_table.sql` but hasn't been applied. Solution: 1) Go to Supabase project dashboard, 2) Navigate to SQL Editor, 3) Copy and paste the migration file contents, 4) Execute the SQL to create the table, storage bucket, RLS policies, and indexes. This creates the complete facility photos system with secure photo storage and metadata tracking. The migration creates facility_photos table with columns for photo URLs, storage paths, metadata, and proper foreign key relationships to facilities table.
+- Room function dropdown scrolling fix: When dropdowns have many options (20+ room functions), they need proper scrolling configuration. Fixed by: 1) Adding `max-h-[300px] overflow-y-auto` to SelectContent components in AddRoomModal and EditRoomModal, 2) Updating global SelectViewport to include max-height constraint, 3) Adding custom scrollbar styles for select dropdowns in globals.css for better visibility, 4) Ensuring all 20 room functions are included in AddRoomForm component. This allows users to scroll through all options including "Restroom" and "Other" which were previously inaccessible at the bottom of the list. Use mouse wheel, trackpad, arrow keys, or touch scrolling to navigate through all options.
+- Server action authentication client mismatch: When server actions show "User not authenticated" errors even with logged-in users, check if the action is using the correct Supabase client. Server actions must use different clients for different purposes: 1) Use `createServerSupabaseClient()` for authentication checks (`auth.getUser()`) as it has access to cookies, 2) Use `getServiceRoleClient()` for database operations to bypass RLS. Never use service role client for auth operations - it doesn't have cookie access and will always fail authentication. Pattern: get user with createServerSupabaseClient, then use getServiceRoleClient for database operations.
+- Three-tier authentication system: The platform implements a three-tier hierarchy: 1) Master Admin (platform owner) - full access to all organizations and data, can create Sub Admins, 2) Sub Admin (organization owner) - manages only their organization's data, can invite Staff users, 3) Staff (team members) - limited access within their organization based on permissions. Implementation: user_role enum with values 'master_admin', 'sub_admin', 'staff'. Data isolation enforced through organization_id on all resource tables with RLS policies. Master admins bypass org checks, others filtered by organization_id. Legacy roles mapped: district_approver→master_admin, site_approver/manager/coordinator→sub_admin, others→staff. Migration at supabase/migrations/20250131_three_tier_authentication.sql.
+- Supabase email template customization: Created branded HTML email templates for Facilitycore to replace plain text emails. Templates use table-based layout for email client compatibility, feature professional styling with blue gradient header (#007aff to #0051cc), and include both confirmation and password reset emails. To implement: 1) Go to Supabase Dashboard → Authentication → Email Templates, 2) Update subjects and paste HTML from email-templates/*.html files, 3) Templates use Supabase variables like {{ .ConfirmationURL }}, 4) For production, configure custom SMTP (SendGrid, Mailgun, etc.) for better deliverability. Key files: email-templates/confirm-signup.html, reset-password.html, user-invitation.html. Quick start guide in SUPABASE_EMAIL_QUICK_START.md.
+- Supabase function replacement errors: When dropping and recreating PostgreSQL functions, several issues can occur: 1) Function signature mismatch - DROP statement must match exact parameter types, 2) Dependencies - Use CASCADE to handle dependent objects, 3) Type conflicts - user_role enum vs text mismatch. Solution: Use `DROP FUNCTION IF EXISTS function_name CASCADE` to handle all dependencies. For flexible parameter handling, use text type instead of enums and cast when needed. Check existing functions with pg_proc queries before dropping. Always use `SET search_path = public` in function definitions to avoid schema issues. If errors persist, create diagnostic scripts to check function signatures, dependencies, and table structures before attempting fixes. Key file: scripts/fix-invitation-function-safe.sql handles these edge cases properly.
+- Analytics page legacy Supabase client fix: Fixed analytics page loading issues by removing the legacy `src/lib/supabase.ts` file that was causing "Multiple GoTrueClient instances detected" warnings and conflicts with the modern SSR setup. The analytics page was importing `{ supabase } from '@/lib/supabase'` which created multiple client instances. Solution: 1) Delete the legacy supabase.ts file, 2) Update analytics page to use `createClient()` from '@/lib/supabase/client' 
+3) Added proper local client creation in checkAuth function
+4) Added master_admin and sub_admin roles to analytics page authorization
+5) Documented fix in lessons learned
 
-# Scratchpad
-
-## Dialog Component Cancel/Close Button Fix ✅ COMPLETED
-
-### Task: Fix cancel/close buttons not working for room, building, and field creation modals
-- **Issue**: User reported that cancel or close buttons for room, building, and field creation modals don't work
-- **Root Cause**: The Dialog component's `onOpenChange` prop expects a function that receives a boolean parameter, but modals were passing `onClose` directly without handling the parameter
-
-### Completed Steps:
-✅ **Identified the Pattern**
-- Found that modals were using `onOpenChange={onClose}` directly
-- Dialog component calls `onOpenChange(false)` when closing, but onClose callbacks didn't accept parameters
-- This prevented the X button, Escape key, and backdrop clicks from working
-
-✅ **Fixed Core Modals**
-- Updated AddRoomModal: `onOpenChange={(open) => !open && onClose()}`
-- Updated EditBuildingModal: `onOpenChange={(open) => !open && onClose()}`
-- Updated AddFieldModal: `onOpenChange={(open) => !open && handleClose()}`
-- Updated EditRoomModal: `onOpenChange={(open) => !open && onClose()}`
-- Updated EditFieldModal: `onOpenChange={(open) => !open && onClose()}`
-- Updated AddSystemModal: `onOpenChange={(open) => !open && onClose()}`
-- Updated AddRenovationModal: `onOpenChange={(open) => !open && onClose()}`
-
-✅ **Documented Solution**
-- Added lesson to .cursorrules about Dialog component onOpenChange fix
-- Pattern ensures onClose is only called when dialog is closing (open is false)
-- Fix applies to all modals using shadcn/ui Dialog component
+### Key Changes:
+- Replaced global client import with local client creation
+- Each component now calls createClient() when needed
+- Prevents "Multiple GoTrueClient instances detected" warnings
+- Ensures proper SSR compatibility
 
 ### Result:
-All modal close/cancel buttons now work properly. Users can close modals by:
-1. Clicking the Cancel button
-2. Clicking the X button in the top-right corner
-3. Pressing the Escape key
-4. Clicking outside the modal (backdrop)
-
-The fix ensures consistent modal behavior across the entire application.
-
-**Additional Modals Fixed:**
-- ✅ InviteUserModal: Fixed `onOpenChange={(open) => !open && onClose()}`
-- ✅ AddOrganizationModal: Fixed `onOpenChange={(open) => !open && handleClose()}`
-- ✅ AddUserModal: Fixed `onOpenChange={(open) => !open && handleCloseModal()}`
-
-All People page modals now close properly when creating users, organizations, or sending invitations.
-
----
-
-## Hydration Error Fix Task ✅ COMPLETED
-
-### Task: Fix hydration errors caused by browser extensions (LastPass)
-- **Issue**: User getting "Hydration failed because the server rendered HTML didn't match the client" error during login
-- **Root Cause**: LastPass browser extension injecting DOM elements (`data-lastpass-icon-root`) that don't exist during server-side rendering
-- **Solution**: Implement comprehensive hydration error prevention
-
-### Completed Steps:
-✅ **Added suppressHydrationWarning to body**
-- Updated `src/app/layout.tsx` to add `suppressHydrationWarning` to `<body>` element
-- Root layout already had it on `<html>` but needed it on body too
-
-✅ **Created NoSSR Component**
-- Created `src/components/ui/no-ssr.tsx` for client-side only rendering
-- Uses `useEffect` to detect client-side mounting
-- Prevents server/client HTML mismatch
-
-✅ **Created AuthLoadingSkeleton**
-- Created `src/components/ui/auth-loading-skeleton.tsx` for fallback during hydration
-- Mimics auth form structure with skeleton animations
-- Provides smooth loading experience
-
-✅ **Fixed Sign-In Page**
-- Updated `src/app/auth/sign-in/page.tsx` to use NoSSR wrapper
-- Split into `SignInForm` (main component) and `SignInPage` (NoSSR wrapper)
-- Added proper imports and fallback handling
-
-✅ **Fixed Sign-Up Page**
-- Updated `src/app/auth/sign-up/page.tsx` to use NoSSR wrapper
-- Split into `SignUpForm` (main component) and `SignUpPage` (NoSSR wrapper)
-- Consistent pattern with sign-in page
-
-✅ **Build Verification**
-- Successful build with no breaking changes
-- All auth pages working properly
-- No hydration errors expected
-
-### Result:
-Browser extensions like LastPass can no longer cause hydration errors during login/signup. The solution:
-1. Prevents server/client HTML mismatch errors
-2. Provides smooth loading experience with skeleton fallbacks
-3. Maintains SSR benefits while handling extension interference
-4. Uses consistent NoSSR pattern for auth pages
-
-Users can now login/signup without encountering the "chunkedCookie.startsWith is not a function" or similar hydration errors caused by browser extensions.
-
----
-
-## Playwright Investigation & Fix ✅ COMPLETED
-
-### Task: Use Playwright to investigate why facilities page shows no facilities
-- **Issue**: Master admin user signed in but facilities page shows "No facilities found" instead of existing facilities
-- **Investigation Method**: Used Playwright to sign in and inspect the facilities page behavior
-- **Root Cause**: Server actions in facilities.ts were using incorrect Supabase client creation
-
-### Completed Steps:
-✅ **Playwright Investigation**
-- Navigated to localhost:3000 and signed in with master admin credentials (85baris@gmail.com)
-- Successfully authenticated and redirected to facilities page
-- Captured screenshots showing "No facilities found" message
-- Inspected console logs revealing "supabaseUrl is required" error in server actions
-
-✅ **Identified Root Cause**
-- Found that `getAllFacilities()` and other server actions were calling `createClient()` without parameters
-- Server actions were importing `createClient` from `@supabase/supabase-js` instead of using server-specific client
-- The raw Supabase client requires URL and key parameters but was being called without them
-
-✅ **Fixed Server Action Client Usage**
-- Updated `getAllFacilities()` to use `createServerSupabaseClient()` instead of `createClient()`
-- Fixed `createFacility()`, `getFacilityById()`, `updateFacility()`, and `deleteFacility()` functions
-- Server-specific client properly handles authentication cookies for server actions
-
-✅ **Verified Fix with Playwright**
-- Reloaded facilities page and confirmed all facilities now display correctly
-- Verified 4 facilities are visible: Fresno State, Grandville Hall, Mendota High school, Washington Elementary
-- Console shows no errors, clean authentication flow
-- Screenshots confirm working state
-
-### Result:
-The facilities page now works correctly for master admin users. Playwright investigation revealed that the issue was not with environment variables but with incorrect Supabase client usage in server actions. The fix ensures proper server-side authentication handling through cookies, allowing master admins to see all facilities as expected.
-
----
-
-## Field Creation Database Fix ✅ COMPLETED
-
-### Task: Fix field creation error on Granville facility
-- **Issue**: User getting "Could not find the 'city' column of 'fields' in the schema cache" error when trying to create fields
-- **Root Cause**: The fields table is missing address columns that the application expects (city, state, full_address, street_address, zip_code)
-
-### Completed Steps:
-✅ **Identified Missing Columns**
-- Created `scripts/check-fields-schema.js` to diagnose the fields table structure
-- Found that the fields table exists but is missing 5 address columns: city, state, full_address, street_address, zip_code
-- The address fields migration was never applied to the database
-
-✅ **Created Fix Script**
-- Created `scripts/fix-fields-columns.sql` with the SQL commands needed to fix the fields table
-- Includes ALTER TABLE statements to add all missing address columns
-- Adds indexes for better performance on address searches
-- Includes verification query to confirm columns were added
-
-✅ **Documented Solution**
-- Added lesson to .cursorrules about field creation missing database columns
-- Provided clear steps for diagnosis and resolution of similar issues
-
-### Next Steps for User:
-**To fix the field creation error, run this SQL in your Supabase SQL Editor:**
-
-1. Go to your Supabase project dashboard
-2. Navigate to SQL Editor
-3. Copy and paste the contents of `scripts/fix-fields-columns.sql`
-4. Execute the SQL commands
-5. Verify the columns were added by checking the verification query results
-
-Once these columns are added, field creation will work without the "city column not found" error.
-
----
-
-## Modal Closing Issue Fix ✅ COMPLETED
-
-### Task: Fix modals not closing after successful field creation and calendar blockout
-- **Issue**: User reported that after successfully creating a field, the modal doesn't close. Same issue with calendar blockout.
-- **Root Cause**: Error handling flow between AddFieldModal and FacilityFields was preventing modal from closing
-
-### Completed Steps:
-✅ **Fixed Field Creation Modal**
-- Updated `FacilityFields.tsx` to explicitly close modal on success with `setIsCreateModalOpen(false)`
-- Added `loadFields()` call to refresh field list immediately after creation
-- Changed error handling to throw proper errors instead of returning early
-
-✅ **Updated AddFieldModal Pattern**
-- Removed self-closing logic from AddFieldModal (`onClose()` call removed)
-- Modal now only handles form submission and lets parent control open/close state
-- Added comment explaining that modal closing is handled by parent component
-- Toast notification still shows in modal for better user feedback
-
-✅ **Documented Solution**
-- Added lesson to .cursorrules about modal closing patterns
-- Key principle: Parent components should control modal state for better error handling
-
-### Result:
-- Field creation modal now closes properly on success
-- If there's an error, modal stays open so user can fix issues
-- New fields appear immediately in the field list
-- Pattern is consistent with CreateBlockoutModal which uses similar parent-controlled closing
-
----
-
-## Renter Invitation System Implementation ✅ COMPLETED
-
-### Task: Implement invitation system for renter creation
-- **Issue**: User wanted to create renter accounts but preferred invitation-based approach for security
-- **Solution**: Extended existing invitation system to support renter invitations
-
-### Implementation Status:
-✅ **Invitation System for Renters Implemented**
-- Updated database function `can_invite_user` to allow master_admin to invite renters
-- Extended InviteUserModal to include renter role option with organization selection
-- Modified createUser action to send invitations for renters instead of direct creation
-- Enhanced invitation acceptance flow to handle renter-specific fields
-- Added email notification system for invitation sending
-
-### Changes Made:
-1. **Database Functions**: Updated `can_invite_user` and `send_user_invitation` to support renters
-2. **InviteUserModal**: Added renter role, phone field, and organization selection
-3. **Server Actions**: Modified createUser to use invitation system for renters
-4. **Invitation Acceptance**: Enhanced to handle renter organization assignment
-5. **Email System**: Added invitation email logging (ready for email service integration)
-6. **AddUserModal**: Updated to show invitation sent message for renters
-
-### Database Updates Required:
-Run this SQL in your Supabase SQL Editor:
-```sql
--- Update permissions to allow master_admin to invite renters
--- (SQL script created at scripts/update-invitation-permissions.sql)
-```
-
-### Security Benefits:
-- ✅ Renters control their own passwords
-- ✅ Email verification required for account activation
-- ✅ Time-limited invitation tokens (7 days)
-- ✅ Proper audit trail with invited_by tracking
-- ✅ Organization assignment maintained
-
-### Testing Flow:
-1. Go to People page → Renter tab → Click "Add Renter"
-2. Fill out renter details and select organization
-3. Click "Send Invitation"
-4. Renter receives email with invitation link
-5. Renter clicks link, sets password, account created
-6. Renter can now log in and access system with proper permissions
-
-### Result:
-✅ **Invitation System Successfully Implemented**
-- Secure renter account creation via email invitations
-- Maintains all organization assignments and permissions
-- Professional email notification system (console logging for now)
-- Ready for production email service integration
-- Balances security with admin convenience
-
----
-
-## Completed Tasks History
-- ✅ Fixed React hooks error in FieldDetailModal
-- ✅ Fixed accessibility warnings in AssignStaffToFieldModal  
-- ✅ Fixed authentication in server actions
-- ✅ Fixed UI not updating after staff assignment
-- ✅ Added staff assignment display to field cards
-- ✅ Fixed multiple Supabase client instances warning
-- ✅ Fixed favicon 500 errors
-- ✅ Updated Next.js configuration for performance
-- ✅ Cleaned up console warnings and logging
-- ✅ Created staff_facility_assignments table with correct schema
-- ✅ Fixed staff_field_assignments foreign key references
-- ✅ Created facility assignments for test staff user
-- ✅ Built permission checking system architecture
-- ✅ Implemented modern UI transformation with enhanced shadcn/ui
-- ✅ Fixed browser extension hydration errors with NoSSR pattern
+Analytics page now loads properly with correct authentication handling and no client conflicts.

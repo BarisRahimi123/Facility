@@ -8,12 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar as CalendarIcon, Clock, Users, AlertCircle, CheckCircle, XCircle, Ban, Info, ChevronLeft, ChevronRight, UserPlus, LogIn } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Users, AlertCircle, CheckCircle, XCircle, Ban, Info, ChevronLeft, ChevronRight, UserPlus, LogIn, Settings, Check } from 'lucide-react';
 import { Field, Reservation, FieldBlackoutDate, CreateReservationRequest } from '@/types/field';
 import { FieldAvailabilityService, AvailabilityCheck } from '@/lib/fieldAvailability';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUser';
+import { User } from '@/types/user';
 import Link from 'next/link';
+
+interface TimeSlot {
+  start: string;
+  end: string;
+}
 
 interface FieldReservationModalProps {
   field: Field | null;
@@ -32,6 +38,7 @@ export function FieldReservationModal({
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ start: string; end: string } | null>(null);
   const [bookingType, setBookingType] = useState<'hourly' | 'daily'>('hourly');
+  const [waivedFees, setWaivedFees] = useState(false);
   const [availabilityData, setAvailabilityData] = useState<AvailabilityCheck[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [blackoutDates, setBlackoutDates] = useState<FieldBlackoutDate[]>([]);
@@ -39,6 +46,9 @@ export function FieldReservationModal({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const { toast } = useToast();
   const { user, loading: userLoading } = useUser();
+
+  // Check if user can waive fees
+  const canWaiveFees = user && ['master_admin', 'district_approver', 'staff', 'manager', 'coordinator'].includes((user as any).role);
 
   // Form data for reservation details
   const [formData, setFormData] = useState({
@@ -256,6 +266,11 @@ export function FieldReservationModal({
     const startHour = parseInt(selectedTimeSlot.start.split(':')[0]);
     const endHour = parseInt(selectedTimeSlot.end.split(':')[0]);
     const hours = endHour - startHour;
+    
+    // If fees are waived by staff/admin, return zero costs
+    if (waivedFees && canWaiveFees) {
+      return { subtotal: 0, tax: 0, total: 0, deposit: 0 };
+    }
     
     const subtotal = bookingType === 'daily' ? field.daily_rate : field.hourly_rate * hours;
     const tax = subtotal * 0.085; // 8.5% tax
@@ -636,8 +651,38 @@ export function FieldReservationModal({
           <Card className="bg-card/60 border-border">
             <CardHeader>
               <CardTitle className="text-card-foreground">Cost Breakdown</CardTitle>
+              {canWaiveFees && (
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <div className="flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-primary" />
+                    <span className="text-sm text-muted-foreground">Staff/Admin Options</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="waiveFees" className="text-sm text-muted-foreground cursor-pointer">
+                      Waive all fees
+                    </Label>
+                    <input
+                      id="waiveFees"
+                      type="checkbox"
+                      checked={waivedFees}
+                      onChange={(e) => setWaivedFees(e.target.checked)}
+                      className="h-4 w-4 text-primary focus:ring-primary border-border rounded"
+                    />
+                  </div>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
+              {waivedFees && canWaiveFees && (
+                <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-400" />
+                    <span className="text-sm text-green-400 font-medium">
+                      All fees have been waived by staff
+                    </span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal:</span>

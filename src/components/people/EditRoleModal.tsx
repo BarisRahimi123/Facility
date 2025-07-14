@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { Shield, Building } from 'lucide-react';
+import { Shield, Building, Crown, Users } from 'lucide-react';
 
 interface EditRoleModalProps {
   isOpen: boolean;
@@ -21,6 +21,7 @@ interface EditRoleModalProps {
     is_active: boolean;
   } | null;
   onUserUpdated?: () => void;
+  currentUserRole?: string;
 }
 
 interface EditRoleFormData {
@@ -29,13 +30,23 @@ interface EditRoleFormData {
   facility_id?: string;
 }
 
-export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRoleModalProps) {
+export function EditRoleModal({ isOpen, onClose, user, onUserUpdated, currentUserRole }: EditRoleModalProps) {
   const [loading, setLoading] = useState(false);
   const [facilities, setFacilities] = useState<any[]>([]);
   const [formData, setFormData] = useState<EditRoleFormData>({
     role: user?.role || '',
     is_active: user?.is_active || true
   });
+
+  // Reset form when user changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        role: user.role,
+        is_active: user.is_active
+      });
+    }
+  }, [user]);
 
   // Load facilities for assignment
   useState(() => {
@@ -54,19 +65,33 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
     loadFacilities();
   });
 
-  // Available roles for different user types
+  // Available roles based on current user's permissions
   const getAvailableRoles = () => {
+    // Only master admins can change roles
+    if (currentUserRole !== 'master_admin') {
+      return []; // Sub-admins can't change roles
+    }
+
+    // Master admins can assign any role
     return [
-      { value: 'master_admin', label: 'Master Admin', description: 'Full system access and user management' },
-      { value: 'sub_master', label: 'Sub-Master Admin', description: 'Can manage facilities and invite staff' },
-      { value: 'district_approver', label: 'District Approver', description: 'District-wide approval authority' },
-      { value: 'site_approver', label: 'Site Approver', description: 'Site-level approval authority' },
-      { value: 'manager', label: 'Manager', description: 'Facility management with approval authority' },
-      { value: 'coordinator', label: 'Coordinator', description: 'Coordinate facility operations' },
-      { value: 'staff', label: 'Staff', description: 'General facility staff member' },
-      { value: 'maintenance', label: 'Maintenance', description: 'Maintenance team member' },
-      { value: 'vendor', label: 'Vendor', description: 'External vendor or contractor' },
-      { value: 'renter', label: 'Renter', description: 'Can book/rent facilities' }
+      { 
+        value: 'master_admin', 
+        label: 'Master Admin', 
+        description: 'Full platform access, can manage everything',
+        icon: <Crown className="h-4 w-4" />
+      },
+      { 
+        value: 'sub_admin', 
+        label: 'Sub-Master Admin', 
+        description: 'Organization owner, can invite staff members',
+        icon: <Shield className="h-4 w-4" />
+      },
+      { 
+        value: 'staff', 
+        label: 'Staff Member', 
+        description: 'Team member with limited permissions',
+        icon: <Users className="h-4 w-4" />
+      }
     ];
   };
 
@@ -78,6 +103,25 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
 
     try {
       const supabase = createClient();
+      
+      // Check if current user has permission to change roles
+      if (currentUserRole !== 'master_admin') {
+        throw new Error('Only master admins can change user roles');
+      }
+
+      // Prevent demoting the last master admin
+      if (user.role === 'master_admin' && formData.role !== 'master_admin') {
+        // Check if there are other master admins
+        const { count } = await supabase
+          .from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'master_admin')
+          .eq('is_active', true);
+        
+        if (count && count <= 1) {
+          throw new Error('Cannot demote the last active master admin');
+        }
+      }
       
       // Update user role and status
       const { error } = await supabase
@@ -100,10 +144,16 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
             facility_id: formData.facility_id
           });
 
-        if (facilityError) throw facilityError;
+        if (facilityError) {
+          console.error('Facility assignment error:', facilityError);
+          // Don't throw, facility assignment is optional
+        }
       }
 
-      toast.success(`Updated role for ${user.full_name}`);
+      const roleLabel = formData.role === 'master_admin' ? 'Master Admin' :
+                       formData.role === 'sub_admin' ? 'Sub-Master Admin' : 'Staff';
+      
+      toast.success(`${user.full_name} is now a ${roleLabel}`);
       onUserUpdated?.();
       onClose();
 
@@ -116,6 +166,7 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
   };
 
   const availableRoles = getAvailableRoles();
+  const canEditRole = currentUserRole === 'master_admin';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -123,44 +174,68 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Edit User Role
+            Edit User
           </DialogTitle>
           <DialogDescription>
-            Update role and access level for {user?.full_name}
+            {canEditRole 
+              ? `Update role and access level for ${user?.full_name}`
+              : `Update settings for ${user?.full_name}`
+            }
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-6">
           <div className="grid grid-cols-1 gap-4">
-            {/* Role */}
-            <div>
-              <Label htmlFor="role">
-                <Shield className="inline h-3 w-3 mr-1" />
-                Role *
-              </Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value })}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableRoles.map(role => (
-                    <SelectItem key={role.value} value={role.value}>
-                      <div>
-                        <div className="font-medium">{role.label}</div>
-                        <div className="text-xs text-muted-foreground">{role.description}</div>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Current User Info */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-medium">Current User Details</p>
+              <p className="text-sm text-muted-foreground">Email: {user?.email}</p>
+              <p className="text-sm text-muted-foreground">
+                Current Role: {user?.role === 'master_admin' ? 'Master Admin' :
+                              user?.role === 'sub_admin' ? 'Sub-Master Admin' :
+                              user?.role === 'staff' ? 'Staff' : user?.role}
+              </p>
             </div>
 
-            {/* Facility Assignment (optional) */}
-            {facilities.length > 0 && (
+            {/* Role - Only shown to master admins */}
+            {canEditRole && (
+              <div>
+                <Label htmlFor="role">
+                  <Shield className="inline h-3 w-3 mr-1" />
+                  Role *
+                </Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableRoles.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        <div className="flex items-center gap-2">
+                          {role.icon}
+                          <div>
+                            <div className="font-medium">{role.label}</div>
+                            <div className="text-xs text-muted-foreground">{role.description}</div>
+                          </div>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {formData.role === 'sub_admin' && user?.role !== 'sub_admin' && (
+                  <p className="text-sm text-primary mt-2">
+                    ⚡ Promoting to Sub-Master Admin will grant organization management capabilities
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Facility Assignment - Only for staff */}
+            {facilities.length > 0 && formData.role === 'staff' && (
               <div>
                 <Label htmlFor="facility">
                   <Building className="inline h-3 w-3 mr-1" />
@@ -210,7 +285,7 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated }: EditRole
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Updating...' : 'Update Role'}
+              {loading ? 'Updating...' : 'Update User'}
             </Button>
           </div>
         </form>

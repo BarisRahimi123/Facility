@@ -26,18 +26,8 @@ import {
 import { format } from 'date-fns';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-
-interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string;
-  phone?: string;
-  organization_id?: string;
-  organization_name?: string;
-  role: string;
-  created_at: string;
-}
 
 interface Reservation {
   id: string;
@@ -68,47 +58,27 @@ interface InsuranceDocument {
 
 export default function UserDashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'reservations' | 'insurance' | 'payments' | 'profile'>('overview');
-  const [loading, setLoading] = useState(true);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(false);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [insuranceDocuments, setInsuranceDocuments] = useState<InsuranceDocument[]>([]);
   const { toast } = useToast();
+  const { user: userProfile, loading: authLoading } = useAuth();
 
   useEffect(() => {
-    loadUserData();
-  }, []);
+    if (!authLoading && userProfile) {
+      loadUserData();
+    }
+  }, [authLoading, userProfile]);
 
   const loadUserData = async () => {
     try {
-      const supabase = createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
+      if (!userProfile) {
         toast({
           title: 'Authentication Error',
           description: 'Please sign in to view your dashboard.',
           variant: 'destructive',
         });
         return;
-      }
-
-      // Get user profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('users')
-        .select(`
-          *,
-          organizations (
-            name
-          )
-        `)
-        .eq('email', user.email)
-        .single();
-
-      if (profileData) {
-        setUserProfile({
-          ...profileData,
-          organization_name: profileData.organizations?.name
-        });
       }
 
       // Load sample reservation data (replace with real data later)
@@ -125,8 +95,8 @@ export default function UserDashboard() {
           status: 'confirmed',
           total_cost: 170,
           payment_status: 'paid',
-          contact_name: profileData?.full_name || 'User',
-          contact_email: user.email || ''
+          contact_name: userProfile?.full_name || 'User',
+          contact_email: userProfile.email || ''
         },
         {
           id: '2',

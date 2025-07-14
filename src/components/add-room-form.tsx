@@ -44,12 +44,29 @@ export function AddRoomForm({ buildingId, onClose, onSave }: AddRoomFormProps) {
           <SelectTrigger>
             <SelectValue placeholder="Select function" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
             <SelectItem value="Classroom">Classroom</SelectItem>
+            <SelectItem value="Laboratory">Laboratory</SelectItem>
+            <SelectItem value="Library">Library</SelectItem>
+            <SelectItem value="Auditorium">Auditorium</SelectItem>
+            <SelectItem value="Gymnasium">Gymnasium</SelectItem>
             <SelectItem value="Office">Office</SelectItem>
             <SelectItem value="Conference">Conference</SelectItem>
-            <SelectItem value="Laboratory">Laboratory</SelectItem>
+            <SelectItem value="Reception">Reception</SelectItem>
+            <SelectItem value="Break Room">Break Room</SelectItem>
+            <SelectItem value="Medical Office">Medical Office</SelectItem>
+            <SelectItem value="Treatment Room">Treatment Room</SelectItem>
+            <SelectItem value="Patient Room">Patient Room</SelectItem>
             <SelectItem value="Storage">Storage</SelectItem>
+            <SelectItem value="Mechanical">Mechanical</SelectItem>
+            <SelectItem value="Janitorial">Janitorial</SelectItem>
+            <SelectItem value="Electrical">Electrical</SelectItem>
+            <SelectItem value="Restroom">Restroom</SelectItem>
+            <SelectItem value="Hallway">Hallway</SelectItem>
+            <SelectItem value="Lobby">Lobby</SelectItem>
+            <SelectItem value="Cafeteria">Cafeteria</SelectItem>
+            <SelectItem value="Kitchen">Kitchen</SelectItem>
+            <SelectItem value="Other">Other</SelectItem>
           </SelectContent>
         </Select>
       </div>

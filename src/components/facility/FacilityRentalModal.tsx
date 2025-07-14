@@ -27,13 +27,19 @@ import {
   Clock,
   Repeat,
   UserPlus,
-  LogIn
+  LogIn,
+  Shield,
+  CheckCircle
 } from 'lucide-react';
-import { Field } from '@/types/field';
+import { format, addDays, isBefore, isAfter, isSameDay } from 'date-fns';
+import { Field, FieldBlackoutDate } from '@/types/field';
 import { Room } from '@/types/building';
-import { format, addDays, addWeeks, addMonths, addYears, isSameDay, isBefore, isAfter, parseISO } from 'date-fns';
 import { useUser } from '@/hooks/useUser';
+import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
+import { v4 as uuidv4 } from 'uuid';
+import { createFieldReservationFromCart } from '@/app/actions/fields';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface FacilityRentalModalProps {
   item: Field | Room | null;
@@ -43,6 +49,7 @@ interface FacilityRentalModalProps {
   facilityName?: string;
   buildingName?: string;
   onReserve?: (item: Field | Room, reservationData: any) => void;
+  fieldBlockouts?: FieldBlackoutDate[];
 }
 
 interface CartItem {
@@ -79,16 +86,6 @@ const getExistingReservations = () => {
   ];
 };
 
-// Mock blockout dates
-const getBlockoutDates = () => {
-  const today = new Date();
-  return [
-    addDays(today, 8),
-    addDays(today, 15),
-    addDays(today, 22),
-  ];
-};
-
 const timeSlots = [
   '6:00 AM', '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
   '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM',
@@ -102,31 +99,32 @@ export function FacilityRentalModal({
   onClose, 
   facilityName,
   buildingName,
-  onReserve 
+  onReserve,
+  fieldBlockouts = []
 }: FacilityRentalModalProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const { user, loading: userLoading } = useUser();
+  const { toast } = useToast();
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [showAuthRequired, setShowAuthRequired] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlotAvailability[]>([]);
-  const { user, loading: userLoading } = useUser();
+  const [isSubmittingReservation, setIsSubmittingReservation] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Pre-fill reservation data with user info
   const [reservationData, setReservationData] = useState({
+    date: new Date(),
     timeSlot: '',
-    duration: 1,
+    duration: 2,
     recurring: 'none' as 'none' | 'weekly' | 'monthly' | 'yearly',
     recurringOccurrences: 1,
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    purpose: '',
-    organization: '',
-    estimatedAttendees: '',
-    agreedToTerms: false
+    contactName: user?.name || '',
+    contactEmail: user?.email || '',
+    contactPhone: user?.phone || '',
+    organization: user?.type === 'external' ? user.company : ''
   });
   
   // Checkout form data
@@ -159,7 +157,6 @@ export function FacilityRentalModal({
         '/images/placeholder.jpg'
       ];
 
-  const blockoutDates = getBlockoutDates();
   const existingReservations = getExistingReservations();
 
   // Check if a date has any available time slots
@@ -245,6 +242,37 @@ export function FacilityRentalModal({
     }
   }, [user, userLoading]);
 
+  // Check for pending reservation after authentication
+  useEffect(() => {
+    if (user && !userLoading && typeof window !== 'undefined') {
+      // Check if there's a pending reservation in localStorage
+      const pendingReservation = localStorage.getItem('pendingFieldReservation');
+      if (pendingReservation) {
+        try {
+          const reservationData = JSON.parse(pendingReservation);
+          console.log('Found pending reservation, auto-submitting...', reservationData);
+          
+          // Clear the pending reservation
+          localStorage.removeItem('pendingFieldReservation');
+          
+          // Restore the cart and checkout data
+          if (reservationData.cart) {
+            setCart(reservationData.cart);
+          }
+          if (reservationData.checkoutData) {
+            setCheckoutData(reservationData.checkoutData);
+          }
+          
+          // Auto-submit the reservation
+          setIsSubmittingReservation(true);
+          submitReservationToDatabase(reservationData);
+        } catch (error) {
+          console.error('Error processing pending reservation:', error);
+        }
+      }
+    }
+  }, [user, userLoading]);
+
   if (!item || !isOpen) return null;
 
   const isField = itemType === 'field';
@@ -260,7 +288,30 @@ export function FacilityRentalModal({
     today.setHours(0, 0, 0, 0);
     
     if (isBefore(date, today)) return true;
-    if (blockoutDates.some(blockoutDate => isSameDay(date, blockoutDate))) return true;
+    
+    // Check if date falls within any blockout period
+    if (fieldBlockouts && fieldBlockouts.length > 0) {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      
+      // Debug logging
+      if (dateStr === '2025-07-09' || dateStr === '2025-07-10') {
+        console.log('Checking date:', dateStr);
+        console.log('Field blockouts:', fieldBlockouts);
+      }
+      
+      const isBlocked = fieldBlockouts.some(blockout => {
+        const blocked = blockout.start_date <= dateStr && blockout.end_date >= dateStr;
+        
+        // Debug specific dates
+        if (dateStr === '2025-07-09' || dateStr === '2025-07-10') {
+          console.log(`Blockout ${blockout.start_date} to ${blockout.end_date}: ${blocked}`);
+        }
+        
+        return blocked;
+      });
+      
+      if (isBlocked) return true;
+    }
     
     return false;
   };
@@ -340,76 +391,140 @@ export function FacilityRentalModal({
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    setCurrentImageIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
+  };
+
+  const submitReservationToDatabase = async (reservationData: any) => {
+    try {
+      // Create reservation data for fields only (as rooms are not implemented yet)
+      if (itemType === 'field') {
+        console.log('Submitting field reservation:', reservationData);
+        
+        const result = await createFieldReservationFromCart(reservationData);
+        
+        if (result.success) {
+          // Calculate total from the reservation data
+          const total = reservationData.cart.reduce((sum: number, item: any) => sum + item.total, 0);
+          
+          // Close the modal and show success
+          onClose();
+          
+          // Clear cart and reset forms
+          setCart([]);
+          setCheckoutData({
+            eventPurpose: '',
+            setupNeeds: '',
+            tablesNeeded: 0,
+            chairsNeeded: 0,
+            hvacNeeded: '',
+            cancellationPolicy: 'no' as 'yes' | 'no',
+            employeeRequirement: 'no' as 'yes' | 'no',
+            insuranceRequirement: 'no' as 'yes' | 'no',
+            insuranceFeePolicy: 'no' as 'yes' | 'no',
+            priorityPolicy: 'no' as 'yes' | 'no',
+            paymentPolicy: 'no' as 'yes' | 'no',
+            portaPottyPolicy: 'no' as 'yes' | 'no',
+            portaPottyCoordination: 'no' as 'yes' | 'no',
+            securityPolicy: 'no' as 'yes' | 'no',
+            securityContract: 'no' as 'yes' | 'no',
+            largeEquipment: 'no' as 'yes' | 'no'
+          });
+
+          // Show success toast
+          toast({
+            title: '🎉 Reservation Created Successfully!',
+            description: `Your reservation has been created and sent for approval. Total: $${total.toFixed(2)}`,
+          });
+
+          // Redirect to user dashboard after a brief delay
+          if (typeof window !== 'undefined') {
+            setTimeout(() => {
+              window.location.href = '/user-dashboard';
+            }, 2000);
+          }
+        } else {
+          throw new Error(result.error || 'Failed to create reservation');
+        }
+      } else {
+        // For rooms, show a message that it's not implemented yet
+        toast({
+          title: 'Coming Soon',
+          description: 'Room reservations are not available yet. Please check back later.',
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Error creating reservation:', error);
+      toast({
+        title: 'Reservation Failed',
+        description: error instanceof Error ? error.message : 'There was an error creating your reservation. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsSubmittingReservation(false);
+    }
   };
 
   const handleSubmitReservation = async () => {
-    if (!user) {
-      // This shouldn't happen since we check auth before showing checkout
-      setShowAuthRequired(true);
+    // Validate that all policies are acknowledged
+    if (checkoutData.cancellationPolicy !== 'yes' ||
+        checkoutData.employeeRequirement !== 'yes' ||
+        checkoutData.insuranceRequirement !== 'yes' ||
+        checkoutData.insuranceFeePolicy !== 'yes' ||
+        checkoutData.priorityPolicy !== 'yes' ||
+        checkoutData.paymentPolicy !== 'yes' ||
+        checkoutData.portaPottyPolicy !== 'yes' ||
+        checkoutData.portaPottyCoordination !== 'yes' ||
+        checkoutData.securityPolicy !== 'yes') {
+      toast({
+        title: 'Policy Acknowledgment Required',
+        description: 'Please acknowledge all policies before submitting your reservation.',
+        variant: 'destructive'
+      });
       return;
     }
 
-    try {
-      // Create reservation data
-      const submissionData = {
-        userId: user.id,
-        cart,
-        checkoutData,
-        total: cartTotal,
-        contactInfo: {
-          name: reservationData.contactName || user.name || '',
-          email: reservationData.contactEmail || user.email || '',
-          phone: reservationData.contactPhone || user.phone || '',
-          organization: reservationData.organization || (user.type === 'external' ? user.company : '')
-        }
-      };
-
-      console.log('Creating reservation for authenticated user:', submissionData);
-      
-      // TODO: Create reservation in database
-      // await createReservation(submissionData);
-      
-      // Close the modal and show success
-      onClose();
-      
-      // Clear cart and reset forms
-      setCart([]);
-      setCheckoutData({
-        eventPurpose: '',
-        setupNeeds: '',
-        tablesNeeded: 0,
-        chairsNeeded: 0,
-        hvacNeeded: '',
-        cancellationPolicy: 'no' as 'yes' | 'no',
-        employeeRequirement: 'no' as 'yes' | 'no',
-        insuranceRequirement: 'no' as 'yes' | 'no',
-        insuranceFeePolicy: 'no' as 'yes' | 'no',
-        priorityPolicy: 'no' as 'yes' | 'no',
-        paymentPolicy: 'no' as 'yes' | 'no',
-        portaPottyPolicy: 'no' as 'yes' | 'no',
-        portaPottyCoordination: 'no' as 'yes' | 'no',
-        securityPolicy: 'no' as 'yes' | 'no',
-        securityContract: 'no' as 'yes' | 'no',
-        largeEquipment: 'no' as 'yes' | 'no'
-      });
-
-      // Show success message with next steps
-      if (typeof window !== 'undefined') {
-        const message = `🎉 Reservation Created Successfully!\n\nTotal: $${cartTotal.toFixed(2)}\nEvent: ${checkoutData.eventPurpose}\n\n✅ Next Steps:\n• Check your email for confirmation\n• Complete payment via Stripe\n• Upload insurance documents\n• Manage your booking in your account dashboard`;
-        
-        alert(message);
-        
-        // Redirect to user dashboard after a brief delay
-        setTimeout(() => {
-          window.location.href = '/user-dashboard';
-        }, 2000);
+    // Prepare reservation data
+    const submissionData = {
+      cart: cart.map(item => ({
+        ...item,
+        item: item.item as Field
+      })),
+      checkoutData,
+      contactInfo: {
+        name: reservationData.contactName || '',
+        email: reservationData.contactEmail || '',
+        phone: reservationData.contactPhone || '',
+        organization: reservationData.organization || ''
       }
+    };
+
+    // Check if user is authenticated
+    if (!user && !userLoading) {
+      console.log('User not authenticated, storing reservation and showing auth modal');
       
-    } catch (error) {
-      console.error('Error creating reservation:', error);
-      alert('Sorry, there was an error creating your reservation. Please try again.');
+      // Store the reservation data in localStorage
+      localStorage.setItem('pendingFieldReservation', JSON.stringify(submissionData));
+      
+      // Show auth modal
+      setShowAuthModal(true);
+      
+      // Auto-navigate to sign-up page after a short delay
+      setTimeout(() => {
+        window.location.href = '/auth/sign-up';
+      }, 2000); // Show modal for 2 seconds before redirecting
+      
+      return;
     }
+
+    if (!user) {
+      console.error('No user found during submission');
+      return;
+    }
+
+    // If authenticated, submit directly
+    setIsSubmittingReservation(true);
+    await submitReservationToDatabase(submissionData);
   };
 
   const modalContent = (
@@ -422,11 +537,25 @@ export function FacilityRentalModal({
       
       {/* Modal Content */}
       <div className="fixed inset-0 z-50 bg-white">
+        {/* Loading Overlay when auto-submitting */}
+        {isSubmittingReservation && (
+          <div className="absolute inset-0 z-60 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Submitting Your Reservation...</h3>
+                <p className="text-sm text-gray-600 mt-2">Please wait while we process your booking request.</p>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="h-full w-full flex flex-col">
           {/* Close button */}
           <button
             onClick={onClose}
             className="absolute right-4 top-4 z-20 rounded-full opacity-70 hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white p-2 shadow-md hover:shadow-lg"
+            disabled={isSubmittingReservation}
           >
             <X className="h-5 w-5" />
             <span className="sr-only">Close</span>
@@ -1077,7 +1206,7 @@ export function FacilityRentalModal({
                               // Check if user is authenticated before proceeding to checkout
                               if (!user && !userLoading) {
                                 console.log('User not authenticated, showing auth modal');
-                                setShowAuthRequired(true);
+                                setShowAuthModal(true);
                               } else {
                                 console.log('User authenticated, proceeding to checkout');
                                 setShowCheckout(true);
@@ -1309,45 +1438,46 @@ export function FacilityRentalModal({
                     <Button 
                       variant="ghost" 
                       onClick={() => setShowBookingForm(false)}
-                      className="text-gray-600"
+                      className="text-muted-foreground hover:text-foreground"
                     >
                       <ChevronLeft className="h-4 w-4 mr-1" />
                       Back
                     </Button>
-                    <h2 className="text-xl font-semibold">Add to cart</h2>
+                    <h2 className="text-xl font-semibold text-foreground">Add to cart</h2>
                   </div>
 
-                  <Card className="border-gray-200">
+                  <Card className="border-border">
                     <CardContent className="p-6 space-y-6">
                       {/* Date and Time Selection */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-gray-700">Date</Label>
-                          <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                          <Label className="text-foreground">Date</Label>
+                          <div className="mt-2 p-3 bg-muted rounded-md">
                             {selectedDate && format(selectedDate, 'EEEE, MMMM d, yyyy')}
                           </div>
                         </div>
                         <div>
-                          <Label className="text-gray-700">Time</Label>
+                          <Label className="text-foreground">Time</Label>
                           <Select 
                             value={reservationData.timeSlot}
                             onValueChange={(value) => setReservationData(prev => ({ ...prev, timeSlot: value }))}
                           >
-                            <SelectTrigger className="mt-2">
+                            <SelectTrigger className="mt-2 bg-background border-border text-foreground">
                               <SelectValue placeholder="Select time" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-popover border-border">
                               {availableTimeSlots.map((slot) => (
                                 <SelectItem 
                                   key={slot.slot} 
                                   value={slot.slot}
                                   disabled={!isSlotAvailable(slot.slot, reservationData.duration, availableTimeSlots)}
+                                  className="text-popover-foreground hover:bg-accent hover:text-accent-foreground"
                                 >
                                   <div className="flex items-center gap-2">
                                     <span>{slot.slot}</span>
-                                    {!slot.available && <span className="text-red-500 text-xs">(Booked)</span>}
+                                    {!slot.available && <span className="text-destructive text-xs">(Booked)</span>}
                                     {!isSlotAvailable(slot.slot, reservationData.duration, availableTimeSlots) && slot.available && (
-                                      <span className="text-orange-500 text-xs">(Insufficient time)</span>
+                                      <span className="text-warning text-xs">(Insufficient time)</span>
                                     )}
                                   </div>
                                 </SelectItem>
@@ -1359,17 +1489,17 @@ export function FacilityRentalModal({
 
                       {/* Duration */}
                       <div>
-                        <Label className="text-gray-700">Duration</Label>
+                        <Label className="text-foreground">Duration</Label>
                         <Select 
                           value={reservationData.duration.toString()}
                           onValueChange={(value) => setReservationData(prev => ({ ...prev, duration: parseInt(value) }))}
                         >
-                          <SelectTrigger className="mt-2">
+                          <SelectTrigger className="mt-2 bg-background border-border text-foreground">
                             <SelectValue />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-popover border-border">
                             {[1, 2, 3, 4, 5, 6, 7, 8].map((hours) => (
-                              <SelectItem key={hours} value={hours.toString()}>
+                              <SelectItem key={hours} value={hours.toString()} className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">
                                 {hours} hour{hours > 1 ? 's' : ''}
                               </SelectItem>
                             ))}
@@ -1380,7 +1510,7 @@ export function FacilityRentalModal({
                       {/* Recurring Options */}
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-gray-700">
+                          <Label className="text-foreground">
                             <Repeat className="h-4 w-4 inline mr-1" />
                             Repeat
                           </Label>
@@ -1388,31 +1518,31 @@ export function FacilityRentalModal({
                             value={reservationData.recurring}
                             onValueChange={(value: 'none' | 'weekly' | 'monthly' | 'yearly') => setReservationData(prev => ({ ...prev, recurring: value }))}
                           >
-                            <SelectTrigger className="mt-2">
+                            <SelectTrigger className="mt-2 bg-background border-border text-foreground">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No Repeat</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
+                            <SelectContent className="bg-popover border-border">
+                              <SelectItem value="none" className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">No Repeat</SelectItem>
+                              <SelectItem value="weekly" className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">Weekly</SelectItem>
+                              <SelectItem value="monthly" className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">Monthly</SelectItem>
+                              <SelectItem value="yearly" className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">Yearly</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         
                         {reservationData.recurring !== 'none' && (
                           <div>
-                            <Label className="text-gray-700">Number of occurrences</Label>
+                            <Label className="text-foreground">Number of occurrences</Label>
                             <Select 
                               value={reservationData.recurringOccurrences.toString()}
                               onValueChange={(value) => setReservationData(prev => ({ ...prev, recurringOccurrences: parseInt(value) }))}
                             >
-                              <SelectTrigger className="mt-2">
+                              <SelectTrigger className="mt-2 bg-background border-border text-foreground">
                                 <SelectValue />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-popover border-border">
                                 {[2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 24, 26, 30, 36, 40, 48, 52].map((num) => (
-                                  <SelectItem key={num} value={num.toString()}>
+                                  <SelectItem key={num} value={num.toString()} className="text-popover-foreground hover:bg-accent hover:text-accent-foreground">
                                     {num} times
                                   </SelectItem>
                                 ))}
@@ -1423,44 +1553,44 @@ export function FacilityRentalModal({
                       </div>
 
                       {/* Cost Preview */}
-                      <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <div className="bg-muted rounded-lg p-4 space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Rate</span>
-                          <span>${hourlyRate}/hour</span>
+                          <span className="text-muted-foreground">Rate</span>
+                          <span className="text-foreground">${hourlyRate}/hour</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Duration</span>
-                          <span>{reservationData.duration} hour{reservationData.duration > 1 ? 's' : ''}</span>
+                          <span className="text-muted-foreground">Duration</span>
+                          <span className="text-foreground">{reservationData.duration} hour{reservationData.duration > 1 ? 's' : ''}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Subtotal</span>
-                          <span>${(hourlyRate || 0) * reservationData.duration}</span>
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span className="text-foreground">${(hourlyRate || 0) * reservationData.duration}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Tax (8.5%)</span>
-                          <span>${(((hourlyRate || 0) * reservationData.duration) * 0.085).toFixed(2)}</span>
+                          <span className="text-muted-foreground">Tax (8.5%)</span>
+                          <span className="text-foreground">${(((hourlyRate || 0) * reservationData.duration) * 0.085).toFixed(2)}</span>
                         </div>
-                        <div className="border-t pt-2">
+                        <div className="border-t border-border pt-2">
                           <div className="flex justify-between font-medium">
-                            <span>Total per booking</span>
-                            <span>${(((hourlyRate || 0) * reservationData.duration) * 1.085).toFixed(2)}</span>
+                            <span className="text-foreground">Total per booking</span>
+                            <span className="text-foreground">${(((hourlyRate || 0) * reservationData.duration) * 1.085).toFixed(2)}</span>
                           </div>
                         </div>
                         
                         {reservationData.recurring !== 'none' && reservationData.recurringOccurrences > 1 && (
                           <>
-                            <div className="border-t pt-2 space-y-2">
+                            <div className="border-t border-border pt-2 space-y-2">
                               <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">
+                                <span className="text-muted-foreground">
                                   Recurring {reservationData.recurring}
                                 </span>
-                                <span>
+                                <span className="text-foreground">
                                   {reservationData.recurringOccurrences} occurrences
                                 </span>
                               </div>
                               <div className="flex justify-between font-semibold text-base">
-                                <span>Total for all bookings</span>
-                                <span className="text-blue-600">
+                                <span className="text-foreground">Total for all bookings</span>
+                                <span className="text-primary">
                                   ${((((hourlyRate || 0) * reservationData.duration) * 1.085) * reservationData.recurringOccurrences).toFixed(2)}
                                 </span>
                               </div>
@@ -1473,7 +1603,7 @@ export function FacilityRentalModal({
                       <Button 
                         onClick={addToCart}
                         disabled={!reservationData.timeSlot || !selectedDate || !isSlotAvailable(reservationData.timeSlot, reservationData.duration, availableTimeSlots)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3"
                         size="lg"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -1497,88 +1627,77 @@ export function FacilityRentalModal({
     </>
   );
 
-  // Debug showAuthRequired state
-  console.log('Render Debug - showAuthRequired:', showAuthRequired);
+  // Debug auth state
+  console.log('Render Debug - user:', user, 'userLoading:', userLoading);
 
-  // Render authentication required modal
-  const renderAuthRequiredModal = () => (
-    <>
-      <div 
-        className="fixed inset-0 z-60 bg-black/50 transition-opacity"
-        onClick={() => setShowAuthRequired(false)}
-      />
-      
-      <div className="fixed inset-0 z-70 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-          <div className="text-center space-y-6">
-            <div className="w-20 h-20 bg-primary/10 rounded-full mx-auto flex items-center justify-center">
-              <UserPlus className="h-10 w-10 text-primary" />
-            </div>
-            
-            <div className="space-y-3">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Sign In Required
-              </h3>
-              <p className="text-gray-600">
-                To complete your reservation for <strong>{itemName}</strong>, please create an account or sign in to your existing account.
-              </p>
-            </div>
-
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Cart Items:</span>
-                  <span className="font-medium">{cart.length} booking{cart.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Total:</span>
-                  <span className="font-semibold text-blue-600">${cartTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Link href="/auth/sign-up?returnTo=reservation&type=facility&preserveData=true">
-                <Button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Create Account
-                </Button>
-              </Link>
-              
-              <Link href="/auth/sign-in?returnTo=reservation&type=facility&preserveData=true">
-                <Button variant="outline" className="w-full">
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Sign In
-                </Button>
-              </Link>
-
-              <Button 
-                variant="ghost" 
-                className="w-full"
-                onClick={() => setShowAuthRequired(false)}
-              >
-                Continue Shopping
-              </Button>
-            </div>
-
-            <p className="text-xs text-gray-500">
-              Your cart will be saved when you return.
-            </p>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-
-  // Use React Portal to render modal directly to body
-  if (showAuthRequired) {
-    console.log('Rendering auth modal!');
+  if (showAuthModal) {
+    console.log('Modal open, preventing page navigation temporarily');
   }
 
-  return typeof window !== 'undefined' ? createPortal(
+  return isOpen ? createPortal(
     <>
       {modalContent}
-      {showAuthRequired && renderAuthRequiredModal()}
+      {/* Authentication Required Modal */}
+      <Dialog open={showAuthModal} onOpenChange={(open) => !open && setShowAuthModal(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Shield className="h-6 w-6 text-primary" />
+              Account Required
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="bg-primary/10 p-4 rounded-lg">
+              <p className="text-sm font-medium flex items-center gap-2 mb-2">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+                Your reservation details have been saved
+              </p>
+              <p className="text-sm text-muted-foreground">
+                We'll submit your reservation automatically after you create your account.
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-4">
+                Redirecting to sign up page...
+              </p>
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            </div>
+            
+            <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+              <h4 className="font-medium text-sm">Your Reservation Summary:</h4>
+              <div className="text-sm space-y-1">
+                <p className="flex justify-between">
+                  <span>Field:</span>
+                  <span className="font-medium">
+                    {cart.map(item => {
+                      if (item.itemType === 'field' && 'name' in item.item) {
+                        return item.item.name;
+                      } else if (item.itemType === 'room' && 'room_number' in item.item) {
+                        return `Room ${item.item.room_number}`;
+                      }
+                      return '';
+                    }).filter(Boolean).join(', ')}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Date:</span>
+                  <span className="font-medium">
+                    {cart.length > 0 ? format(cart[0].date, 'MMM d, yyyy') : format(new Date(), 'MMM d, yyyy')}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Total:</span>
+                  <span className="font-medium">${cartTotal.toFixed(2)}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>,
     document.body
   ) : null;

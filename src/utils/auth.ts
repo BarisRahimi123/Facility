@@ -4,51 +4,48 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
+import { mapLegacyRole, canInviteRole, hasOrgAccess, type UserRole } from '@/types/user';
 
-type UserRole = 'master_admin' | 'sub_master' | 'admin' | 'staff' | 'manager' | 'coordinator' | 'vendor' | 'renter' | 'district_approver' | 'site_approver' | 'maintenance' | 'support';
-
-interface AuthUser {
+export interface AuthUser {
   id: string;
   email: string;
-  role: UserRole | null;
+  role: UserRole;
+  organization_id?: string;
 }
 
-// Admin roles that have access to admin pages
-export const ADMIN_ROLES: UserRole[] = ['master_admin', 'sub_master', 'admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver'];
+// Three-tier role hierarchy
+export const ROLE_HIERARCHY: UserRole[] = ['master_admin', 'sub_admin', 'staff'];
 
-// Roles that can invite other users
-export const INVITE_ROLES: UserRole[] = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
-
-// Map old roles to new roles for compatibility
-export const ROLE_MAPPING: Record<string, UserRole> = {
-  'district_approver': 'master_admin',
-  'site_approver': 'sub_master',
-  'admin': 'master_admin',
-  'staff': 'staff',
-  'manager': 'manager',
-  'coordinator': 'coordinator',
-  'vendor': 'vendor',
-  'renter': 'renter',
-  'maintenance': 'maintenance',
-  'support': 'support'
-};
-
-// Check if a role has admin privileges
-export function isAdminRole(role: UserRole | null | undefined): boolean {
-  if (!role) return false;
-  return ADMIN_ROLES.includes(role as UserRole);
+// Check if user has administrative privileges
+export function isAdminRole(role?: UserRole): boolean {
+  return role === 'master_admin' || role === 'sub_admin';
 }
 
-// Check if a role can invite users
-export function canInviteUsers(role: UserRole | null | undefined): boolean {
-  if (!role) return false;
-  return INVITE_ROLES.includes(role as UserRole);
+// Check if user can invite other users
+export function canInviteUsers(role?: UserRole): boolean {
+  return role === 'master_admin' || role === 'sub_admin';
 }
 
-// Map old roles to new roles
-export function mapRole(role: string | null | undefined): UserRole | null {
-  if (!role) return null;
-  return ROLE_MAPPING[role] || (role as UserRole);
+// Get allowed roles that a user can invite
+export function getAllowedInviteRoles(role?: UserRole): UserRole[] {
+  if (role === 'master_admin') {
+    return ['sub_admin'];
+  }
+  
+  if (role === 'sub_admin') {
+    return ['staff'];
+  }
+  
+  return [];
+}
+
+// Check if user can access a specific organization's data
+export function canAccessOrganization(
+  userRole: UserRole,
+  userOrgId?: string,
+  targetOrgId?: string
+): boolean {
+  return hasOrgAccess(userRole, userOrgId, targetOrgId);
 }
 
 // Hook to get current user and role
@@ -70,14 +67,15 @@ export function useAuth() {
         // Get user profile from database
         const { data: profile } = await supabase
           .from('users')
-          .select('role')
+          .select('role, organization_id')
           .eq('id', authUser.id)
           .single();
 
         setUser({
           id: authUser.id,
           email: authUser.email || '',
-          role: mapRole(profile?.role)
+          role: mapLegacyRole(profile?.role),
+          organization_id: profile?.organization_id
         });
       } catch (error) {
         console.error('Error loading user:', error);
@@ -94,14 +92,15 @@ export function useAuth() {
       if (event === 'SIGNED_IN' && session?.user) {
         const { data: profile } = await supabase
           .from('users')
-          .select('role')
+          .select('role, organization_id')
           .eq('id', session.user.id)
           .single();
 
         setUser({
           id: session.user.id,
           email: session.user.email || '',
-          role: mapRole(profile?.role)
+          role: mapLegacyRole(profile?.role),
+          organization_id: profile?.organization_id
         });
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -117,10 +116,14 @@ export function useAuth() {
     try {
       await supabase.auth.signOut();
       toast.success('Signed out successfully');
-      router.push('/');
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
       toast.error('Error signing out');
+      // Force redirect even on error
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     }
   };
 
@@ -128,63 +131,42 @@ export function useAuth() {
     user,
     loading,
     isAdmin: isAdminRole(user?.role),
+    isMasterAdmin: user?.role === 'master_admin',
+    isSubAdmin: user?.role === 'sub_admin',
+    isStaff: user?.role === 'staff',
     canInvite: canInviteUsers(user?.role),
+    allowedInviteRoles: getAllowedInviteRoles(user?.role),
+    organizationId: user?.organization_id,
     signOut
   };
 }
 
-// Hook to protect admin pages
-export function useAdminAuth() {
+// Hook to protect routes based on role
+export function useRequireRole(allowedRoles: UserRole[]) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Not logged in
-        toast.error('Please sign in to access this page');
-        router.push('/auth/sign-in');
-        return;
-      }
-      
-      if (!isAdminRole(user.role)) {
-        // Not authorized
-        toast.error('You do not have permission to access this page');
-        router.push('/facilities-map');
-        return;
-      }
-      
-      setIsAuthorized(true);
+    if (!loading && (!user || !allowedRoles.includes(user.role))) {
+      toast.error('You do not have permission to access this page');
+      router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading, allowedRoles, router]);
 
-  return { user, loading, isAuthorized };
+  return { user, loading };
 }
 
-// Check if user has admin privileges
-export function isAdmin(role: UserRole | null): boolean {
-  return isAdminRole(role);
-}
+// Hook to protect routes based on organization
+export function useRequireOrganization() {
+  const { user, loading, organizationId } = useAuth();
+  const router = useRouter();
 
-// Check if user is a renter
-export function isRenter(role: UserRole | null): boolean {
-  return role === 'renter';
-}
+  useEffect(() => {
+    if (!loading && user && !organizationId) {
+      toast.error('You must be assigned to an organization');
+      router.push('/');
+    }
+  }, [user, loading, organizationId, router]);
 
-// Get appropriate home page for user role
-export function getHomePageForRole(role: UserRole | null): string {
-  switch (role) {
-    case 'renter':
-      return '/facilities-map';
-    case 'staff':
-    case 'manager':
-    case 'coordinator':
-    case 'district_approver':
-    case 'site_approver':
-      return '/staff';
-    case 'admin':
-    default:
-      return '/facilities';
-  }
+  return { user, loading, organizationId };
 } 
