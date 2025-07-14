@@ -56,6 +56,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import ShareIssueFormButton from '@/components/maintenance/ShareIssueFormButton';
+import { getMaintenanceTasks, updateMaintenanceTask } from '@/app/actions/maintenance';
 
 // Temporary mock data for facilities
 const facilities = [
@@ -255,262 +256,29 @@ export default function MaintenancePage() {
     { id: '3', name: 'Quality Repairs Inc.', specialties: ['General Maintenance', 'Security'] },
   ];
 
-  const handleCreateTask = (data: Partial<MaintenanceTask>) => {
-    const newTask: MaintenanceTask = {
-      id: Math.random().toString(36).substring(7),
-      title: data.title || '',
-      description: data.description || '',
-      type: data.type || 'corrective',
-      priority: data.priority || 'medium',
-      status: 'new',
-      workflowStatus: 'new',
-      startDate: data.startDate || new Date().toISOString(),
-      estimatedDuration: data.estimatedDuration || 60,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: 'John Doe',
-      updatedBy: 'John Doe',
-      facilityId: selectedFacility,
-      location: data.location || '',
-      attachments: [],
-      systemType: data.systemType || 'General',
-      issueType: data.issueType || 'Maintenance',
-      impact: data.impact || 'low',
-      severity: data.severity || 'low'
-    };
-
-    // Add task to local state first for immediate feedback
-    setTasks(prevTasks => [...prevTasks, newTask]);
-    setIsTaskModalOpen(false);
-
-    // Send task to API
-    fetch('/api/issues', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(newTask),
-    })
-    .then(response => response.json())
-    .then(result => {
-      if (!result.success) {
-        // Revert the local state if API call fails
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== newTask.id));
-        console.error('Failed to create task:', result.error);
-        toast({
-          title: "Error",
-          description: "Failed to create task. Please try again.",
-          variant: "destructive",
-        });
-      }
-    })
-    .catch(error => {
-      // Revert the local state if API call fails
-      setTasks(prevTasks => prevTasks.filter(t => t.id !== newTask.id));
-      console.error('Error creating task:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create task. Please try again.",
-        variant: "destructive",
-      });
-    });
+  const handleCreateTask = async (data: Partial<MaintenanceTask>) => {
+    // The modal now handles creation directly with server action
+    // Just refresh the tasks list
+    await loadTasks();
   };
 
-  // Optimize loadTasks with proper error handling and caching
+  // Replace the loadTasks function with this
   const loadTasks = useCallback(async () => {
-    // Check if we already have tasks for this facility to avoid unnecessary fetching
-    const cachedTasks = sessionStorage.getItem(`tasks_${selectedFacility}`);
-    if (cachedTasks && !isLoading) {
-      try {
-        const parsedTasks = JSON.parse(cachedTasks);
-        setTasks(parsedTasks);
-        return;
-      } catch (e) {
-        console.error('Error parsing cached tasks:', e);
-        // Continue with normal loading if cache parsing fails
-      }
-    }
-
     setIsLoading(true);
     try {
-      // Create a timeout promise to prevent hanging on slow connections
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error('Request timed out'));
-        }, 5000); // 5 second timeout
-      });
-
-      // Create the actual data fetching promise
-      const fetchDataPromise = async () => {
-        // In development mode, we can use mock data to avoid API calls
-        if (process.env.NODE_ENV === 'development') {
-          console.log('Using mock maintenance task data for faster development');
-          // Return mock tasks
-          return {
-            success: true,
-            data: [
-              {
-                id: '1',
-                title: 'HVAC Maintenance',
-                description: 'Regular maintenance check for HVAC system',
-                type: 'preventive',
-                priority: 'medium',
-                status: 'pending',
-                workflowStatus: 'new',
-                startDate: new Date().toISOString(),
-                estimatedDuration: 120,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                createdBy: 'John Doe',
-                updatedBy: 'John Doe',
-                facilityId: selectedFacility,
-                location: 'Building A, Floor 2',
-                attachments: [],
-                systemType: 'HVAC',
-                issueType: 'Maintenance'
-              },
-              {
-                id: '2',
-                title: 'Plumbing Leak',
-                description: 'Water leak in restroom',
-                type: 'corrective',
-                priority: 'high',
-                status: 'in_progress',
-                workflowStatus: 'in_progress',
-                startDate: new Date().toISOString(),
-                estimatedDuration: 60,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                createdBy: 'Jane Smith',
-                updatedBy: 'Jane Smith',
-                facilityId: selectedFacility,
-                location: 'Building B, Floor 1, Restroom',
-                attachments: [],
-                systemType: 'Plumbing',
-                issueType: 'Repair'
-              }
-            ]
-          };
-        }
-
-        // If not in development mode, make the actual API call
-        const response = await fetch(`/api/issues?facilityId=${selectedFacility}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          // Add cache control headers
-          cache: 'default',
-        });
-
-        if (!response.ok) {
-          console.warn(`API returned status: ${response.status}`);
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result = await response.json();
-        
-        if (!result.success) {
-          throw new Error(result.error || 'Failed to load tasks');
-        }
-
-        return result;
-      };
-
-      // Race the timeout against the actual data fetch
-      let result;
-      try {
-        result = await Promise.race([fetchDataPromise(), timeoutPromise]);
-        // Cache the successful result
-        if (result && result.data) {
-          sessionStorage.setItem(`tasks_${selectedFacility}`, JSON.stringify(result.data));
-        }
-      } catch (error) {
-        console.warn('Using fallback data due to:', error);
-        // Provide fallback data
-        result = {
-          success: true,
-          data: [
-            {
-              id: '1',
-              title: 'HVAC Maintenance',
-              description: 'Regular maintenance check for HVAC system',
-              type: 'preventive',
-              priority: 'medium',
-              status: 'pending',
-              workflowStatus: 'new',
-              startDate: new Date().toISOString(),
-              estimatedDuration: 120,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: 'John Doe',
-              updatedBy: 'John Doe',
-              facilityId: selectedFacility,
-              location: 'Building A, Floor 2',
-              attachments: [],
-              systemType: 'HVAC',
-              issueType: 'Maintenance'
-            },
-            {
-              id: '2',
-              title: 'Plumbing Leak',
-              description: 'Water leak in restroom',
-              type: 'corrective',
-              priority: 'high',
-              status: 'in_progress',
-              workflowStatus: 'in_progress',
-              startDate: new Date().toISOString(),
-              estimatedDuration: 60,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: 'Jane Smith',
-              updatedBy: 'Jane Smith',
-              facilityId: selectedFacility,
-              location: 'Building B, Floor 1, Restroom',
-              attachments: [],
-              systemType: 'Plumbing',
-              issueType: 'Repair'
-            }
-          ]
-        };
-      }
-
-      setTasks(result.data);
+      const tasksData = await getMaintenanceTasks(selectedFacility);
+      setTasks(tasksData);
     } catch (error) {
       console.error('Error loading tasks:', error);
       toast({
         title: 'Error',
-        description: 'Failed to load maintenance tasks. Using fallback data.',
+        description: 'Failed to load maintenance tasks.',
         variant: 'destructive',
       });
-      
-      // Provide fallback data even in the outer catch block
-      setTasks([
-        {
-          id: '1',
-          title: 'HVAC Maintenance',
-          description: 'Regular maintenance check for HVAC system',
-          type: 'preventive',
-          priority: 'medium',
-          status: 'pending',
-          workflowStatus: 'new',
-          startDate: new Date().toISOString(),
-          estimatedDuration: 120,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          createdBy: 'John Doe',
-          updatedBy: 'John Doe',
-          facilityId: selectedFacility,
-          location: 'Building A, Floor 2',
-          attachments: [],
-          systemType: 'HVAC',
-          issueType: 'Maintenance'
-        }
-      ]);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFacility, toast, isLoading]);
+  }, [selectedFacility, toast]);
 
   // Load tasks when facility changes with proper cleanup
   useEffect(() => {
@@ -614,19 +382,23 @@ export default function MaintenancePage() {
     });
   };
 
-  const handleTaskUpdate = (taskId: string, updates: Partial<MaintenanceTask>) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId 
-          ? { ...task, ...updates, updatedAt: new Date().toISOString() }
-          : task
-      )
-    );
+  // Update the handleTaskUpdate function
+  const handleTaskUpdate = async (taskId: string, updates: Partial<MaintenanceTask>) => {
+    const result = await updateMaintenanceTask(taskId, updates);
     
-    toast({
-      title: "Task Updated",
-      description: "Task has been successfully updated.",
-    });
+    if (result.success) {
+      await loadTasks();
+      toast({
+        title: "Task Updated",
+        description: "Task has been successfully updated.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to update task.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleShare = async (type: 'email' | 'sms' | 'copy') => {
@@ -656,20 +428,23 @@ export default function MaintenancePage() {
     }
   };
 
-  // Add the handleStatusChange function
-  const handleStatusChange = (taskId: string, newStatus: MaintenanceTask['status']) => {
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId 
-          ? { ...task, status: newStatus, updatedAt: new Date().toISOString() }
-          : task
-      )
-    );
+  // Update the handleStatusChange function
+  const handleStatusChange = async (taskId: string, newStatus: MaintenanceTask['status']) => {
+    const result = await updateMaintenanceTask(taskId, { status: newStatus });
     
-    toast({
-      title: "Task Updated",
-      description: "Task status has been successfully updated.",
-    });
+    if (result.success) {
+      await loadTasks();
+      toast({
+        title: "Task Updated",
+        description: "Task status has been successfully updated.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to update task status.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Memoize expensive operations
