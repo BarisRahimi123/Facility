@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceRoleClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/email';
 
-// In a real application, these settings would be stored in a database
 let emailSettings = {
   apiKey: process.env.SENDGRID_API_KEY,
   fromEmail: process.env.SENDGRID_FROM_EMAIL,
@@ -11,26 +10,15 @@ let emailSettings = {
   defaultTemplate: '',
 };
 
-// Create a Supabase client with the service role key for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
+const supabase = getServiceRoleClient();
 
 export async function GET() {
   try {
-    // In a real application, fetch settings from database
     return NextResponse.json({
       success: true,
       settings: {
         ...emailSettings,
-        apiKey: '••••••••', // Don't send actual API key
+        apiKey: '••••••••',
       },
     });
   } catch (error) {
@@ -46,7 +34,6 @@ export async function POST(request: Request) {
   try {
     const data = await request.json();
 
-    // Validate required fields
     const requiredFields = ['apiKey', 'fromEmail', 'fromName'];
     const missingFields = requiredFields.filter(field => !data[field]);
 
@@ -60,7 +47,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.fromEmail)) {
       return NextResponse.json(
@@ -82,7 +68,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate API key format
     if (!data.apiKey.startsWith('SG.')) {
       return NextResponse.json(
         { 
@@ -93,13 +78,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // In a real application, save settings to database
     emailSettings = {
       ...emailSettings,
       ...data,
     };
 
-    // Test the new configuration with a dummy email
     try {
       await sendEmail({
         to: 'test@example.com',
@@ -139,4 +122,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

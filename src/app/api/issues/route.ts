@@ -1,31 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceRoleClient } from '@/lib/supabase/server';
 import type { MaintenanceTask } from '@/types/maintenance';
 
-// Create a Supabase client with service role key for better reliability
-function createServerSupabase() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL');
-  }
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY');
-  }
-
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    }
-  );
-}
-
-// GET /api/issues - Get all tasks
 export async function GET(request: Request) {
-  const supabase = createServerSupabase();
+  const supabase = getServiceRoleClient();
   const { searchParams } = new URL(request.url);
   const facilityId = searchParams.get('facilityId');
 
@@ -60,13 +38,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const supabase = createServerSupabase();
+  const supabase = getServiceRoleClient();
   
   try {
     const formData = await request.json();
     console.log('Received form data:', formData);
 
-    // First validate the token if provided
     if (formData.token) {
       const { data: tokenData, error: tokenError } = await supabase
         .from('form_tokens')
@@ -90,7 +67,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validate required fields
     const requiredFields = ['systemType', 'issueType', 'description', 'submitterName', 'submitterEmail'];
     const missingFields = requiredFields.filter(field => !formData[field]);
     
@@ -105,7 +81,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create task data with validated values
     const taskData = {
       title: `${formData.systemType} Issue: ${formData.issueType}`,
       description: formData.description,
@@ -134,7 +109,6 @@ export async function POST(request: Request) {
 
     console.log('Attempting to insert task with data:', taskData);
 
-    // Insert the task
     const { data: task, error: insertError } = await supabase
       .from('tasks')
       .insert([taskData])
@@ -171,7 +145,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // If we have a token, update its status to used
     if (formData.token) {
       await supabase
         .from('form_tokens')
@@ -202,4 +175,4 @@ function calculatePriority(impact?: 'low' | 'medium' | 'high', severity?: 'low' 
   if (impact === 'high' || severity === 'high') return 'high';
   if (impact === 'medium' || severity === 'medium') return 'medium';
   return 'low';
-} 
+}
