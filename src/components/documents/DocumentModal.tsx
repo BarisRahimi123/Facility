@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -270,4 +270,4 @@ export default function DocumentModal({ document, isOpen, onClose }: DocumentMod
       </DialogContent>
     </Dialog>
   );
-} 
+}  

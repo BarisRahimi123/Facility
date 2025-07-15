@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FieldType, SurfaceType, CreateFieldRequest } from '@/types/field';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,10 @@ export function AddFieldModal({ isOpen, onClose, onSubmit, facilityId }: AddFiel
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  useEffect(() => {
+    console.log('AddFieldModal isOpen state changed:', isOpen);
+  }, [isOpen]);
   const [lastCreatedField, setLastCreatedField] = useState<string>('');
   
   // Form state
@@ -229,6 +233,9 @@ export function AddFieldModal({ isOpen, onClose, onSubmit, facilityId }: AddFiel
             <Plus className="h-5 w-5 text-primary" />
             {showSuccess ? 'Field Created Successfully!' : 'Add New Field'}
           </DialogTitle>
+          <DialogDescription>
+            Create a new field for your facility with pricing, availability, and amenities.
+          </DialogDescription>
         </DialogHeader>
         
         {showSuccess ? (
@@ -754,4 +761,4 @@ export function AddFieldModal({ isOpen, onClose, onSubmit, facilityId }: AddFiel
       </DialogContent>
     </Dialog>
   );
-}                                                                                                                        
+}                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                

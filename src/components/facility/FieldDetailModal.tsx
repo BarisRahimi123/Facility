@@ -1,7 +1,7 @@
 'use client';
 
 import { Field, CreateReservationRequest } from '@/types/field';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1063,4 +1063,4 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
       </DialogContent>
     </Dialog>
   );
-} 
+}  

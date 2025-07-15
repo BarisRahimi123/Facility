@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import type { MaintenanceTask } from '@/types/maintenance';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Share2, Mail, MessageSquare, Copy } from 'lucide-react';
@@ -516,4 +516,4 @@ export default function MaintenanceTaskView({
       </DialogContent>
     </Dialog>
   );
-} 
+}  

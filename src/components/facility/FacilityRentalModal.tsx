@@ -39,7 +39,7 @@ import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { v4 as uuidv4 } from 'uuid';
 import { createFieldReservationFromCart } from '@/app/actions/fields';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface FacilityRentalModalProps {
   item: Field | Room | null;
