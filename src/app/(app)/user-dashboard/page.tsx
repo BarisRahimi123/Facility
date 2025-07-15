@@ -74,10 +74,12 @@ export default function UserDashboard() {
   useEffect(() => {
     const checkPendingReservation = async () => {
       if (!authLoading && userProfile && typeof window !== 'undefined') {
-        const pendingReservation = localStorage.getItem('pendingFieldDetailReservation');
-        if (pendingReservation) {
+        const pendingFieldReservation = localStorage.getItem('pendingFieldDetailReservation');
+        const pendingFacilityReservation = localStorage.getItem('pendingFacilityReservation');
+        
+        if (pendingFieldReservation) {
           try {
-            const savedData = JSON.parse(pendingReservation);
+            const savedData = JSON.parse(pendingFieldReservation);
             console.log('Found pending field detail reservation, auto-submitting...', savedData);
             
             // Clear the pending reservation
@@ -132,6 +134,68 @@ export default function UserDashboard() {
             
           } catch (error) {
             console.error('Error processing pending reservation:', error);
+            toast({
+              title: "Reservation failed",
+              description: error instanceof Error ? error.message : "Unable to create reservation. Please try again.",
+              variant: "destructive",
+            });
+          }
+        } else if (pendingFacilityReservation) {
+          try {
+            const savedData = JSON.parse(pendingFacilityReservation);
+            console.log('Found pending facility rental reservation, auto-submitting...', savedData);
+            
+            localStorage.removeItem('pendingFacilityReservation');
+            
+            toast({
+              title: "Processing your facility reservation...",
+              description: "Please wait while we submit your facility rental.",
+            });
+
+            if (savedData.cart && Array.isArray(savedData.cart)) {
+              for (const cartItem of savedData.cart) {
+                const reservationPayload = {
+                  field_id: cartItem.field_id,
+                  user_id: userProfile.id,
+                  date: cartItem.date,
+                  start_time: cartItem.start_time,
+                  end_time: cartItem.end_time,
+                  total_cost: cartItem.total_cost,
+                  status: 'pending',
+                  reservation_type: cartItem.reservation_type || 'hourly',
+                  contact_name: savedData.contactInfo?.name || userProfile.full_name,
+                  contact_email: savedData.contactInfo?.email || userProfile.email,
+                  contact_phone: savedData.contactInfo?.phone || userProfile.phone,
+                  organization: savedData.contactInfo?.organization,
+                  event_description: savedData.contactInfo?.eventDescription,
+                  special_requests: savedData.contactInfo?.specialRequests,
+                  insurance_certificate: savedData.contactInfo?.insuranceCertificate,
+                  terms_accepted: savedData.contactInfo?.termsAccepted || false
+                };
+
+                const response = await fetch('/api/reservations', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(reservationPayload),
+                });
+
+                if (!response.ok) {
+                  throw new Error(`Failed to create reservation: ${response.statusText}`);
+                }
+              }
+            }
+
+            toast({
+              title: "🎉 Facility Reservation Created Successfully!",
+              description: `Your facility reservation has been submitted.`,
+            });
+
+            loadUserData();
+
+          } catch (error) {
+            console.error('Error processing pending facility reservation:', error);
             toast({
               title: "Reservation failed",
               description: error instanceof Error ? error.message : "Unable to create reservation. Please try again.",
@@ -670,4 +734,4 @@ export default function UserDashboard() {
       </div>
     </div>
   );
-} 
+}    

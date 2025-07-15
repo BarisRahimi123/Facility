@@ -246,14 +246,14 @@ export function FacilityRentalModal({
   useEffect(() => {
     if (user && !userLoading && typeof window !== 'undefined') {
       // Check if there's a pending reservation in localStorage
-      const pendingReservation = localStorage.getItem('pendingFieldReservation');
+      const pendingReservation = localStorage.getItem('pendingFieldDetailReservation');
       if (pendingReservation) {
         try {
           const reservationData = JSON.parse(pendingReservation);
           console.log('Found pending reservation, auto-submitting...', reservationData);
           
           // Clear the pending reservation
-          localStorage.removeItem('pendingFieldReservation');
+          localStorage.removeItem('pendingFieldDetailReservation');
           
           // Restore the cart and checkout data
           if (reservationData.cart) {
@@ -525,7 +525,7 @@ export function FacilityRentalModal({
       };
 
       // Store the reservation data in localStorage
-      localStorage.setItem('pendingFieldReservation', JSON.stringify(submissionData));
+      localStorage.setItem('pendingFieldDetailReservation', JSON.stringify(submissionData));
       
       // Show auth modal
       setShowAuthModal(true);
