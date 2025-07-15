@@ -466,43 +466,64 @@ export function FacilityRentalModal({
   };
 
   const handleSubmitReservation = async () => {
-    // Validate that all policies are acknowledged
-    if (checkoutData.cancellationPolicy !== 'yes' ||
-        checkoutData.employeeRequirement !== 'yes' ||
-        checkoutData.insuranceRequirement !== 'yes' ||
-        checkoutData.insuranceFeePolicy !== 'yes' ||
-        checkoutData.priorityPolicy !== 'yes' ||
-        checkoutData.paymentPolicy !== 'yes' ||
-        checkoutData.portaPottyPolicy !== 'yes' ||
-        checkoutData.portaPottyCoordination !== 'yes' ||
-        checkoutData.securityPolicy !== 'yes') {
+    // First, validate the form fields and policies
+    const requiredPolicies = {
+      cancellationPolicy: "I understand the District's Cancellation Procedures",
+      employeeRequirement: "I understand that a District employee must be on duty",
+      insuranceRequirement: "I understand the District's Insurance Requirements",
+      insuranceFeePolicy: "I understand the additional insurance fee policy",
+      priorityPolicy: "I understand that school-related activities have priority",
+      paymentPolicy: "I understand that I must pay all fees prior to my event",
+      portaPottyPolicy: "I understand that porta potty service is at my expense",
+      portaPottyCoordination: "I must coordinate porta potty placement",
+      securityPolicy: "I understand that security is at my expense",
+    };
+
+    const unacknowledgedPolicies = Object.entries(requiredPolicies)
+      .filter(([key, _]) => checkoutData[key as keyof typeof requiredPolicies] !== 'yes')
+      .map(([_, description]) => description);
+
+    if (unacknowledgedPolicies.length > 0) {
       toast({
         title: 'Policy Acknowledgment Required',
-        description: 'Please acknowledge all policies before submitting your reservation.',
-        variant: 'destructive'
+        description: `Please acknowledge the following policies: \n- ${unacknowledgedPolicies.join('\n- ')}`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!checkoutData.eventPurpose || !checkoutData.hvacNeeded) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please provide the event purpose and HVAC needs.',
+        variant: 'destructive',
       });
       return;
     }
 
-    // Prepare reservation data
-    const submissionData = {
-      cart: cart.map(item => ({
-        ...item,
-        item: item.item as Field
-      })),
-      checkoutData,
-      contactInfo: {
-        name: reservationData.contactName || '',
-        email: reservationData.contactEmail || '',
-        phone: reservationData.contactPhone || '',
-        organization: reservationData.organization || ''
-      }
-    };
-
-    // Check if user is authenticated
-    if (!user && !userLoading) {
-      console.log('User not authenticated, storing reservation and showing auth modal');
+    // If validation passes, check for authentication
+    if (userLoading) {
+      toast({
+        title: 'Verifying user...',
+        description: 'Please wait while we check your authentication status.',
+      });
+      return;
+    }
+    
+    if (!user) {
+      console.log('User not authenticated, showing auth modal');
       
+      const submissionData = {
+        cart: cart.map(item => ({ ...item, item: item.item as Field })),
+        checkoutData,
+        contactInfo: {
+          name: reservationData.contactName || '',
+          email: reservationData.contactEmail || '',
+          phone: reservationData.contactPhone || '',
+          organization: reservationData.organization || ''
+        }
+      };
+
       // Store the reservation data in localStorage
       localStorage.setItem('pendingFieldReservation', JSON.stringify(submissionData));
       
@@ -511,19 +532,38 @@ export function FacilityRentalModal({
       
       // Auto-navigate to sign-up page after a short delay
       setTimeout(() => {
-        window.location.href = '/auth/sign-up';
-      }, 2000); // Show modal for 2 seconds before redirecting
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/sign-up';
+        }
+      }, 2500); // Show modal for 2.5 seconds before redirecting
       
       return;
     }
 
     if (!user) {
-      console.error('No user found during submission');
+      console.error('No user found during submission, this should not happen if logic is correct.');
+      toast({
+        title: 'Authentication Error',
+        description: 'Could not find user session. Please try signing in again.',
+        variant: 'destructive',
+      });
       return;
     }
 
     // If authenticated, submit directly
     setIsSubmittingReservation(true);
+    
+    const submissionData = {
+      cart: cart.map(item => ({ ...item, item: item.item as Field })),
+      checkoutData,
+      contactInfo: {
+        name: reservationData.contactName || user.name || '',
+        email: reservationData.contactEmail || user.email || '',
+        phone: reservationData.contactPhone || user.phone || '',
+        organization: reservationData.organization || (user.type === 'external' ? user.company : '') || ''
+      }
+    };
+    
     await submitReservationToDatabase(submissionData);
   };
 
@@ -1087,7 +1127,14 @@ export function FacilityRentalModal({
                             }
                             onClick={handleSubmitReservation}
                           >
-                            Submit Reservation Request
+                            {isSubmittingReservation || userLoading ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Submitting...
+                              </>
+                            ) : (
+                              'Submit Reservation Request'
+                            )}
                           </Button>
                         </CardContent>
                       </Card>

@@ -229,7 +229,8 @@ async function getStaffDashboardData(): Promise<{ data: StaffDashboardData | nul
       .eq('user_id', user.id);
 
     if (roomAssignmentsError) {
-      console.error('Error fetching room assignments:', roomAssignmentsError);
+      console.error('Error fetching room assignments:', roomAssignmentsError.message || 'Unknown error');
+      // Don't fail the entire page load, just continue without room assignments
     }
 
     // Get upcoming field blockouts for assigned fields

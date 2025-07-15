@@ -65,8 +65,11 @@ export async function GET(request: Request) {
               return NextResponse.redirect(new URL('/staff', requestUrl.origin));
             } else if (userRole === 'renter') {
               return NextResponse.redirect(new URL('/facilities-map', requestUrl.origin));
+            } else if (userRole === 'sub_admin' || userRole === 'master_admin') {
+              // Admin users go to facilities map
+              return NextResponse.redirect(new URL('/facilities-map', requestUrl.origin));
             } else {
-              // Admin or unknown users go to facilities map
+              // Unknown users go to facilities map
               return NextResponse.redirect(new URL('/facilities-map', requestUrl.origin));
             }
           }

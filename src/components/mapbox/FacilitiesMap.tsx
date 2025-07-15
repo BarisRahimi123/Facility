@@ -6,22 +6,13 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { geocodeAddresses } from '@/utils/geocoding';
 import { useTheme } from 'next-themes';
 import type { Field } from '@/types/field';
+import type { Facility } from '@/types/facility';
 import { Button } from '@/components/ui/button';
 import { Map as MapIcon, Satellite, Moon, Sun, Layers } from 'lucide-react';
 
 // Set the access token from environment variable
 if (process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN) {
   mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-}
-
-interface Facility {
-  id: string;
-  name: string;
-  address: string;
-  facility_type: string;
-  status: string;
-  square_footage?: number;
-  year_built?: string | number;
 }
 
 interface FacilitiesMapProps {
@@ -60,6 +51,141 @@ export function FacilitiesMap({
     y: number;
     visible: boolean;
   }>({ content: '', x: 0, y: 0, visible: false });
+
+  // Helper to create facility popup HTML
+  const createFacilityPopupHTML = (props: Record<string, any> | null): string => {
+    if (!props) return '';
+    return `
+      <div class="p-4 bg-card text-card-foreground">
+        <h3 class="font-semibold text-lg text-foreground mb-2">${props.name || ''}</h3>
+        <p class="text-sm text-muted-foreground mb-2">${props.facility_type || ''}</p>
+        <p class="text-sm text-muted-foreground mb-2">${props.address || ''}</p>
+        <div class="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+          <div>Size: ${props.square_footage?.toLocaleString() || 'N/A'} sq ft</div>
+          <div>Built: ${props.year_built || 'N/A'}</div>
+          <div>Status: <span class="text-green-500">${props.status || ''}</span></div>
+        </div>
+      </div>
+    `;
+  };
+
+  // Helper to create field popup HTML
+  const createFieldPopupHTML = (props: Record<string, any> | null): string => {
+    if (!props) return '';
+    const fieldAddress = props.full_address || `${props.latitude || ''}, ${props.longitude || ''}`;
+    const surfaceType = typeof props.surface_type === 'string' ? props.surface_type.replace('_', ' ') : 'Standard';
+    return `
+      <div class="p-4 bg-card text-card-foreground">
+        <div class="flex items-center mb-2">
+          <span class="text-2xl mr-2">${props.icon || ''}</span>
+          <div>
+            <h3 class="font-semibold text-lg text-foreground">${props.name || ''}</h3>
+            <p class="text-sm text-muted-foreground">${props.field_type || ''} • ${surfaceType}</p>
+          </div>
+        </div>
+        <div class="mb-3 p-2 bg-muted/50 rounded-md">
+          <div class="flex items-start gap-2">
+            <svg class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
+            <div class="flex-1">
+              <p class="text-xs text-muted-foreground font-medium">Field Location</p>
+              <p class="text-xs text-foreground">${fieldAddress}</p>
+            </div>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-2">
+          <div>💰 $${props.hourly_rate || '0'}/hr</div>
+          <div>📅 $${props.daily_rate || '0'}/day</div>
+          ${props.capacity ? `<div>👥 ${props.capacity}</div>` : ''}
+          ${props.dimensions ? `<div>📏 ${props.dimensions}</div>` : ''}
+        </div>
+        <div class="flex flex-wrap gap-1 mb-2">
+          ${props.has_lighting ? '<span class="bg-yellow-500 text-yellow-900 px-2 py-1 rounded text-xs">💡 Lighting</span>' : ''}
+          ${props.has_parking ? '<span class="bg-green-500 text-green-900 px-2 py-1 rounded text-xs">🚗 Parking</span>' : ''}
+          ${props.ada_compliant ? '<span class="bg-blue-500 text-blue-900 px-2 py-1 rounded text-xs">♿ ADA</span>' : ''}
+        </div>
+        <p class="text-xs text-muted-foreground">Status: <span class="text-green-500">${props.status || ''}</span></p>
+        <div class="text-center mt-3 pt-2 border-t border-border">
+          <p class="text-xs text-muted-foreground">Double-click to book this field</p>
+        </div>
+      </div>
+    `;
+  };
+
+  // Helper to create facility tooltip HTML
+  const createFacilityTooltipHTML = (props: Record<string, any> | null): string => {
+    if (!props) return '';
+    const facilityType = typeof props.facility_type === 'string' ? props.facility_type.replace('_', ' ') : '';
+    return `
+      <div class="facility-hover-tooltip" style="padding: 8px; min-width: 180px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
+        <div style="display: flex; align-items: center; margin-bottom: 6px;">
+          <div style="width: 8px; height: 8px; background: ${props.status === 'active' ? '#10b981' : '#6b7280'}; border-radius: 50%; margin-right: 8px;"></div>
+          <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--foreground);">${props.name || ''}</h4>
+        </div>
+        <p style="margin: 0 0 4px 0; font-size: 12px; color: var(--muted-foreground); text-transform: capitalize;">${facilityType}</p>
+        <p style="margin: 0 0 6px 0; font-size: 11px; color: var(--muted-foreground);">${props.address || ''}</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; color: var(--muted-foreground);">
+          <div>📐 ${props.square_footage?.toLocaleString() || 'N/A'} sq ft</div>
+          <div>📅 ${props.year_built || 'N/A'}</div>
+        </div>
+        <div style="text-align: center; font-size: 9px; color: var(--muted-foreground); margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--border);">
+          Click to view details
+        </div>
+      </div>
+    `;
+  };
+
+  // Helper to create field tooltip HTML
+  const createFieldTooltipHTML = (props: Record<string, any> | null): string => {
+    if (!props) return '';
+    const fieldAddress = props.full_address || `${props.latitude || ''}, ${props.longitude || ''}`;
+    const surfaceType = typeof props.surface_type === 'string' ? props.surface_type.replace('_', ' ') : 'Standard';
+    return `
+      <div class="field-hover-tooltip" style="padding: 8px; min-width: 160px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
+        <div style="display: flex; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 16px; margin-right: 6px;">${props.icon || ''}</span>
+          <div>
+            <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--foreground);">${props.name || ''}</h4>
+            <p style="margin: 0; font-size: 10px; color: var(--muted-foreground); text-transform: capitalize;">${props.field_type || ''} • ${surfaceType}</p>
+          </div>
+        </div>
+        <div style="margin-bottom: 6px; padding: 4px; background: var(--muted); border-radius: 4px;">
+          <div style="display: flex; align-items: start; gap: 4px;">
+            <div style="margin-top: 1px;">📍</div>
+            <p style="margin: 0; font-size: 9px; color: var(--foreground); line-height: 1.2;">${fieldAddress}</p>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px; font-size: 10px; color: var(--muted-foreground);">
+          <div>💰 $${props.hourly_rate || '0'}/hr</div>
+          <div>📅 $${props.daily_rate || '0'}/day</div>
+          ${props.capacity ? `<div>👥 ${props.capacity}</div>` : ''}
+          ${props.dimensions ? `<div>📏 ${props.dimensions}</div>` : ''}
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 6px;">
+          ${props.has_lighting ? '<span style="background: #fbbf24; color: #92400e; padding: 1px 4px; border-radius: 6px; font-size: 8px;">💡</span>' : ''}
+          ${props.has_parking ? '<span style="background: #10b981; color: #065f46; padding: 1px 4px; border-radius: 6px; font-size: 8px;">🚗</span>' : ''}
+          ${props.ada_compliant ? '<span style="background: #3b82f6; color: #1e40af; padding: 1px 4px; border-radius: 6px; font-size: 8px;">♿</span>' : ''}
+        </div>
+        <div style="text-align: center; font-size: 9px; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 4px;">
+          Click for details • Double-click to book
+        </div>
+      </div>
+    `;
+  };
+
+  // Helper to create cluster tooltip HTML
+  const createClusterTooltipHTML = (props: Record<string, any> | null, itemType: 'Facility' | 'Field'): string => {
+    if (!props) return '';
+    const icon = itemType === 'Facility' ? '🏢' : '🏟️';
+    return `
+      <div style="padding: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
+        <div style="text-align: center;">
+          <div style="font-size: 16px; margin-bottom: 4px;">${icon}</div>
+          <div style="font-size: 14px; font-weight: 600; color: var(--foreground);">${props.point_count || 0} ${itemType}s</div>
+          <div style="font-size: 10px; color: var(--muted-foreground); margin-top: 4px;">Click to zoom in</div>
+        </div>
+      </div>
+    `;
+  };
 
   // Map style configurations
   const getMapStyle = (style: MapStyle, themeMode: string) => {
@@ -478,32 +604,23 @@ export function FacilitiesMap({
 
     // Handle individual facility clicks
     map.current.on('click', 'facilities-unclustered-point', (e) => {
-      const feature = e.features![0];
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
       if (!feature.properties) return;
       
-      const facility = facilities.find(f => f.id === feature.properties!.id);
+      const facilityId = feature.properties.id;
+      const facility = facilities.find(f => f.id === facilityId);
       
       if (facility && onFacilityClick) {
         onFacilityClick(facility);
       }
 
       // Show popup
-      const geometry = feature.geometry;
+      const { geometry } = feature;
       if (geometry.type === 'Point') {
-        const popup = new mapboxgl.Popup({ offset: 25 })
+        new mapboxgl.Popup({ offset: 25 })
           .setLngLat(geometry.coordinates as [number, number])
-          .setHTML(`
-            <div class="p-4 bg-card text-card-foreground">
-              <h3 class="font-semibold text-lg text-foreground mb-2">${feature.properties.name}</h3>
-              <p class="text-sm text-muted-foreground mb-2">${feature.properties.facility_type}</p>
-              <p class="text-sm text-muted-foreground mb-2">${feature.properties.address}</p>
-              <div class="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <div>Size: ${feature.properties.square_footage?.toLocaleString() || 'N/A'} sq ft</div>
-                <div>Built: ${feature.properties.year_built || 'N/A'}</div>
-                <div>Status: <span class="text-green-500">${feature.properties.status}</span></div>
-              </div>
-            </div>
-          `)
+          .setHTML(createFacilityPopupHTML(feature.properties))
           .addTo(map.current!);
       }
     });
@@ -512,8 +629,12 @@ export function FacilitiesMap({
     let fieldClickTimeout: NodeJS.Timeout | null = null;
     
     map.current.on('click', 'fields-unclustered-point', (e) => {
-      const feature = e.features![0];
-      const field = fields.find(f => f.id === feature.properties.id);
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      if (!feature.properties) return;
+
+      const fieldId = feature.properties.id;
+      const field = fields.find(f => f.id === fieldId);
       
       if (!field) return;
 
@@ -531,48 +652,12 @@ export function FacilitiesMap({
         }
 
         // Show popup
-        const fieldAddress = feature.properties.full_address || `${feature.properties.latitude}, ${feature.properties.longitude}`;
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setLngLat(feature.geometry.coordinates as [number, number])
-          .setHTML(`
-            <div class="p-4 bg-card text-card-foreground">
-              <div class="flex items-center mb-2">
-                <span class="text-2xl mr-2">${feature.properties.icon}</span>
-                <div>
-                  <h3 class="font-semibold text-lg text-foreground">${feature.properties.name}</h3>
-                  <p class="text-sm text-muted-foreground">${feature.properties.field_type} • ${feature.properties.surface_type?.replace('_', ' ') || 'Standard'}</p>
-                </div>
-              </div>
-              
-              <div class="mb-3 p-2 bg-muted/50 rounded-md">
-                <div class="flex items-start gap-2">
-                  <svg class="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
-                  </svg>
-                  <div class="flex-1">
-                    <p class="text-xs text-muted-foreground font-medium">Field Location</p>
-                    <p class="text-xs text-foreground">${fieldAddress}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-2">
-                <div>💰 $${feature.properties.hourly_rate}/hr</div>
-                <div>📅 $${feature.properties.daily_rate}/day</div>
-                ${feature.properties.capacity ? `<div>👥 ${feature.properties.capacity}</div>` : '<div></div>'}
-                ${feature.properties.dimensions ? `<div>📏 ${feature.properties.dimensions}</div>` : '<div></div>'}
-              </div>
-              <div class="flex flex-wrap gap-1 mb-2">
-                ${feature.properties.has_lighting ? '<span class="bg-yellow-500 text-yellow-900 px-2 py-1 rounded text-xs">💡 Lighting</span>' : ''}
-                ${feature.properties.has_parking ? '<span class="bg-green-500 text-green-900 px-2 py-1 rounded text-xs">🚗 Parking</span>' : ''}
-                ${feature.properties.ada_compliant ? '<span class="bg-blue-500 text-blue-900 px-2 py-1 rounded text-xs">♿ ADA</span>' : ''}
-              </div>
-              <p class="text-xs text-muted-foreground">Status: <span class="text-green-500">${feature.properties.status}</span></p>
-              <div class="text-center mt-3 pt-2 border-t border-border">
-                <p class="text-xs text-muted-foreground">Double-click to book this field</p>
-              </div>
-            </div>
-          `)
+        const { geometry } = feature;
+        if (geometry.type !== 'Point') return;
+
+        new mapboxgl.Popup({ offset: 25 })
+          .setLngLat(geometry.coordinates as [number, number])
+          .setHTML(createFieldPopupHTML(feature.properties))
           .addTo(map.current!);
 
         fieldClickTimeout = null;
@@ -581,8 +666,12 @@ export function FacilitiesMap({
 
     // Handle field double-clicks
     map.current.on('dblclick', 'fields-unclustered-point', (e) => {
-      const feature = e.features![0];
-      const field = fields.find(f => f.id === feature.properties.id);
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      if (!feature.properties) return;
+
+      const fieldId = feature.properties.id;
+      const field = fields.find(f => f.id === fieldId);
       
       // Clear single click timeout
       if (fieldClickTimeout) {
@@ -597,31 +686,39 @@ export function FacilitiesMap({
 
     // Change cursor to pointer when hovering over clickable features
     map.current.on('mouseenter', 'facilities-clusters', () => {
-      map.current!.getCanvas().style.cursor = 'pointer';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = 'pointer';
     });
     map.current.on('mouseleave', 'facilities-clusters', () => {
-      map.current!.getCanvas().style.cursor = '';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = '';
     });
 
     map.current.on('mouseenter', 'fields-clusters', () => {
-      map.current!.getCanvas().style.cursor = 'pointer';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = 'pointer';
     });
     map.current.on('mouseleave', 'fields-clusters', () => {
-      map.current!.getCanvas().style.cursor = '';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = '';
     });
 
     map.current.on('mouseenter', 'facilities-unclustered-point', () => {
-      map.current!.getCanvas().style.cursor = 'pointer';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = 'pointer';
     });
     map.current.on('mouseleave', 'facilities-unclustered-point', () => {
-      map.current!.getCanvas().style.cursor = '';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = '';
     });
 
     map.current.on('mouseenter', 'fields-unclustered-point', () => {
-      map.current!.getCanvas().style.cursor = 'pointer';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = 'pointer';
     });
     map.current.on('mouseleave', 'fields-unclustered-point', () => {
-      map.current!.getCanvas().style.cursor = '';
+      if (!map.current) return;
+      map.current.getCanvas().style.cursor = '';
     });
   };
 
@@ -631,29 +728,15 @@ export function FacilitiesMap({
 
     // Hover handlers for individual facilities
     map.current.on('mouseenter', 'facilities-unclustered-point', (e) => {
-      const feature = e.features![0];
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      if (!feature.properties) return;
       
       setHoverTooltip({
         visible: true,
         x: e.point.x + 15,
         y: e.point.y - 10,
-        content: `
-          <div class="facility-hover-tooltip" style="padding: 8px; min-width: 180px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
-            <div style="display: flex; align-items: center; margin-bottom: 6px;">
-              <div style="width: 8px; height: 8px; background: ${feature.properties.status === 'active' ? '#10b981' : '#6b7280'}; border-radius: 50%; margin-right: 8px;"></div>
-              <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: var(--foreground);">${feature.properties.name}</h4>
-            </div>
-            <p style="margin: 0 0 4px 0; font-size: 12px; color: var(--muted-foreground); text-transform: capitalize;">${feature.properties.facility_type.replace('_', ' ')}</p>
-            <p style="margin: 0 0 6px 0; font-size: 11px; color: var(--muted-foreground);">${feature.properties.address}</p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10px; color: var(--muted-foreground);">
-              <div>📐 ${feature.properties.square_footage?.toLocaleString() || 'N/A'} sq ft</div>
-              <div>📅 ${feature.properties.year_built || 'N/A'}</div>
-            </div>
-            <div style="text-align: center; font-size: 9px; color: var(--muted-foreground); margin-top: 6px; padding-top: 4px; border-top: 1px solid var(--border);">
-              Click to view details
-            </div>
-          </div>
-        `
+        content: createFacilityTooltipHTML(feature.properties)
       });
     });
 
@@ -663,48 +746,15 @@ export function FacilitiesMap({
 
     // Hover handlers for individual fields
     map.current.on('mouseenter', 'fields-unclustered-point', (e) => {
-      const feature = e.features![0];
-      const fieldAddress = feature.properties.full_address || `${feature.properties.latitude}, ${feature.properties.longitude}`;
-      
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      if (!feature.properties) return;
+
       setHoverTooltip({
         visible: true,
         x: e.point.x + 15,
         y: e.point.y - 10,
-        content: `
-          <div class="field-hover-tooltip" style="padding: 8px; min-width: 160px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
-            <div style="display: flex; align-items: center; margin-bottom: 6px;">
-              <span style="font-size: 16px; margin-right: 6px;">${feature.properties.icon}</span>
-              <div>
-                <h4 style="margin: 0; font-size: 13px; font-weight: 600; color: var(--foreground);">${feature.properties.name}</h4>
-                <p style="margin: 0; font-size: 10px; color: var(--muted-foreground); text-transform: capitalize;">${feature.properties.field_type} • ${feature.properties.surface_type?.replace('_', ' ') || 'Standard'}</p>
-              </div>
-            </div>
-            
-            <div style="margin-bottom: 6px; padding: 4px; background: var(--muted); border-radius: 4px;">
-              <div style="display: flex; align-items: start; gap: 4px;">
-                <div style="margin-top: 1px;">📍</div>
-                <p style="margin: 0; font-size: 9px; color: var(--foreground); line-height: 1.2;">${fieldAddress}</p>
-              </div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 6px; font-size: 10px; color: var(--muted-foreground);">
-              <div>💰 $${feature.properties.hourly_rate}/hr</div>
-              <div>📅 $${feature.properties.daily_rate}/day</div>
-              ${feature.properties.capacity ? `<div>👥 ${feature.properties.capacity}</div>` : '<div></div>'}
-              ${feature.properties.dimensions ? `<div>📏 ${feature.properties.dimensions}</div>` : '<div></div>'}
-            </div>
-            
-            <div style="display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 6px;">
-              ${feature.properties.has_lighting ? '<span style="background: #fbbf24; color: #92400e; padding: 1px 4px; border-radius: 6px; font-size: 8px;">💡</span>' : ''}
-              ${feature.properties.has_parking ? '<span style="background: #10b981; color: #065f46; padding: 1px 4px; border-radius: 6px; font-size: 8px;">🚗</span>' : ''}
-              ${feature.properties.ada_compliant ? '<span style="background: #3b82f6; color: #1e40af; padding: 1px 4px; border-radius: 6px; font-size: 8px;">♿</span>' : ''}
-            </div>
-            
-            <div style="text-align: center; font-size: 9px; color: var(--muted-foreground); border-top: 1px solid var(--border); padding-top: 4px;">
-              Click for details • Double-click to book
-            </div>
-          </div>
-        `
+        content: createFieldTooltipHTML(feature.properties)
       });
     });
 
@@ -714,21 +764,15 @@ export function FacilitiesMap({
 
     // Hover handlers for clusters
     map.current.on('mouseenter', 'facilities-clusters', (e) => {
-      const feature = e.features![0];
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      if (!feature.properties) return;
       
       setHoverTooltip({
         visible: true,
         x: e.point.x + 15,
         y: e.point.y - 10,
-        content: `
-          <div style="padding: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
-            <div style="text-align: center;">
-              <div style="font-size: 16px; margin-bottom: 4px;">🏢</div>
-              <div style="font-size: 14px; font-weight: 600; color: var(--foreground);">${feature.properties.point_count} Facilities</div>
-              <div style="font-size: 10px; color: var(--muted-foreground); margin-top: 4px;">Click to zoom in</div>
-            </div>
-          </div>
-        `
+        content: createClusterTooltipHTML(feature.properties, 'Facility')
       });
     });
 
@@ -737,21 +781,15 @@ export function FacilitiesMap({
     });
 
     map.current.on('mouseenter', 'fields-clusters', (e) => {
-      const feature = e.features![0];
+      if (!e.features || e.features.length === 0) return;
+      const feature = e.features[0];
+      if (!feature.properties) return;
       
       setHoverTooltip({
         visible: true,
         x: e.point.x + 15,
         y: e.point.y - 10,
-        content: `
-          <div style="padding: 8px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; backdrop-filter: blur(8px); color: var(--card-foreground);">
-            <div style="text-align: center;">
-              <div style="font-size: 16px; margin-bottom: 4px;">🏟️</div>
-              <div style="font-size: 14px; font-weight: 600; color: var(--foreground);">${feature.properties.point_count} Fields</div>
-              <div style="font-size: 10px; color: var(--muted-foreground); margin-top: 4px;">Click to zoom in</div>
-            </div>
-          </div>
-        `
+        content: createClusterTooltipHTML(feature.properties, 'Field')
       });
     });
 
@@ -770,7 +808,7 @@ export function FacilitiesMap({
     }
 
     // Initialize map with theme-aware style
-    const mapStyle = getMapStyle(currentMapStyle, theme);
+    const mapStyle = getMapStyle(currentMapStyle, theme || 'light');
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: mapStyle,
@@ -808,7 +846,7 @@ export function FacilitiesMap({
   useEffect(() => {
     if (!map.current) return;
     
-    const mapStyle = getMapStyle(currentMapStyle, theme);
+    const mapStyle = getMapStyle(currentMapStyle, theme || 'light');
     map.current.setStyle(mapStyle);
     
     // Re-add data sources after style loads

@@ -53,7 +53,7 @@ export async function getUserPermissions(): Promise<UserPermissionsSummary | nul
     const userRole = userProfile.role;
 
     // Check if user is admin
-    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    const adminRoles = ['master_admin', 'sub_admin', 'district_approver', 'site_approver'];
     const isAdmin = adminRoles.includes(userRole);
 
     // Check if user is staff
@@ -121,7 +121,7 @@ export async function checkFacilityPermission(facilityId: string, permission: ke
     const userRole = userProfile.role;
 
     // Check if user is admin (admins have all permissions)
-    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    const adminRoles = ['master_admin', 'sub_admin', 'district_approver', 'site_approver'];
     if (adminRoles.includes(userRole)) {
       return true;
     }
@@ -170,7 +170,7 @@ export async function getStaffAssignedFacilities(): Promise<string[]> {
     const userRole = userProfile.role;
 
     // Check if user is admin (admins can see all facilities)
-    const adminRoles = ['master_admin', 'sub_master', 'district_approver', 'site_approver'];
+    const adminRoles = ['master_admin', 'sub_admin', 'district_approver', 'site_approver'];
     if (adminRoles.includes(userRole)) {
       // Return all facility IDs
       const { data: allFacilities, error: facilitiesError } = await supabase

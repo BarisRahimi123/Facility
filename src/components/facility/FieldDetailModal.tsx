@@ -38,6 +38,7 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/hooks/useUser';
 import Link from 'next/link';
+import { useToast } from '@/components/ui/use-toast';
 
 interface FieldDetailModalProps {
   field: Field | null;
@@ -98,6 +99,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
     depositAmount: 0
   });
   const { user, loading: userLoading } = useUser();
+  const { toast } = useToast();
 
   const fieldTypeEmoji = {
     soccer: '⚽',
@@ -235,6 +237,44 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
     }
   }, [user, userLoading]);
 
+  // Check for pending reservation after authentication
+  useEffect(() => {
+    if (user && !userLoading && typeof window !== 'undefined') {
+      const pendingReservation = localStorage.getItem('pendingFieldDetailReservation');
+      if (pendingReservation) {
+        try {
+          const savedData = JSON.parse(pendingReservation);
+          console.log('Found pending reservation, restoring data...', savedData);
+          
+          // Clear the pending reservation
+          localStorage.removeItem('pendingFieldDetailReservation');
+          
+          // Restore the reservation data
+          if (savedData.reservationData) {
+            setReservationData(prev => ({
+              ...savedData.reservationData,
+              // Update contact info with authenticated user data
+              contactName: user.name || savedData.reservationData.contactName,
+              contactEmail: user.email || savedData.reservationData.contactEmail,
+              contactPhone: user.phone || savedData.reservationData.contactPhone,
+              organization: (user.type === 'external' || user.type === 'vendor') ? user.company : savedData.reservationData.organization
+            }));
+          }
+          
+          // Auto-submit the reservation
+          setCurrentStep('booking');
+          toast({
+            title: "Welcome back!",
+            description: "We've restored your reservation details. Please click submit to complete your booking.",
+          });
+          
+        } catch (error) {
+          console.error('Error processing pending reservation:', error);
+        }
+      }
+    }
+  }, [user, userLoading]);
+
   // Early return after all hooks to comply with Rules of Hooks
   if (!field) return null;
 
@@ -243,7 +283,26 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
     
     // Check if user is authenticated
     if (!user && !userLoading) {
+      // Save reservation data to localStorage before showing auth modal
+      const reservationDataToSave = {
+        field,
+        reservationData,
+        costBreakdown: calculateCost()
+      };
+      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingFieldDetailReservation', JSON.stringify(reservationDataToSave));
+      }
+      
       setCurrentStep('auth-required');
+      
+      // Auto-redirect to sign-up page after showing the modal
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/sign-up';
+        }
+      }, 2000); // Show modal for 2 seconds before redirecting
+      
       return;
     }
 
@@ -374,6 +433,15 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
       <p className="text-xs text-gray-500">
         Your reservation details will be saved when you return.
       </p>
+      
+      <div className="mt-4 text-center">
+        <p className="text-sm text-gray-400 mb-2">
+          Redirecting to sign up page...
+        </p>
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-400"></div>
+        </div>
+      </div>
     </div>
   );
 

@@ -60,8 +60,8 @@ export default function Sidebar() {
 
   // Role-based navigation
   const getNavigationForRole = (role: string | null) => {
-    // Master admin and sub-master admin: Full access
-    if (role === 'master_admin' || role === 'sub_master' || role === 'district_approver' || role === 'site_approver') {
+    // Master admin and sub-admin: Full access
+    if (role === 'master_admin' || role === 'sub_admin' || role === 'district_approver' || role === 'site_approver') {
       return [
         {
           href: '/user-dashboard',
@@ -180,7 +180,7 @@ export default function Sidebar() {
     <div className="h-full flex flex-col bg-background border-r border-border">
       {/* Logo/Brand Section */}
       <div className="p-6 border-b border-border">
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href={user ? "/facilities-map" : "/"} className="flex items-center gap-3 group">
           <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
             <Building2 className="w-6 h-6 text-white" />
           </div>
@@ -193,8 +193,13 @@ export default function Sidebar() {
 
       <nav className="flex-1 px-4 py-6">
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+          <div className="space-y-4">
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+            </div>
+            <div className="text-center text-sm text-muted-foreground">
+              Loading navigation...
+            </div>
           </div>
         ) : (
           <ul className="space-y-1">
@@ -224,7 +229,7 @@ export default function Sidebar() {
         )}
       </nav>
 
-      {/* Sign Out Button */}
+      {/* Sign Out Button - Always visible */}
       <div className="p-4 border-t border-border">
         <button
           onClick={handleSignOut}

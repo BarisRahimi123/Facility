@@ -172,7 +172,7 @@ export async function createUser(userData: CreateUserData): Promise<UserResponse
         .eq('id', user.id)
         .single();
 
-      if (!currentUser || !['master_admin', 'sub_master'].includes(currentUser.role)) {
+      if (!currentUser || !['master_admin', 'sub_admin'].includes(currentUser.role)) {
         return { data: null, error: 'You do not have permission to invite renters' };
       }
 

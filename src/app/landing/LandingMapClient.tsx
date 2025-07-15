@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
@@ -31,13 +31,15 @@ import {
   Car,
   Coffee,
   Utensils,
-  Ban
+  Ban,
+  Loader2
 } from 'lucide-react';
-import type { Field, FieldBlackoutDate } from '@/types/field';
+import type { Field } from '@/types/field';
 import type { Room } from '@/types/building';
 import type { Facility } from '@/types/facility';
 import { FacilityRentalModal } from '@/components/facility/FacilityRentalModal';
 import Link from 'next/link';
+import { useDebounce } from '@/hooks/useDebounce';
 
 // Dynamically import the map component to avoid SSR issues
 const FacilitiesMap = dynamic(
@@ -60,14 +62,22 @@ const FacilitiesMap = dynamic(
   }
 );
 
-interface LandingMapClientProps {
-  facilities: Facility[];
-  fields?: Field[];
-  fieldBlockouts?: FieldBlackoutDate[];
-}
+type MapItem = (Facility | Field) & { itemType: 'facility' | 'field' };
 
-export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] }: LandingMapClientProps) {
+export function LandingMapClient() {
   const router = useRouter();
+  
+  // Data state
+  const [items, setItems] = useState<MapItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Modal and view state
   const [selectedFacility, setSelectedFacility] = useState<Facility | null>(null);
   const [hoveredFacility, setHoveredFacility] = useState<Facility | null>(null);
   const [selectedField, setSelectedField] = useState<Field | null>(null);
@@ -84,39 +94,61 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
     yearBuilt: 'all',
     amenities: [] as string[]
   });
+  
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Helper function to check if a field has blockouts
-  const isFieldBlockedOut = (fieldId: string): boolean => {
-    const today = new Date().toISOString().split('T')[0];
-    return fieldBlockouts.some(blockout => 
-      blockout.field_id === fieldId && 
-      blockout.start_date <= today && 
-      blockout.end_date >= today
-    );
-  };
+  // Data fetching function
+  const fetchItems = useCallback(async (pageNum = 1, shouldAppend = false) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: '20',
+        search: debouncedSearchQuery,
+        type: filters.type,
+        priceMin: filters.priceRange[0].toString(),
+        priceMax: filters.priceRange[1].toString(),
+        capacityMin: filters.capacity[0].toString(),
+        capacityMax: filters.capacity[1].toString(),
+      });
+      
+      const response = await fetch(`/api/landing-search?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      const data = await response.json();
+      
+      // Add itemType to each item for differentiation
+      const typedItems = data.items.map((item: Facility | Field) => ({
+        ...item,
+        itemType: 'hourly_rate' in item ? 'field' : 'facility'
+      }));
 
-  // Helper function to get next available date for a field
-  const getNextAvailableDate = (fieldId: string): string | null => {
-    const today = new Date();
-    const fieldBlockoutsForField = fieldBlockouts
-      .filter(b => b.field_id === fieldId)
-      .sort((a, b) => a.end_date.localeCompare(b.end_date));
-    
-    if (fieldBlockoutsForField.length === 0) return null;
-    
-    // Find the latest blockout that affects today or future
-    const relevantBlockout = fieldBlockoutsForField.find(b => {
-      const endDate = new Date(b.end_date);
-      return endDate >= today;
-    });
-    
-    if (relevantBlockout) {
-      const nextAvailable = new Date(relevantBlockout.end_date);
-      nextAvailable.setDate(nextAvailable.getDate() + 1);
-      return nextAvailable.toLocaleDateString();
+      if (shouldAppend) {
+        setItems(prev => [...prev, ...typedItems]);
+      } else {
+        setItems(typedItems);
+      }
+      setTotalCount(data.totalCount);
+      setTotalPages(data.totalPages);
+      setPage(data.page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsLoading(false);
     }
-    
-    return null;
+  }, [debouncedSearchQuery, filters]);
+
+  // Initial data fetch and refetch on filter change
+  useEffect(() => {
+    fetchItems(1);
+  }, [fetchItems]);
+
+  const handleLoadMore = () => {
+    if (page < totalPages) {
+      fetchItems(page + 1, true);
+    }
   };
 
   const handleFacilityClick = (facility: Facility) => {
@@ -139,56 +171,6 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
     setIsRentalModalOpen(false);
     setSelectedField(null);
   };
-
-  // Combine facilities and fields into unified items
-  const allItems = useMemo(() => {
-    const facilityItems = facilities.map(facility => ({
-      ...facility,
-      itemType: 'facility' as const,
-      displayType: facility.facility_type,
-      location: facility.address,
-      rating: 4.8,
-      price: Math.round((facility.square_footage || 0) / 100),
-      priceUnit: 'sq ft',
-      capacity: Math.floor((facility.square_footage || 0) / 15),
-      amenities: ['WiFi', 'Parking', 'Climate Control', 'Security']
-    }));
-
-    const fieldItems = fields.map(field => ({
-      ...field,
-      itemType: 'field' as const,
-      displayType: field.type,
-      location: field.full_address || field.street_address || `${field.latitude}, ${field.longitude}`,
-      status: field.status || 'available',
-      rating: 4.6,
-      price: field.hourly_rate || 0,
-      priceUnit: 'hour',
-      capacity: (field as any).capacity || 0,
-      amenities: ['Lighting', 'Parking', 'Restrooms', 'Storage'],
-      isBlockedOut: isFieldBlockedOut(field.id),
-      nextAvailableDate: getNextAvailableDate(field.id)
-    }));
-
-    return [...facilityItems, ...fieldItems];
-  }, [facilities, fields, fieldBlockouts]);
-
-  // Filter items based on search and filters
-  const filteredItems = useMemo(() => {
-    return allItems.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           item.displayType.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesType = filters.type === 'all' || item.displayType === filters.type;
-      const matchesStatus = filters.status === 'all' || item.status === filters.status;
-      const matchesPrice = item.price >= filters.priceRange[0] && item.price <= filters.priceRange[1];
-      
-      const itemCapacity = item.capacity;
-      const matchesCapacity = itemCapacity >= filters.capacity[0] && itemCapacity <= filters.capacity[1];
-      
-      return matchesSearch && matchesType && matchesStatus && matchesPrice && matchesCapacity;
-    });
-  }, [allItems, searchQuery, filters]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -213,10 +195,10 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
     filters.amenities.length > 0;
 
   // Get unique types for filter dropdown
-  const allTypes = Array.from(new Set([
-    ...facilities.map(f => f.facility_type),
-    ...fields.map(f => f.type)
-  ]));
+  const allTypes = useMemo(() => {
+    // This could be fetched from the backend in a real app
+    return ['facility', 'field', 'soccer', 'football', 'basketball', 'tennis'];
+  }, []);
 
   const amenitiesList = ['WiFi', 'Parking', 'Restrooms', 'Kitchen', 'ADA Accessible', 'Climate Control', 'Sound System', 'Projector'];
 
@@ -229,6 +211,9 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
       default: return <Coffee className="h-3 w-3" />;
     }
   };
+
+  const facilities = items.filter(item => item.itemType === 'facility') as (Facility & {itemType: 'facility'})[];
+  const fields = items.filter(item => item.itemType === 'field') as (Field & {itemType: 'field'})[];
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -456,9 +441,9 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
             {/* Results Header */}
             <div className="mb-8">
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                {filteredItems.length > 0 ? (
+                {totalCount > 0 ? (
                   <>
-                    {filteredItems.length} {filteredItems.length === 1 ? 'space' : 'spaces'} found
+                    {totalCount} {totalCount === 1 ? 'space' : 'spaces'} found
                   </>
                 ) : (
                   'No spaces available'
@@ -471,7 +456,7 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
 
             {/* Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredItems.map((item) => (
+              {items.map((item) => (
                 <Card
                   key={item.id}
                   className="group cursor-pointer overflow-hidden border-0 shadow-sm hover:shadow-xl transition-all duration-300 bg-white dark:bg-gray-800 rounded-3xl"
@@ -486,9 +471,9 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
                 >
                   {/* Image Section - Airbnb Style */}
                   <div className="relative aspect-square overflow-hidden">
-                    {item.itemType === 'field' && (item as any).image_url ? (
+                    {(item as Field).image_url ? (
                       <img 
-                        src={(item as any).image_url} 
+                        src={(item as Field).image_url} 
                         alt={item.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
@@ -518,19 +503,6 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
                     >
                       <Heart className="h-4 w-4 text-white" />
                     </button>
-
-                    {/* Quick Amenities */}
-                    <div className="absolute bottom-3 left-3 flex gap-1">
-                      {item.amenities.slice(0, 3).map((amenity, index) => (
-                        <div
-                          key={index}
-                          className="w-6 h-6 bg-white/90 rounded-full flex items-center justify-center"
-                          title={amenity}
-                        >
-                          {getAmenityIcon(amenity)}
-                        </div>
-                      ))}
-                    </div>
                     
                     {/* Blockout Indicator for Fields */}
                     {item.itemType === 'field' && (item as any).isBlockedOut && (
@@ -550,13 +522,13 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
                           {item.name}
                         </h3>
                         <p className="text-gray-600 dark:text-gray-400 text-xs capitalize">
-                          {item.displayType.replace('_', ' ')}
+                          {'hourly_rate' in item ? item.type.replace('_', ' ') : (item as Facility).facility_type.replace('_', ' ')}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 ml-2">
                         <Star className="h-3 w-3 text-yellow-400 fill-current" />
                         <span className="text-xs font-medium text-gray-900 dark:text-white">
-                          {item.rating}
+                          4.8
                         </span>
                       </div>
                     </div>
@@ -564,34 +536,22 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
                     {/* Location */}
                     <div className="flex items-center text-gray-600 dark:text-gray-400 text-xs mb-3">
                       <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span className="truncate">{item.location}</span>
+                      <span className="truncate">{'address' in item ? item.address : (item as Field).full_address}</span>
                     </div>
 
                     {/* Capacity */}
                     <div className="flex items-center text-gray-600 dark:text-gray-400 text-xs mb-3">
                       <Users className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span>{item.capacity} people capacity</span>
+                      <span>{'capacity' in item ? item.capacity : 'N/A'} people capacity</span>
                     </div>
-
-                    {/* Next Available Date for Blocked Fields */}
-                    {item.itemType === 'field' && (item as any).isBlockedOut && (item as any).nextAvailableDate && (
-                      <div className="flex items-center text-red-600 dark:text-red-400 text-xs mb-3">
-                        <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
-                        <span>Next available: {(item as any).nextAvailableDate}</span>
-                      </div>
-                    )}
 
                     {/* Price - Airbnb Style */}
                     <div className="flex items-baseline">
-                      <span className={`text-lg font-semibold ${
-                        item.itemType === 'field' && (item as any).isBlockedOut 
-                          ? 'text-gray-400 dark:text-gray-500 line-through' 
-                          : 'text-gray-900 dark:text-white'
-                      }`}>
-                        ${item.price}
+                      <span className={`text-lg font-semibold text-gray-900 dark:text-white`}>
+                        ${'hourly_rate' in item ? item.hourly_rate : ((item as Facility).square_footage || 0) / 100}
                       </span>
                       <span className="text-gray-600 dark:text-gray-400 text-sm ml-1">
-                        / {item.priceUnit}
+                        / {'hourly_rate' in item ? 'hour' : 'sq ft'}
                       </span>
                     </div>
                   </CardContent>
@@ -599,8 +559,28 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
               ))}
             </div>
 
+            {/* Load More Button */}
+            {page < totalPages && (
+              <div className="text-center mt-8">
+                <Button 
+                  onClick={handleLoadMore}
+                  disabled={isLoading}
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full px-8 py-3"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Load More Spaces'
+                  )}
+                </Button>
+              </div>
+            )}
+
             {/* Empty State - Airbnb Style */}
-            {filteredItems.length === 0 && (
+            {items.length === 0 && !isLoading && (
               <div className="text-center py-16">
                 <div className="w-24 h-24 bg-gray-100 dark:bg-gray-800 rounded-full mx-auto mb-6 flex items-center justify-center">
                   <Search className="h-12 w-12 text-gray-400" />
@@ -627,12 +607,8 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
           <div className="h-screen">
             <div className="relative h-full">
               <FacilitiesMap 
-                facilities={facilities.filter(f => 
-                  filteredItems.some(item => item.id === f.id && item.itemType === 'facility')
-                )}
-                fields={fields.filter(f => 
-                  filteredItems.some(item => item.id === f.id && item.itemType === 'field')
-                )}
+                facilities={facilities}
+                fields={fields}
                 onFacilityClick={handleFacilityClick}
                 onFieldClick={handleFieldClick}
                 onFieldDoubleClick={handleFieldDoubleClick}
@@ -643,7 +619,7 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
                 <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl px-4 py-3 shadow-lg border border-gray-200 dark:border-gray-700">
                   <div className="flex items-center gap-3">
                     <span className="font-semibold text-gray-900 dark:text-white">
-                      {filteredItems.length} spaces found
+                      {totalCount} spaces found
                     </span>
                   </div>
                 </div>
@@ -664,7 +640,7 @@ export function LandingMapClient({ facilities, fields = [], fieldBlockouts = [] 
         }}
         facilityName="Facility"
         onReserve={handleReserveField}
-        fieldBlockouts={selectedField ? fieldBlockouts.filter(b => b.field_id === selectedField.id) : []}
+        fieldBlockouts={[]}
       />
     </div>
   );

@@ -70,6 +70,81 @@ export default function UserDashboard() {
     }
   }, [authLoading, userProfile]);
 
+  // Check for pending field detail reservation after authentication
+  useEffect(() => {
+    const checkPendingReservation = async () => {
+      if (!authLoading && userProfile && typeof window !== 'undefined') {
+        const pendingReservation = localStorage.getItem('pendingFieldDetailReservation');
+        if (pendingReservation) {
+          try {
+            const savedData = JSON.parse(pendingReservation);
+            console.log('Found pending field detail reservation, auto-submitting...', savedData);
+            
+            // Clear the pending reservation
+            localStorage.removeItem('pendingFieldDetailReservation');
+            
+            // Show loading toast
+            toast({
+              title: "Processing your reservation...",
+              description: "Please wait while we submit your field reservation.",
+            });
+            
+            // Create reservation payload
+            const { field, reservationData, costBreakdown } = savedData;
+            const reservationPayload = {
+              field_id: field.id,
+              start_time: reservationData.date ? new Date(`${new Date(reservationData.date).toISOString().split('T')[0]}T${reservationData.startTime}:00`).toISOString() : '',
+              end_time: reservationData.date ? new Date(`${new Date(reservationData.date).toISOString().split('T')[0]}T${reservationData.endTime}:00`).toISOString() : '',
+              booking_type: reservationData.reservationType,
+              renter_name: userProfile.full_name || reservationData.contactName,
+              renter_email: userProfile.email || reservationData.contactEmail,
+              renter_phone: userProfile.phone || reservationData.contactPhone,
+              organization_name: reservationData.organization,
+              purpose_of_use: reservationData.purpose,
+              estimated_attendees: reservationData.estimatedAttendees,
+              special_requests: reservationData.specialRequests,
+              emergency_contact_name: reservationData.emergencyContactName,
+              emergency_contact_phone: reservationData.emergencyContactPhone,
+            };
+            
+            // Submit reservation
+            const response = await fetch('/api/reservations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(reservationPayload),
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || 'Failed to create reservation');
+            }
+
+            const result = await response.json();
+            
+            // Show success message
+            toast({
+              title: "🎉 Reservation Created Successfully!",
+              description: `Your reservation for ${field.name} has been submitted. Total: $${costBreakdown.total.toFixed(2)}`,
+            });
+            
+            // Reload reservations
+            loadUserData();
+            
+          } catch (error) {
+            console.error('Error processing pending reservation:', error);
+            toast({
+              title: "Reservation failed",
+              description: error instanceof Error ? error.message : "Unable to create reservation. Please try again.",
+              variant: "destructive",
+            });
+          }
+        }
+      }
+    };
+    
+    checkPendingReservation();
+  }, [authLoading, userProfile]);
+
   const loadUserData = async () => {
     try {
       if (!userProfile) {
@@ -110,8 +185,8 @@ export default function UserDashboard() {
           status: 'pending',
           total_cost: 90,
           payment_status: 'pending',
-          contact_name: profileData?.full_name || 'User',
-          contact_email: user.email || ''
+          contact_name: userProfile?.full_name || 'User',
+          contact_email: userProfile.email || ''
         }
       ];
       setReservations(sampleReservations);
@@ -549,10 +624,10 @@ export default function UserDashboard() {
                     <label className="text-sm font-medium">Role</label>
                     <p className="text-muted-foreground capitalize">{userProfile?.role}</p>
                   </div>
-                  {userProfile?.organization_name && (
+                  {userProfile?.organization_id && (
                     <div>
-                      <label className="text-sm font-medium">Organization</label>
-                      <p className="text-muted-foreground">{userProfile.organization_name}</p>
+                      <label className="text-sm font-medium">Organization ID</label>
+                      <p className="text-muted-foreground">{userProfile.organization_id}</p>
                     </div>
                   )}
                   <Button variant="outline">

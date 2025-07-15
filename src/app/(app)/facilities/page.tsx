@@ -68,7 +68,7 @@ export default function FacilitiesPage() {
         setUserRole(role);
         
         // Check if user has facility access
-        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver', 'master_admin', 'sub_master'];
+        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver', 'master_admin', 'sub_admin'];
         
         if (!role || !adminRoles.includes(role)) {
           toast.error('You do not have permission to access this page');
