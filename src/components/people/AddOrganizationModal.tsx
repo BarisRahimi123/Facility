@@ -158,7 +158,7 @@ export default function AddOrganizationModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent className="sm:max-w-[800px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-card-foreground flex items-center gap-2">
@@ -507,4 +507,4 @@ export default function AddOrganizationModal({
       </DialogContent>
     </Dialog>
   );
-} 
+}  

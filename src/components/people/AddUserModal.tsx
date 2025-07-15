@@ -249,7 +249,7 @@ export default function AddUserModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleCloseModal()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleCloseModal(); }}>
       <DialogContent className="sm:max-w-[700px] bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-card-foreground">
@@ -552,4 +552,4 @@ export default function AddUserModal({
       </DialogContent>
     </Dialog>
   );
-} 
+}  
