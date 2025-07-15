@@ -38,11 +38,13 @@ import {
   ThumbsUp,
   ThumbsDown,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Settings
 } from 'lucide-react';
 import { Reservation, Field } from '@/types/field';
 import { useToast } from '@/components/ui/use-toast';
 import { FieldCalendarView } from './FieldCalendarView';
+import { getReservations, updateReservationStatus } from '@/app/actions/fields';
 
 interface ReservationsViewProps {
   facilityId: string;
@@ -50,13 +52,14 @@ interface ReservationsViewProps {
 }
 
 export function ReservationsView({ facilityId, fields }: ReservationsViewProps) {
-  const [viewMode, setViewMode] = useState<'table' | 'calendar' | 'funnel'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'calendar' | 'funnel'>('funnel');
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [fieldFilter, setFieldFilter] = useState<string>('all');
+  const [needsSetup, setNeedsSetup] = useState(false);
   
   // Modal states
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
@@ -68,94 +71,39 @@ export function ReservationsView({ facilityId, fields }: ReservationsViewProps) 
   
   const { toast } = useToast();
 
-  // Mock reservations data for now
+  // Load reservations from Supabase
   useEffect(() => {
-    // TODO: Replace with actual API call
-    const mockReservations: Reservation[] = [
-      {
-        id: '1',
-        field_id: fields[0]?.id || 'field-1',
-        facility_id: facilityId,
-        start_time: '2025-01-20T10:00:00Z',
-        end_time: '2025-01-20T12:00:00Z',
-        booking_type: 'hourly',
-        renter_name: 'John Smith',
-        renter_email: 'john.smith@email.com',
-        renter_phone: '(555) 123-4567',
-        organization_name: 'Youth Soccer League',
-        purpose_of_use: 'Soccer practice for ages 8-10',
-        estimated_attendees: 20,
-        total_amount: 100.00,
-        hourly_rate: 50.00,
-        discount_amount: 0,
-        tax_amount: 8.50,
-        deposit_amount: 25.00,
-        status: 'confirmed',
-        approval_required: false,
-        payment_status: 'paid',
-        paid_amount: 100.00,
-        liability_waiver_signed: true,
-        created_at: '2025-01-15T09:00:00Z',
-        updated_at: '2025-01-15T09:00:00Z'
-      },
-      {
-        id: '2',
-        field_id: fields[0]?.id || 'field-1',
-        facility_id: facilityId,
-        start_time: '2025-01-22T14:00:00Z',
-        end_time: '2025-01-22T23:59:59Z',
-        booking_type: 'daily',
-        renter_name: 'Sarah Johnson',
-        renter_email: 'sarah.johnson@school.edu',
-        renter_phone: '(555) 987-6543',
-        organization_name: 'Lincoln High School',
-        purpose_of_use: 'Annual sports day event',
-        estimated_attendees: 150,
-        total_amount: 300.00,
-        daily_rate: 300.00,
-        discount_amount: 0,
-        tax_amount: 25.50,
-        deposit_amount: 75.00,
-        status: 'pending',
-        approval_required: true,
-        payment_status: 'pending',
-        paid_amount: 0,
-        liability_waiver_signed: false,
-        created_at: '2025-01-18T15:30:00Z',
-        updated_at: '2025-01-18T15:30:00Z'
-      },
-      {
-        id: '3',
-        field_id: fields[1]?.id || 'field-2',
-        facility_id: facilityId,
-        start_time: '2025-01-25T09:00:00Z',
-        end_time: '2025-01-25T11:00:00Z',
-        booking_type: 'hourly',
-        renter_name: 'Mike Rodriguez',
-        renter_email: 'mike.r@company.com',
-        renter_phone: '(555) 456-7890',
-        organization_name: 'Corporate Fitness Group',
-        purpose_of_use: 'Team building activities',
-        estimated_attendees: 30,
-        total_amount: 120.00,
-        hourly_rate: 60.00,
-        discount_amount: 10.00,
-        tax_amount: 9.35,
-        deposit_amount: 30.00,
-        status: 'confirmed',
-        approval_required: false,
-        payment_status: 'partial',
-        paid_amount: 60.00,
-        liability_waiver_signed: true,
-        created_at: '2025-01-16T11:20:00Z',
-        updated_at: '2025-01-19T14:15:00Z'
-      }
-    ];
+    loadReservations();
+  }, [facilityId]);
 
-    setReservations(mockReservations);
-    setFilteredReservations(mockReservations);
-    setIsLoading(false);
-  }, [facilityId, fields]);
+  const loadReservations = async () => {
+    try {
+      setIsLoading(true);
+      setNeedsSetup(false);
+      
+      const reservationsData = await getReservations(facilityId);
+      
+      setReservations(reservationsData);
+      setFilteredReservations(reservationsData);
+    } catch (error: any) {
+      console.error('Error loading reservations:', error);
+      
+      // Check if it's a table doesn't exist error
+      if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        setNeedsSetup(true);
+      } else {
+        toast({
+          title: "Failed to load reservations",
+          description: "There was an error loading the reservations. Please try again.",
+          variant: "destructive",
+        });
+      }
+      setReservations([]);
+      setFilteredReservations([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter reservations based on search and filters
   useEffect(() => {
@@ -186,10 +134,12 @@ export function ReservationsView({ facilityId, fields }: ReservationsViewProps) 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
+      case 'approved':
         return 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-700';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-700';
       case 'cancelled':
+      case 'rejected':
         return 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-700';
       case 'completed':
         return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-700';
@@ -261,13 +211,13 @@ export function ReservationsView({ facilityId, fields }: ReservationsViewProps) 
         reservations: filteredReservations.filter(r => r.status === 'pending')
       },
       {
-        id: 'confirmed',
-        name: 'Confirmed',
+        id: 'approved',
+        name: 'Approved',
         description: 'Approved bookings',
-        count: filteredReservations.filter(r => r.status === 'confirmed').length,
-        revenue: filteredReservations.filter(r => r.status === 'confirmed').reduce((sum, r) => sum + r.total_amount, 0),
+        count: filteredReservations.filter(r => r.status === 'approved' || r.status === 'confirmed').length,
+        revenue: filteredReservations.filter(r => r.status === 'approved' || r.status === 'confirmed').reduce((sum, r) => sum + r.total_amount, 0),
         color: 'bg-green-500',
-        reservations: filteredReservations.filter(r => r.status === 'confirmed')
+        reservations: filteredReservations.filter(r => r.status === 'approved' || r.status === 'confirmed')
       },
       {
         id: 'paid',
@@ -315,22 +265,24 @@ export function ReservationsView({ facilityId, fields }: ReservationsViewProps) 
     
     setIsProcessing(true);
     try {
-      // TODO: Replace with actual API calls
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
-      
       let updatedStatus = selectedReservation.status;
       if (approvalAction === 'approve') {
-        updatedStatus = 'confirmed';
+        updatedStatus = 'approved';
       } else if (approvalAction === 'reject') {
         updatedStatus = 'cancelled';
       }
       // request_resubmit keeps status as pending but adds a note
       
+      // Call the actual API
+      const updatedReservation = await updateReservationStatus(
+        selectedReservation.id,
+        updatedStatus,
+        approvalReason || undefined
+      );
+      
       // Update the reservation in local state
       setReservations(prev => prev.map(r => 
-        r.id === selectedReservation.id 
-          ? { ...r, status: updatedStatus, approval_reason: approvalReason || undefined }
-          : r
+        r.id === selectedReservation.id ? updatedReservation : r
       ));
       
       toast({
@@ -347,7 +299,11 @@ export function ReservationsView({ facilityId, fields }: ReservationsViewProps) 
       setIsApprovalModalOpen(false);
       setSelectedReservation(null);
       setApprovalReason('');
+      
+      // Reload reservations to ensure consistency
+      await loadReservations();
     } catch (error) {
+      console.error('Error updating reservation status:', error);
       toast({
         title: "Error",
         description: "Failed to process the approval action. Please try again.",
@@ -357,6 +313,49 @@ export function ReservationsView({ facilityId, fields }: ReservationsViewProps) 
       setIsProcessing(false);
     }
   };
+
+  // If database setup is needed
+  if (needsSetup) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-xl font-semibold text-foreground">Field Reservations</h3>
+            <p className="text-muted-foreground mt-1">Manage field bookings and track revenue</p>
+          </div>
+        </div>
+        
+        <Card className="bg-card border-border">
+          <CardContent className="py-16 text-center">
+            <Settings className="mx-auto h-12 w-12 text-amber-500 mb-4" />
+            <h3 className="mt-4 text-lg font-medium text-card-foreground">Database Setup Required</h3>
+            <p className="mt-2 text-muted-foreground max-w-md mx-auto">
+              The reservations table needs to be created. Please apply the migration to enable this feature.
+            </p>
+            
+            <div className="mt-8 bg-muted/50 rounded-lg p-6 max-w-2xl mx-auto text-left">
+              <h4 className="text-sm font-semibold text-foreground mb-3">Setup Instructions:</h4>
+              <ol className="space-y-2 text-sm text-muted-foreground">
+                <li>1. Go to your Supabase Dashboard SQL Editor</li>
+                <li>2. Navigate to the migrations folder</li>
+                <li>3. Find and run the reservations table migration</li>
+                <li>4. The migration file should create the reservations table with all necessary columns</li>
+                <li>5. Refresh this page when complete</li>
+              </ol>
+            </div>
+            
+            <Button
+              onClick={loadReservations}
+              className="mt-6 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-primary-foreground border-0 rounded-xl px-6 py-3"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh After Setup
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

@@ -71,7 +71,7 @@ venv/bin/python3 tools/screenshot_utils.py URL [--output OUTPUT] [--width WIDTH]
 
 2. LLM Verification with Images:
 ```bash
-venv/bin/python3 tools/llm_api.py --prompt "Your verification question" --provider {openai|anthropic} --image path/to/screenshot.png
+venv/bin/python3 tools/llm_api.py --prompt "Your verification question" --provider anthropic --image path/to/screenshot.png
 ```
 
 Example workflow:
@@ -87,7 +87,7 @@ screenshot_path = take_screenshot_sync('https://example.com', 'screenshot.png')
 
 response = query_llm(
     "What is the background color and title of this webpage?",
-    provider="openai",  # or "anthropic"
+    provider="anthropic",
     image_path=screenshot_path
 )
 print(response)
@@ -101,10 +101,8 @@ venv/bin/python3 ./tools/llm_api.py --prompt "What is the capital of France?" --
 ```
 
 The LLM API supports multiple providers:
-- OpenAI (default, model: gpt-4o)
-- Azure OpenAI (model: configured via AZURE_OPENAI_MODEL_DEPLOYMENT in .env file, defaults to gpt-4o-ms)
+- Anthropic (default, model: claude-3-sonnet-20240229)
 - DeepSeek (model: deepseek-chat)
-- Anthropic (model: claude-3-sonnet-20240229)
 - Gemini (model: gemini-pro)
 - Local LLM (model: Qwen/Qwen2.5-32B-Instruct-AWQ)
 
@@ -143,7 +141,7 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 - For search results, ensure proper handling of different character encodings (UTF-8) for international queries
 - When using seaborn styles in matplotlib, use 'seaborn-v0_8' instead of 'seaborn' as the style name due to recent seaborn version changes
-- Use 'gpt-4o' as the model name for OpenAI's GPT-4 with vision capabilities
+
 - When searching for recent news, use the current year (2025) instead of previous years, or simply use the "recent" keyword to get the latest information
 - Safari has stricter cookie handling than Chrome. For Supabase authentication in Safari:
   - Use localStorage as a fallback for cookie storage
@@ -217,5 +215,38 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - Supabase function replacement errors: When dropping and recreating PostgreSQL functions, several issues can occur: 1) Function signature mismatch - DROP statement must match exact parameter types, 2) Dependencies - Use CASCADE to handle dependent objects, 3) Type conflicts - user_role enum vs text mismatch. Solution: Use `DROP FUNCTION IF EXISTS function_name CASCADE` to handle all dependencies. For flexible parameter handling, use text type instead of enums and cast when needed. Check existing functions with pg_proc queries before dropping. Always use `SET search_path = public` in function definitions to avoid schema issues. If errors persist, create diagnostic scripts to check function signatures, dependencies, and table structures before attempting fixes. Key file: scripts/fix-invitation-function-safe.sql handles these edge cases properly.
 - Analytics page legacy Supabase client fix: Fixed analytics page loading issues by removing the legacy `src/lib/supabase.ts` file that was causing "Multiple GoTrueClient instances detected" warnings and conflicts with the modern SSR setup. The analytics page was importing `{ supabase } from '@/lib/supabase'` which created multiple client instances. Solution: 1) Delete the legacy supabase.ts file, 2) Update analytics page to use `createClient()` from '@/lib/supabase/client', 3) Added proper local client creation in checkAuth function, 4) Added master_admin and sub_admin roles to analytics page authorization, 5) Documented fix in lessons learned. Key changes: Replaced global client import with local client creation, each component now calls createClient() when needed, prevents "Multiple GoTrueClient instances detected" warnings, ensures proper SSR compatibility. Result: Analytics page now loads properly with correct authentication handling and no client conflicts.
 - Maintenance system implementation: Created comprehensive maintenance task management system with staff assignment and external contractor invitations. Key components: 1) Database migration at supabase/migrations/20250131_create_maintenance_system.sql creates 9 tables including maintenance_tasks, task_assignments, task_contractor_invitations, 2) Server actions in src/app/actions/maintenance.ts handle task CRUD, staff assignment, and contractor invitations with proper organization-based access control, 3) Enhanced MaintenanceTaskModal with tabbed interface for no assignment/internal staff/external contractor options, 4) Integrated with facility/building selection and available staff lookup, 5) Activity logging and RLS policies ensure data isolation, 6) External contractors receive secure invitation tokens valid for 7 days. Implementation pattern: Server actions use createServerSupabaseClient() for auth and getServiceRoleClient() for database operations. UI uses tabs for assignment type selection with dynamic form fields. Always include organization_id for data isolation. Tables use UUID primary keys and proper foreign key relationships. Migration script at scripts/apply-maintenance-migration.js helps with deployment.
+- OpenAI dependencies removal: Completely removed OpenAI integration from the application to reduce dependencies and costs. Changes: 1) Removed 'openai' package from package.json and ran npm install to update package-lock.json, 2) Removed OPENAI_API_KEY from .env.local environment variables, 3) Removed OpenAI reference from supabase/config.toml, 4) Updated .cursorrules and .cursor/rules/devinrule.mdc documentation to use Anthropic as default LLM provider, 5) Removed all GPT model references from configuration files. The application now uses Anthropic Claude as the primary LLM provider for any development tools or documentation that reference LLM usage. This change reduces the number of external API dependencies and associated costs.
+- Sign-in page LastPass hydration error fix: Fixed hydration error on sign-in page caused by LastPass browser extension injecting DOM elements (data-lastpass-icon-root). Applied the same NoSSR pattern used in sign-up page. Solution: 1) Split SignInPage into SignInForm component, 2) Wrapped SignInForm with NoSSR component that renders client-side only, 3) Added AuthLoadingSkeleton as fallback during SSR, 4) This prevents browser extension DOM modifications from causing hydration mismatches. The pattern maintains SSR benefits while gracefully handling browser extension interference. Key imports: NoSSR from '@/components/ui/no-ssr' and AuthLoadingSkeleton from '@/components/ui/auth-loading-skeleton'.
+- Light mode background fix: Fixed hardcoded theme colors that broke light mode compatibility. Key changes: 1) Replaced hardcoded bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 with bg-background, 2) Updated text-white to text-foreground, text-gray-300 to text-foreground, text-gray-400 to text-muted-foreground, 3) Changed bg-gray-800/50 to bg-card/50, border-gray-700 to border-border, 4) Updated purple colors to use primary (bg-purple-600/20 to bg-primary/20, text-purple-400 to text-primary), 5) Fixed form inputs to use bg-input, placeholder-muted-foreground, focus:border-ring, 6) Applied to buildings page and facilities/new page. Rule: Never use hardcoded colors like gray-900, text-white, border-gray-700 - always use semantic CSS variables (bg-background, text-foreground, border-border, etc.) for theme compatibility.
 
 # Scratchpad
+
+## Current Task: Debug Login Loading Issue - RESOLVED ✅
+
+The login page blank issue has been resolved! The problem was that the Next.js development server wasn't running properly and needed a clean restart.
+
+### What was done:
+[X] Check sign-in page implementation
+[X] Review Supabase client configuration  
+[X] Create debug page at /auth/debug
+[X] Fix environment variable handling in client.ts
+[X] Test environment variables via API route
+[X] Verify Next.js dev server is running
+[X] Create test login page at /auth/test-login
+[X] Run diagnostics script to check users
+[X] Create comprehensive debug guide
+[X] **FIXED**: Clear Next.js cache and restart server
+[X] **VERIFIED**: Login page now loads properly with "Welcome back" text
+
+### Solution:
+- Killed existing Next.js processes
+- Cleared .next cache and node_modules/.cache
+- Restarted development server
+- Verified route is accessible and renders properly
+
+### Available tools for user:
+- http://localhost:3000/auth/debug - System diagnostics
+- http://localhost:3000/auth/test-login - Auth testing
+- LOGIN_ISSUE_DEBUG.md - Comprehensive guide
+
+The login page is now loading correctly and ready for user testing!

@@ -10,7 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { FacilityTypes } from '@/types/facility';
-import { Building2, Users, MapPin, Settings } from 'lucide-react';
+import { Building2, Users, MapPin, Settings, Loader2 } from 'lucide-react';
 
 export default function NewFacilityPage() {
   const router = useRouter();
@@ -60,37 +60,37 @@ export default function NewFacilityPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto py-8 px-4 max-w-4xl">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 shadow-lg">
-              <Building2 className="w-6 h-6 text-white" />
+            <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary shadow-lg">
+              <Building2 className="w-6 h-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">Create New Facility</h1>
-              <p className="text-gray-400">Add a new facility to your portfolio</p>
+              <h1 className="text-3xl font-bold text-foreground">Create New Facility</h1>
+              <p className="text-muted-foreground">Add a new facility to your portfolio</p>
             </div>
           </div>
         </div>
 
         {/* Form Card */}
-        <div className="bg-gray-900/50 backdrop-blur-xl rounded-2xl border border-gray-700/50 shadow-2xl">
+        <div className="bg-card/50 backdrop-blur-xl rounded-2xl border border-border shadow-2xl">
           <form onSubmit={handleSubmit} className="p-8 space-y-8">
             
             {/* Basic Information Section */}
             <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                  <MapPin className="w-4 h-4 text-purple-400" />
+              <div className="flex items-center gap-3 pb-4 border-b border-border">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                  <MapPin className="w-4 h-4 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold text-white">Basic Information</h2>
+                <h2 className="text-xl font-semibold text-foreground">Basic Information</h2>
               </div>
 
               {/* Facility Name - Full width */}
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-sm font-medium text-gray-300">
+                <Label htmlFor="name" className="text-sm font-medium text-foreground">
                   Facility Name
                 </Label>
                 <Input
@@ -98,13 +98,13 @@ export default function NewFacilityPage() {
                   name="name"
                   placeholder="Main Campus or Elementary School Building A"
                   required
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                 />
               </div>
 
               {/* Address - Full width */}
               <div className="space-y-2">
-                <Label htmlFor="address" className="text-sm font-medium text-gray-300">
+                <Label htmlFor="address" className="text-sm font-medium text-foreground">
                   Address
                 </Label>
                 <Input
@@ -112,14 +112,14 @@ export default function NewFacilityPage() {
                   name="address"
                   placeholder="Full street address"
                   required
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                 />
               </div>
               
               {/* City, State, Zip - Grid layout */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="city" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="city" className="text-sm font-medium text-foreground">
                     City
                   </Label>
                   <Input
@@ -127,12 +127,11 @@ export default function NewFacilityPage() {
                     name="city"
                     placeholder="City"
                     required
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                   />
                 </div>
-                
                 <div className="space-y-2">
-                  <Label htmlFor="state" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="state" className="text-sm font-medium text-foreground">
                     State
                   </Label>
                   <Input
@@ -140,20 +139,19 @@ export default function NewFacilityPage() {
                     name="state"
                     placeholder="State"
                     required
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                   />
                 </div>
-                
                 <div className="space-y-2">
-                  <Label htmlFor="zip" className="text-sm font-medium text-gray-300">
-                    Zip Code
+                  <Label htmlFor="zip" className="text-sm font-medium text-foreground">
+                    ZIP Code
                   </Label>
                   <Input
                     id="zip"
                     name="zip"
-                    placeholder="Zip Code"
+                    placeholder="ZIP"
                     required
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                   />
                 </div>
               </div>
@@ -161,46 +159,44 @@ export default function NewFacilityPage() {
 
             {/* Classification Section */}
             <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                  <Settings className="w-4 h-4 text-purple-400" />
+              <div className="flex items-center gap-3 pb-4 border-b border-border">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                  <Settings className="w-4 h-4 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold text-white">Classification</h2>
+                <h2 className="text-xl font-semibold text-foreground">Classification</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Facility Type */}
                 <div className="space-y-2">
-                  <Label htmlFor="type" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="type" className="text-sm font-medium text-foreground">
                     Facility Type
                   </Label>
                   <Select name="type" required>
-                    <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white h-12 focus:border-purple-500 focus:ring-purple-500/20">
-                      <SelectValue placeholder="Select a facility type" className="text-white" />
+                    <SelectTrigger className="bg-input border-border text-foreground h-12 focus:border-ring focus:ring-ring/20">
+                      <SelectValue placeholder="Select a facility type" className="text-foreground" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
+                    <SelectContent className="bg-card border-border">
                       {Object.values(FacilityTypes).map((type) => (
-                        <SelectItem key={type} value={type} className="text-white hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem key={type} value={type} className="text-foreground hover:bg-accent focus:bg-accent">
                           {type}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-                
-                {/* Status */}
+
                 <div className="space-y-2">
-                  <Label htmlFor="status" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="status" className="text-sm font-medium text-foreground">
                     Status
                   </Label>
                   <Select name="status" required>
-                    <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white h-12 focus:border-purple-500 focus:ring-purple-500/20">
-                      <SelectValue placeholder="Select a status" className="text-white" />
+                    <SelectTrigger className="bg-input border-border text-foreground h-12 focus:border-ring focus:ring-ring/20">
+                      <SelectValue placeholder="Select a status" className="text-foreground" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-700">
-                      <SelectItem value="active" className="text-white hover:bg-gray-700 focus:bg-gray-700">Active</SelectItem>
-                      <SelectItem value="inactive" className="text-white hover:bg-gray-700 focus:bg-gray-700">Inactive</SelectItem>
-                      <SelectItem value="maintenance" className="text-white hover:bg-gray-700 focus:bg-gray-700">Maintenance</SelectItem>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="active" className="text-foreground hover:bg-accent focus:bg-accent">Active</SelectItem>
+                      <SelectItem value="inactive" className="text-foreground hover:bg-accent focus:bg-accent">Inactive</SelectItem>
+                      <SelectItem value="maintenance" className="text-foreground hover:bg-accent focus:bg-accent">Maintenance</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -209,112 +205,113 @@ export default function NewFacilityPage() {
 
             {/* Specifications Section */}
             <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                  <Building2 className="w-4 h-4 text-purple-400" />
+              <div className="flex items-center gap-3 pb-4 border-b border-border">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                  <Building2 className="w-4 h-4 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold text-white">Specifications</h2>
+                <h2 className="text-xl font-semibold text-foreground">Specifications</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Square Footage */}
                 <div className="space-y-2">
-                  <Label htmlFor="squareFootage" className="text-sm font-medium text-gray-300">
-                    Acres
+                  <Label htmlFor="squareFootage" className="text-sm font-medium text-foreground">
+                    Square Footage
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (Gross Floor Area)
+                    </span>
                   </Label>
                   <Input
                     id="squareFootage"
                     name="squareFootage"
                     type="number"
-                    min="0"
-                    placeholder="Total acres"
-                    required
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                    placeholder="e.g., 25000"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                   />
                 </div>
 
-                {/* Year Built */}
                 <div className="space-y-2">
-                  <Label htmlFor="yearBuilt" className="text-sm font-medium text-gray-300">
+                  <Label htmlFor="yearBuilt" className="text-sm font-medium text-foreground">
                     Year Built
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (Original Construction)
+                    </span>
                   </Label>
                   <Input
                     id="yearBuilt"
                     name="yearBuilt"
                     type="number"
-                    min="1900"
-                    max={new Date().getFullYear()}
-                    placeholder="e.g., 2010"
-                    required
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                    placeholder="e.g., 1985"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                   />
                 </div>
 
-                {/* FCI Score */}
                 <div className="space-y-2">
-                  <Label htmlFor="facilityConditionIndex" className="text-sm font-medium text-gray-300">
-                    FCI Score (0-100)
-                    <span className="text-xs text-gray-500 block font-normal">
-                      Facility Condition Index
+                  <Label htmlFor="facilityConditionIndex" className="text-sm font-medium text-foreground">
+                    Facility Condition Index
+                    <span className="text-xs text-muted-foreground ml-1">
+                      (FCI Score 0-100)
                     </span>
                   </Label>
                   <Input
                     id="facilityConditionIndex"
                     name="facilityConditionIndex"
                     type="number"
+                    step="0.1"
                     min="0"
                     max="100"
-                    placeholder="e.g., 85"
-                    required
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-12"
+                    placeholder="e.g., 75.5"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-12"
                   />
                 </div>
               </div>
             </div>
 
-
-              
-            {/* Notes Section */}
+            {/* Additional Information Section */}
             <div className="space-y-6">
-              <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                  <Users className="w-4 h-4 text-purple-400" />
+              <div className="flex items-center gap-3 pb-4 border-b border-border">
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                  <Users className="w-4 h-4 text-primary" />
                 </div>
-                <h2 className="text-xl font-semibold text-white">Additional Information</h2>
+                <h2 className="text-xl font-semibold text-foreground">Additional Information</h2>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes" className="text-sm font-medium text-gray-300">
-                  Notes (Optional)
+                <Label htmlFor="notes" className="text-sm font-medium text-foreground">
+                  Notes & Comments
                 </Label>
                 <Textarea
                   id="notes"
                   name="notes"
-                  placeholder="Additional notes about this facility"
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 min-h-[100px] resize-none"
+                  placeholder="Any additional notes about this facility..."
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 min-h-[100px] resize-none"
                 />
               </div>
             </div>
 
-
-
-            {/* Form Actions */}
-            <div className="flex justify-end gap-4 pt-6 border-t border-gray-700/50">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => router.push('/facilities')}
+            {/* Submit Button */}
+            <div className="flex justify-end gap-4 pt-6 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.history.back()}
                 disabled={isSubmitting}
-                className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white px-6 h-12"
+                className="border-border text-foreground hover:bg-accent hover:text-foreground px-6 h-12"
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-8 h-12 shadow-lg"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 h-12 shadow-lg"
               >
-                {isSubmitting ? 'Creating...' : 'Create Facility'}
+                {isSubmitting ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating...
+                  </div>
+                ) : (
+                  'Create Facility'
+                )}
               </Button>
             </div>
           </form>

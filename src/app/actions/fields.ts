@@ -602,6 +602,49 @@ export async function updateReservation(reservationId: string, reservationData: 
   }
 }
 
+export async function updateReservationStatus(
+  reservationId: string, 
+  status: 'pending' | 'approved' | 'rejected' | 'confirmed' | 'cancelled' | 'completed',
+  approvalReason?: string
+): Promise<Reservation> {
+  try {
+    const supabase = getServiceRoleClient();
+    if (!supabase) {
+      throw new Error('Failed to initialize Supabase client');
+    }
+
+    const updateData: any = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (approvalReason) {
+      updateData.approval_reason = approvalReason;
+    }
+
+    const { data: reservation, error } = await supabase
+      .from('reservations')
+      .update(updateData)
+      .eq('id', reservationId)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error('Error updating reservation status:', error);
+      throw error;
+    }
+
+    if (!reservation) {
+      throw new Error('Reservation not found');
+    }
+
+    return reservation;
+  } catch (error) {
+    console.error('Error in updateReservationStatus:', error);
+    throw error;
+  }
+}
+
 export async function cancelReservation(reservationId: string): Promise<void> {
   try {
     const supabase = getServiceRoleClient();

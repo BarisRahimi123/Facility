@@ -830,7 +830,7 @@ export default function BuildingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         {/* Breadcrumb Navigation with glassmorphic effect */}
         <nav className="flex mb-6 bg-card/50 backdrop-blur-md rounded-xl p-4 border border-border" aria-label="Breadcrumb">

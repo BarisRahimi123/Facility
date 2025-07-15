@@ -1,10 +1,17 @@
 import { createBrowserClient } from '@supabase/ssr';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
 export function createClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase environment variables are not set!');
+    console.error('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? 'Set' : 'Missing');
+    console.error('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? 'Set' : 'Missing');
+    throw new Error('Supabase environment variables are required. Please check your .env.local file.');
+  }
+
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       flowType: 'pkce',
@@ -54,8 +61,16 @@ export function createClient() {
   });
 }
 
-// Export a singleton instance for convenience
-export const supabase = createClient();
+// Export a singleton instance for convenience - but only create it when accessed
+let supabaseInstance: ReturnType<typeof createClient> | null = null;
+export const supabase = new Proxy({} as ReturnType<typeof createClient>, {
+  get(target, prop, receiver) {
+    if (!supabaseInstance) {
+      supabaseInstance = createClient();
+    }
+    return Reflect.get(supabaseInstance, prop, receiver);
+  }
+});
 
 // Create a Supabase client with the service role key for server-side operations
 export const getServiceRoleClient = () => {
