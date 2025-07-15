@@ -3,7 +3,7 @@
 import { createServerSupabaseClient, getServiceRoleClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import type { MaintenanceTask } from '@/types/maintenance';
+import type { MaintenanceTask, MaintenanceType, MaintenancePriority, MaintenanceStatus } from '@/types/maintenance';
 
 export interface CreateMaintenanceTaskData {
   title: string;
@@ -477,4 +477,69 @@ export async function getVendors() {
     console.error('Error fetching vendors:', error);
     return [];
   }
+}
+
+export async function createMaintenanceRequest(data: {
+  title: string;
+  description: string;
+  type: MaintenanceType;
+  priority: MaintenancePriority;
+  facility_id: string;
+  building_id: string;
+  room_id?: string;
+  system_id?: string;
+  requested_by: string;
+  due_date?: string;
+  estimated_cost?: number;
+  status: MaintenanceStatus;
+}) {
+  const taskData: CreateMaintenanceTaskData = {
+    title: data.title,
+    description: data.description,
+    type: data.type === 'preventive' ? 'preventive' : 'corrective',
+    priority: data.priority === 'urgent' || data.priority === 'emergency' ? 'critical' : data.priority,
+    facilityId: data.facility_id,
+    buildingId: data.building_id,
+    roomId: data.room_id,
+    dueDate: data.due_date,
+    estimatedDuration: data.estimated_cost ? Math.ceil(data.estimated_cost / 100) : undefined,
+    notes: `Status: ${data.status}${data.estimated_cost ? `, Estimated Cost: $${data.estimated_cost}` : ''}`,
+  };
+
+  return await createMaintenanceTask(taskData);
+}
+
+export async function updateMaintenanceRequest(requestId: string, updates: {
+  title?: string;
+  description?: string;
+  type?: MaintenanceType;
+  priority?: MaintenancePriority;
+  due_date?: string;
+  estimated_cost?: number;
+  status?: MaintenanceStatus;
+}) {
+  const taskUpdates: Partial<MaintenanceTask> = {};
+  
+  if (updates.title) taskUpdates.title = updates.title;
+  if (updates.description) taskUpdates.description = updates.description;
+  if (updates.type) {
+    taskUpdates.type = updates.type === 'preventive' ? 'preventive' : 'corrective';
+  }
+  if (updates.priority) {
+    taskUpdates.priority = updates.priority === 'urgent' || updates.priority === 'emergency' ? 'critical' : updates.priority;
+  }
+  if (updates.due_date) taskUpdates.endDate = updates.due_date;
+  if (updates.status) {
+    const statusMap: Record<string, string> = {
+      'pending': 'pending',
+      'approved': 'pending',
+      'in_progress': 'in_progress',
+      'completed': 'completed',
+      'rejected': 'cancelled',
+      'cancelled': 'cancelled'
+    };
+    taskUpdates.status = statusMap[updates.status] as any || 'pending';
+  }
+
+  return await updateMaintenanceTask(requestId, taskUpdates);
 } 
