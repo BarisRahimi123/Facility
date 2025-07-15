@@ -3,15 +3,26 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Use service role client for server actions
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+function getServiceRoleClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const serviceRoleClient = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
+  if (!supabaseUrl) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
   }
-});
+  if (!supabaseServiceKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
+
+const serviceRoleClient = getServiceRoleClient();
 
 export interface AerialImage {
   id: string;
@@ -254,4 +265,4 @@ export async function getAerialImagesByType(facilityId: string, imageType: Aeria
     console.error('Unexpected error in getAerialImagesByType:', error);
     return [];
   }
-} 
+}  

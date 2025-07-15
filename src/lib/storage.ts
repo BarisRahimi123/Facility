@@ -1,9 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+function getStorageClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+  if (!supabaseUrl) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+  }
+  if (!supabaseAnonKey) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable');
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey);
+}
+
+const supabase = getStorageClient();
 
 /**
  * Generates a unique file path for storing a plan file
@@ -121,4 +132,4 @@ export async function deleteThumbnail(thumbnailPath: string): Promise<void> {
     console.error('Delete thumbnail error:', error);
     throw new Error(`Failed to delete thumbnail: ${error.message}`);
   }
-} 
+}  

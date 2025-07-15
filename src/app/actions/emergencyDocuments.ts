@@ -4,8 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 
 // Create service role client for database access
 function getServiceRoleSupabase() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  if (!supabaseUrl) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+  }
+  if (!supabaseServiceKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+  }
   
   return createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
@@ -38,7 +45,7 @@ export async function getEmergencyDocuments(facilityId: string, category?: strin
   try {
     const supabase = getServiceRoleSupabase();
     
-    const query = supabase
+    let query = supabase
       .from('emergency_documents')
       .select('*')
       .eq('facility_id', facilityId)
@@ -375,4 +382,4 @@ export async function checkAndCreateEmergencyDocumentsTable() {
       error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
-}      
+}            
