@@ -1,16 +1,18 @@
 #!/usr/bin/env node
 
-const { createClient } = require('@supabase/supabase-js');
-const { readFileSync, readdirSync } = require('fs');
-const { join, resolve } = require('path');
-const { execSync } = require('child_process');
-const dotenv = require('dotenv');
-const fetch = require('node-fetch');
-const path = require('path');
+import { createClient } from '@supabase/supabase-js';
+import { readFileSync, readdirSync } from 'fs';
+import { join, resolve } from 'path';
+import { execSync } from 'child_process';
+import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+import path from 'path';
 
 // Get the directory of the current module
-const __dirname = path.resolve();
-const rootDir = __dirname;
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootDir = path.resolve(__dirname, '..');
 
 // Load environment variables
 dotenv.config({ path: join(rootDir, '.env.local') });
@@ -24,25 +26,44 @@ const requiredEnvVars = [
 
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 if (missingEnvVars.length > 0) {
-  console.error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
-  process.exit(1);
+  console.warn(`⚠️ Skipping Supabase deployment - missing environment variables: ${missingEnvVars.join(', ')}`);
+  console.warn('This is normal during build processes that don\'t have access to deployment credentials.');
+  process.exit(0);
 }
 
 // Create Supabase client with the service role key
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function createSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+  }
+  if (!serviceKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+  }
+
+  return createClient(supabaseUrl, serviceKey);
+}
+
+const supabase = createSupabaseClient();
 
 // Function to execute SQL directly against Supabase using the REST API
 async function executeSql(sql) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/sql`, {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceKey) {
+      throw new Error('Missing required environment variables for SQL execution');
+    }
+
+    const response = await fetch(`${supabaseUrl}/rest/v1/sql`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': process.env.SUPABASE_SERVICE_ROLE_KEY,
-        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        'apikey': serviceKey,
+        'Authorization': `Bearer ${serviceKey}`,
         'Prefer': 'return=minimal'
       },
       body: JSON.stringify({
@@ -142,4 +163,4 @@ async function deployToSupabase() {
   }
 }
 
-deployToSupabase(); 
+deployToSupabase();    
