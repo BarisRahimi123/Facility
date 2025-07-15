@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
 
-  const refreshUser = async () => {
+  const refreshUser = async (retryCount = 0) => {
     try {
       setLoading(true);
       setError(null);
@@ -29,6 +29,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
       
       if (authError) {
+        if (authError.message.includes('Auth session missing') && retryCount < 3) {
+          console.log(`Auth session missing, retrying... (${retryCount + 1}/3)`);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+          return refreshUser(retryCount + 1);
+        }
         throw authError;
       }
       
@@ -68,8 +73,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // Initial load
-    refreshUser();
+    const checkInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await refreshUser();
+      } else {
+        setLoading(false);
+      }
+    };
+
+    checkInitialSession();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -103,4 +116,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-} 
+}  

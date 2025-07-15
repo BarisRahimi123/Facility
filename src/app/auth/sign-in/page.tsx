@@ -38,12 +38,18 @@ function SignInForm() {
       }
 
       if (data.user) {
-        // Simple redirect without complex role checking
-        window.location.href = '/facilities-map';
+        await new Promise(resolve => setTimeout(resolve, 100));
+        router.push('/facilities-map');
+        return;
       }
 
     } catch (error: any) {
-      setError(error.message || 'Sign in failed');
+      console.error('Sign in error:', error);
+      if (error.message?.includes('Auth session missing')) {
+        setError('Authentication session error. Please try again.');
+      } else {
+        setError(error.message || 'Sign in failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -157,4 +163,4 @@ export default function SignInPage() {
       <SignInForm />
     </NoSSR>
   );
-} 
+}  
