@@ -73,11 +73,11 @@ export default function UserDashboard() {
   // Check for pending field detail reservation after authentication
   useEffect(() => {
     const checkPendingReservation = async () => {
-      if (!authLoading && userProfile && typeof window !== 'undefined') {
+      if (!authLoading && typeof window !== 'undefined') {
         const pendingFieldReservation = localStorage.getItem('pendingFieldDetailReservation');
         const pendingFacilityReservation = localStorage.getItem('pendingFacilityReservation');
         
-        if (pendingFieldReservation) {
+        if (pendingFieldReservation && userProfile) {
           try {
             const savedData = JSON.parse(pendingFieldReservation);
             console.log('Found pending field detail reservation, auto-submitting...', savedData);
@@ -140,7 +140,7 @@ export default function UserDashboard() {
               variant: "destructive",
             });
           }
-        } else if (pendingFacilityReservation) {
+        } else if (pendingFacilityReservation && userProfile) {
           try {
             const savedData = JSON.parse(pendingFacilityReservation);
             console.log('Found pending facility rental reservation, auto-submitting...', savedData);
@@ -734,4 +734,4 @@ export default function UserDashboard() {
       </div>
     </div>
   );
-}    
+}          
