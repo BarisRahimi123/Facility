@@ -122,7 +122,7 @@ export default function AddRoomModal({ buildingId, isOpen, onClose }: AddRoomMod
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-[425px] bg-card border-border text-card-foreground">
         <DialogHeader>
           <DialogTitle className="text-foreground">
@@ -302,4 +302,4 @@ export default function AddRoomModal({ buildingId, isOpen, onClose }: AddRoomMod
       </DialogContent>
     </Dialog>
   );
-} 
+}        

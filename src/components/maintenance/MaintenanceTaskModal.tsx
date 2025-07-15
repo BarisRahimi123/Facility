@@ -188,7 +188,7 @@ export default function MaintenanceTaskModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
@@ -503,4 +503,4 @@ export default function MaintenanceTaskModal({
       </DialogContent>
     </Dialog>
   );
-} 
+}  

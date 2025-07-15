@@ -222,7 +222,7 @@ export function AddFieldModal({ isOpen, onClose, onSubmit, facilityId }: AddFiel
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-background border-border text-foreground shadow-2xl">
         <DialogHeader className="sticky top-0 bg-background/95 backdrop-blur-sm z-10 pb-4 border-b border-border">
           <DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
@@ -754,4 +754,4 @@ export function AddFieldModal({ isOpen, onClose, onSubmit, facilityId }: AddFiel
       </DialogContent>
     </Dialog>
   );
-} 
+}                                                                                                                        

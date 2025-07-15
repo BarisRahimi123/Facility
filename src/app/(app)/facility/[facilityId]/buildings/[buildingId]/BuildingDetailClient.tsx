@@ -1173,7 +1173,11 @@ export default function BuildingDetailClient({
       <EditBuildingModal 
         building={building}
         isOpen={isEditBuildingModalOpen}
-        onClose={() => setIsEditBuildingModalOpen(false)}
+        onClose={() => {
+          console.log('BuildingDetailClient onClose called, setting isEditBuildingModalOpen to false');
+          setIsEditBuildingModalOpen(false);
+          console.log('BuildingDetailClient onClose completed');
+        }}
       />
 
       {assigningStaffRoom && (
@@ -1218,4 +1222,4 @@ export default function BuildingDetailClient({
       )}
     </div>
   );
-}  
+}    

@@ -144,7 +144,7 @@ export default function AddSystemModal({ buildingId, isOpen, onClose }: AddSyste
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-[600px] bg-card border-border text-card-foreground max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -405,4 +405,4 @@ export default function AddSystemModal({ buildingId, isOpen, onClose }: AddSyste
       </DialogContent>
     </Dialog>
   );
-}  
+}                
