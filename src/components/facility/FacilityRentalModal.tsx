@@ -1252,7 +1252,24 @@ export function FacilityRentalModal({
                               
                               // Check if user is authenticated before proceeding to checkout
                               if (!user && !userLoading) {
-                                console.log('User not authenticated, showing auth modal');
+                                console.log('User not authenticated, saving cart data and showing auth modal');
+                                
+                                // Save cart and reservation data to localStorage before showing auth modal
+                                const submissionData = {
+                                  cart: cart.map(item => ({ ...item, item: item.item as Field })),
+                                  checkoutData,
+                                  contactInfo: {
+                                    name: reservationData.contactName || '',
+                                    email: reservationData.contactEmail || '',
+                                    phone: reservationData.contactPhone || '',
+                                    organization: reservationData.organization || ''
+                                  }
+                                };
+
+                                // Store the reservation data in localStorage
+                                localStorage.setItem('pendingFieldDetailReservation', JSON.stringify(submissionData));
+                                console.log('Cart data saved to localStorage:', submissionData);
+                                
                                 setShowAuthModal(true);
                               } else {
                                 console.log('User authenticated, proceeding to checkout');
