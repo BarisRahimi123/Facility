@@ -1415,6 +1415,7 @@ export default function FacilityOverviewPage() {
 
       {/* Share Facility Modal */}
       <ShareFacilityModal
+        key={isShareModalOpen ? 'open' : 'closed'}
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         facility={facility}
@@ -1491,4 +1492,4 @@ export default function FacilityOverviewPage() {
       </AlertDialog>
     </div>
   );
-}    
+}        
