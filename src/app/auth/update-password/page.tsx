@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { createClientBrowser } from '@/lib/supabase-browser';
+import { createClient } from '@/lib/supabase/client';
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('');
@@ -74,7 +74,7 @@ export default function UpdatePasswordPage() {
     setDebugInfo('Processing password update...');
     
     try {
-      const supabase = createClientBrowser();
+      const supabase = createClient();
       
       // Get the code from the URL
       const code = searchParams?.get('code');
@@ -214,4 +214,4 @@ export default function UpdatePasswordPage() {
       </div>
     </div>
   );
-} 
+}  

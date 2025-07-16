@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { GlassNavbar } from '@/components/ui/glass-navbar';
-import { createClientBrowser } from '@/lib/supabase-browser';
+import { createClient } from '@/lib/supabase/client';
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -34,7 +34,7 @@ export default function ResetPasswordPage() {
     setLoading(true);
     
     try {
-      const supabase = createClientBrowser();
+      const supabase = createClient();
       
       const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/auth/update-password`,
@@ -134,4 +134,4 @@ export default function ResetPasswordPage() {
       </div>
     </div>
   );
-} 
+}  
