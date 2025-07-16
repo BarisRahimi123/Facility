@@ -1173,7 +1173,7 @@ export default function BuildingDetailClient({
       />
       
       <EditBuildingModal 
-        key={isEditBuildingModalOpen ? 'open' : 'closed'}
+        key={isEditBuildingModalOpen ? 'edit-building-modal-open' : 'edit-building-modal-closed'}
         building={building}
         isOpen={isEditBuildingModalOpen}
         onClose={() => {
@@ -1225,4 +1225,4 @@ export default function BuildingDetailClient({
       )}
     </div>
   );
-}            
+}                
