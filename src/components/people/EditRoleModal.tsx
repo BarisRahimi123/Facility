@@ -169,7 +169,7 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated, currentUse
   const canEditRole = currentUserRole === 'master_admin';
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -292,4 +292,4 @@ export function EditRoleModal({ isOpen, onClose, user, onUserUpdated, currentUse
       </DialogContent>
     </Dialog>
   );
-} 
+}  

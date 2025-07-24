@@ -72,6 +72,10 @@ export default function EditBuildingModal({ building, isOpen, onClose }: EditBui
     }
   }, [building]);
 
+  useEffect(() => {
+    console.log('EditBuildingModal isOpen prop changed:', isOpen);
+  }, [isOpen]);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
@@ -121,7 +125,7 @@ export default function EditBuildingModal({ building, isOpen, onClose }: EditBui
   if (!building) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-[600px] bg-gray-900 border-gray-800 max-h-[80vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -263,4 +267,4 @@ export default function EditBuildingModal({ building, isOpen, onClose }: EditBui
       </DialogContent>
     </Dialog>
   );
-} 
+}              

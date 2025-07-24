@@ -1124,6 +1124,7 @@ export default function BuildingDetailClient({
       </Tabs>
 
       <AddRoomModal 
+        key={isRoomModalOpen ? 'open' : 'closed'}
         buildingId={buildingId}
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
@@ -1139,6 +1140,7 @@ export default function BuildingDetailClient({
       />
       
       <AddSystemModal 
+        key={isSystemModalOpen ? 'open' : 'closed'}
         buildingId={buildingId}
         isOpen={isSystemModalOpen}
         onClose={() => setIsSystemModalOpen(false)}
@@ -1171,9 +1173,14 @@ export default function BuildingDetailClient({
       />
       
       <EditBuildingModal 
+        key={isEditBuildingModalOpen ? 'edit-building-modal-open' : 'edit-building-modal-closed'}
         building={building}
         isOpen={isEditBuildingModalOpen}
-        onClose={() => setIsEditBuildingModalOpen(false)}
+        onClose={() => {
+          console.log('BuildingDetailClient onClose called, setting isEditBuildingModalOpen to false');
+          setIsEditBuildingModalOpen(false);
+          console.log('BuildingDetailClient onClose completed');
+        }}
       />
 
       {assigningStaffRoom && (
@@ -1218,4 +1225,4 @@ export default function BuildingDetailClient({
       )}
     </div>
   );
-}  
+}                

@@ -178,7 +178,7 @@ export function BlackoutDateModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-background border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-foreground flex items-center gap-2">
@@ -386,4 +386,4 @@ export function BlackoutDateModal({
       </DialogContent>
     </Dialog>
   );
-}  
+}    

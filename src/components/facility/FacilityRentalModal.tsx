@@ -39,7 +39,7 @@ import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { v4 as uuidv4 } from 'uuid';
 import { createFieldReservationFromCart } from '@/app/actions/fields';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface FacilityRentalModalProps {
   item: Field | Room | null;
@@ -246,14 +246,14 @@ export function FacilityRentalModal({
   useEffect(() => {
     if (user && !userLoading && typeof window !== 'undefined') {
       // Check if there's a pending reservation in localStorage
-      const pendingReservation = localStorage.getItem('pendingFieldReservation');
+      const pendingReservation = localStorage.getItem('pendingFieldDetailReservation');
       if (pendingReservation) {
         try {
           const reservationData = JSON.parse(pendingReservation);
           console.log('Found pending reservation, auto-submitting...', reservationData);
           
           // Clear the pending reservation
-          localStorage.removeItem('pendingFieldReservation');
+          localStorage.removeItem('pendingFieldDetailReservation');
           
           // Restore the cart and checkout data
           if (reservationData.cart) {
@@ -525,7 +525,7 @@ export function FacilityRentalModal({
       };
 
       // Store the reservation data in localStorage
-      localStorage.setItem('pendingFieldReservation', JSON.stringify(submissionData));
+      localStorage.setItem('pendingFieldDetailReservation', JSON.stringify(submissionData));
       
       // Show auth modal
       setShowAuthModal(true);
@@ -1252,7 +1252,24 @@ export function FacilityRentalModal({
                               
                               // Check if user is authenticated before proceeding to checkout
                               if (!user && !userLoading) {
-                                console.log('User not authenticated, showing auth modal');
+                                console.log('User not authenticated, saving cart data and showing auth modal');
+                                
+                                // Save cart and reservation data to localStorage before showing auth modal
+                                const submissionData = {
+                                  cart: cart.map(item => ({ ...item, item: item.item as Field })),
+                                  checkoutData,
+                                  contactInfo: {
+                                    name: reservationData.contactName || '',
+                                    email: reservationData.contactEmail || '',
+                                    phone: reservationData.contactPhone || '',
+                                    organization: reservationData.organization || ''
+                                  }
+                                };
+
+                                // Store the reservation data in localStorage
+                                localStorage.setItem('pendingFieldDetailReservation', JSON.stringify(submissionData));
+                                console.log('Cart data saved to localStorage:', submissionData);
+                                
                                 setShowAuthModal(true);
                               } else {
                                 console.log('User authenticated, proceeding to checkout');

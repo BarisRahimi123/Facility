@@ -112,7 +112,7 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
   if (!room) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-800">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -259,4 +259,4 @@ export default function EditRoomModal({ room, isOpen, onClose }: EditRoomModalPr
       </DialogContent>
     </Dialog>
   );
-} 
+}  

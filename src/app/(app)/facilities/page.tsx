@@ -369,6 +369,7 @@ export default function FacilitiesPage() {
 
       {/* Share Facility Modal */}
       <ShareFacilityModal
+        key={shareModalOpen ? 'open' : 'closed'}
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         facility={selectedFacility}
@@ -376,4 +377,4 @@ export default function FacilitiesPage() {
       />
     </div>
   );
-} 
+}  
