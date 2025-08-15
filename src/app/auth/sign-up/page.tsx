@@ -133,7 +133,7 @@ function SignUpForm() {
       // Check if user needs email verification
       if (authData.user && !authData.session) {
         // User created but needs email verification
-        toast.success('Account created! Please check your email and click the verification link to complete your registration.');
+        toast.success('Account created! Please check your email and click the verification link to complete your registration. If you don\'t see the email within 5 minutes, check your spam folder.');
         let verifyUrl = `/auth/verify-email?email=${encodeURIComponent(individualData.email)}`;
         if (returnTo && reservationType) {
           verifyUrl += `&returnTo=${returnTo}&type=${reservationType}&preserveData=${preserveData}`;
@@ -727,4 +727,4 @@ export default function SignUpPage() {
       <SignUpForm />
     </NoSSR>
   );
-}        
+}                        
