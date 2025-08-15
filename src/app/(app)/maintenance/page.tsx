@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
-import { Plus, Calendar as CalendarIcon, List, Share2, LayoutGrid, Filter, Search, Sliders, ExternalLink } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, List, Share2, LayoutGrid, Filter, Search, Sliders, ExternalLink, AlertTriangle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import MaintenanceCalendar from '@/components/maintenance/MaintenanceCalendar';
@@ -56,14 +56,15 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import ShareIssueFormButton from '@/components/maintenance/ShareIssueFormButton';
+import { IssueReportModal } from '@/components/maintenance/IssueReportModal';
 import { getMaintenanceTasks, updateMaintenanceTask } from '@/app/actions/maintenance';
+import { getAllFacilities } from '@/app/actions/facilities';
+import { getBuildings, getRooms } from '@/app/actions/buildings';
+import { getFields } from '@/app/actions/fields';
 
-// Temporary mock data for facilities
-const facilities = [
-  { id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', name: 'Central High School', type: 'School' },
-  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Memorial Hospital', type: 'Hospital' },
-  { id: 'b47ac120-58cc-4372-a567-0e02b2c3d567', name: 'Tech Hub Office Complex', type: 'Office' },
-];
+
+
+
 
 // Temporary mock data for vendors
 const mockVendors: Vendor[] = [
@@ -235,6 +236,12 @@ export default function MaintenancePage() {
   const [shareUrl, setShareUrl] = useState('');
   const [assignmentType, setAssignmentType] = useState<'internal' | 'contractor' | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState<string | undefined>(undefined);
+  const [isIssueReportModalOpen, setIsIssueReportModalOpen] = useState(false);
+  const [facilities, setFacilities] = useState<any[]>([]);
+  const [buildings, setBuildings] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<any[]>([]);
+  const [fields, setFields] = useState<any[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [facilityFilter, setFacilityFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -279,6 +286,58 @@ export default function MaintenancePage() {
       setIsLoading(false);
     }
   }, [selectedFacility, toast]);
+
+  const loadAllData = useCallback(async () => {
+    try {
+      // Load facilities
+      const facilitiesData = await getAllFacilities();
+      setFacilities(facilitiesData);
+
+      // Load buildings
+      const buildingsData = await getBuildings();
+      setBuildings(buildingsData);
+
+      // Load rooms for all buildings
+      const allRooms = [];
+      for (const building of buildingsData) {
+        try {
+          const buildingRooms = await getRooms(building.id);
+          allRooms.push(...buildingRooms);
+        } catch (error) {
+          console.warn(`Failed to load rooms for building ${building.id}:`, error);
+        }
+      }
+      setRooms(allRooms);
+
+      // Load fields for all facilities
+      const allFields = [];
+      for (const facility of facilitiesData) {
+        try {
+          const facilityFields = await getFields(facility.id);
+          allFields.push(...facilityFields);
+        } catch (error) {
+          console.warn(`Failed to load fields for facility ${facility.id}:`, error);
+        }
+      }
+      setFields(allFields);
+      setDataLoaded(true); // Mark as loaded
+
+    } catch (error) {
+      console.error('Failed to load data:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to load facility data",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  // Load all data on component mount
+  useEffect(() => {
+    if (!dataLoaded) {
+      loadAllData();
+    }
+  }, []); // Empty dependency array - only run once on mount
 
   // Load tasks when facility changes with proper cleanup
   useEffect(() => {
@@ -634,6 +693,14 @@ export default function MaintenancePage() {
               <Plus className="w-4 h-4 mr-2" />
               New PO
             </Button>
+            <Button
+              onClick={() => setIsIssueReportModalOpen(true)}
+              variant="outline"
+              className="border-orange-600 text-orange-400 hover:bg-orange-950/50"
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              Report Issue
+            </Button>
             <ShareIssueFormButton />
           </div>
         </div>
@@ -922,6 +989,27 @@ export default function MaintenancePage() {
         onClose={() => setIsShareModalOpen(false)}
         reportUrl={shareUrl}
         reportTitle="Maintenance Report"
+      />
+
+      {/* Issue Report Modal */}
+      <IssueReportModal
+        key={isIssueReportModalOpen ? 'open' : 'closed'}
+        isOpen={isIssueReportModalOpen}
+        onClose={() => setIsIssueReportModalOpen(false)}
+        onSuccess={() => {
+          setIsIssueReportModalOpen(false);
+          toast({
+            title: "Success",
+            description: "Issue report submitted successfully!",
+          });
+          // Optionally refresh tasks
+          loadTasks();
+        }}
+        facilityId={selectedFacility}
+        facilities={facilities}
+        buildings={buildings}
+        rooms={rooms}
+        fields={fields}
       />
     </div>
   );

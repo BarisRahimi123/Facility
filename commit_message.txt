@@ -1,0 +1,31 @@
+[Cursor] Restore maintenance and document folder functionality with enhancements
+
+Major Changes:
+- Restored full document folder structure in facility page
+- Enhanced maintenance page with issue reporting functionality
+- Fixed theme-aware styling for light/dark mode compatibility
+- Integrated real database data for issue reporting
+
+Key Features Added:
+- Complete document folder management system with hierarchy
+- Issue report modal with facility/building/room/field selection
+- Professional themed modals and components
+- Real-time data integration for maintenance workflows
+
+Technical Improvements:
+- Replaced hardcoded dark mode styles with theme-aware CSS variables
+- Fixed text overlapping and spacing issues in folder cards
+- Improved modal closing behavior and form validation
+- Added proper error handling and loading states
+- Optimized data fetching to prevent excessive API calls
+
+Bug Fixes:
+- Fixed TypeError in document filtering
+- Resolved modal closing issues (ESC key, backdrop clicks)
+- Fixed duplicate function declarations
+- Improved responsive layout and visual hierarchy
+
+Documentation:
+- Added comprehensive setup guides and troubleshooting docs
+- Created migration scripts for database schema updates
+- Enhanced code documentation and component structure

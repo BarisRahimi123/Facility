@@ -22,14 +22,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MapPin, Calendar, Users, Building2, AlertTriangle, Square, Plus, Activity, FileText, Wrench, Home, TrendingUp, Clock, ArrowRight, Grid3X3, List, LayoutGrid, Edit2, Trash2, Share2, Shield, Route, Phone, Package, Heart, MapIcon, Upload, Settings, Check, Camera, Map as MapIcon2, ChevronDown } from 'lucide-react';
-import MaintenanceCalendar from '@/components/facility/MaintenanceCalendar';
+
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { BuildingService } from '@/lib/services/building.service';
 import { Building } from '@/types/building';
 import toast from 'react-hot-toast';
 import { getDocuments } from '@/app/actions/documents';
-import { FacilityDocumentsList } from '@/components/facility/FacilityDocumentsList';
+import { FacilityDocumentsWithFolders } from '@/components/facility/FacilityDocumentsWithFolders';
 import { FacilityPhotos } from '@/components/facility/FacilityPhotos';
 import { MatterportSettings } from '@/components/facility/MatterportSettings';
 import { MasterCalendar } from '@/components/calendar/MasterCalendar';
@@ -555,12 +555,7 @@ export default function FacilityOverviewPage() {
               <Calendar className="w-4 h-4 mr-2" />
               Calendar
             </TabsTrigger>
-            <TabsTrigger 
-              value="maintenance"
-              className="text-muted-foreground data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground hover:text-foreground hover:bg-accent transition-all duration-200 rounded-lg"
-            >
-              Maintenance
-            </TabsTrigger>
+
             <TabsTrigger 
               value="documents"
               className="text-muted-foreground data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground hover:text-foreground hover:bg-accent transition-all duration-200 rounded-lg"
@@ -963,17 +958,9 @@ export default function FacilityOverviewPage() {
             />
           </TabsContent>
           
-          <TabsContent value="maintenance">
-            <MaintenanceCalendar facilityId={facilityId} />
-          </TabsContent>
-          
+
           <TabsContent value="documents" className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-foreground">Documents</h2>
-              <p className="text-muted-foreground mt-1">Manage facility documentation and files</p>
-            </div>
-            
-            <FacilityDocumentsList
+            <FacilityDocumentsWithFolders
               facilityId={facilityId}
               documents={documents}
               onDocumentsChange={loadDocuments}

@@ -110,14 +110,14 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-gray-900 border-gray-800">
+      <DialogContent className="sm:max-w-[500px] bg-background border-border">
         <DialogHeader>
-          <DialogTitle className="text-white">Upload Document</DialogTitle>
+          <DialogTitle className="text-foreground">Upload Document</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* File Upload Area */}
           <div
-            className="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center hover:border-gray-600 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-border rounded-lg p-6 text-center hover:border-muted-foreground transition-colors cursor-pointer"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onClick={() => fileInputRef.current?.click()}
@@ -131,10 +131,10 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
             />
             {selectedFile ? (
               <div className="flex items-center justify-center gap-3">
-                <FileText className="h-8 w-8 text-purple-500" />
+                <FileText className="h-8 w-8 text-primary" />
                 <div className="text-left">
-                  <p className="text-white font-medium">{selectedFile.name}</p>
-                  <p className="text-sm text-gray-400">{formatFileSize(selectedFile.size)}</p>
+                  <p className="text-foreground font-medium">{selectedFile.name}</p>
+                  <p className="text-sm text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
                 </div>
                 <Button
                   type="button"
@@ -150,11 +150,11 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
               </div>
             ) : (
               <>
-                <Upload className="mx-auto h-12 w-12 text-gray-600" />
-                <p className="mt-2 text-sm text-gray-400">
+                <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+                <p className="mt-2 text-sm text-muted-foreground">
                   Click to select or drag and drop
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   PDF, DOC, XLS, PPT, Images, ZIP (max 50MB)
                 </p>
               </>
@@ -164,57 +164,57 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
           {/* Document Details */}
           <div className="space-y-4">
             <div>
-              <Label htmlFor="name" className="text-white">Document Name *</Label>
+              <Label htmlFor="name" className="text-foreground">Document Name *</Label>
               <Input
                 id="name"
                 value={documentName}
                 onChange={(e) => setDocumentName(e.target.value)}
                 placeholder="Enter document name"
-                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                className="bg-input border-border text-foreground placeholder-muted-foreground"
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="description" className="text-white">Description</Label>
+              <Label htmlFor="description" className="text-foreground">Description</Label>
               <Textarea
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter document description"
-                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                className="bg-input border-border text-foreground placeholder-muted-foreground"
                 rows={3}
               />
             </div>
 
             <div>
-              <Label htmlFor="category" className="text-white">Category</Label>
+              <Label htmlFor="category" className="text-foreground">Category</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                <SelectTrigger className="bg-input border-border text-foreground">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 border-gray-700">
-                  <SelectItem value="General" className="text-white hover:bg-gray-700">General</SelectItem>
-                  <SelectItem value="Blueprints" className="text-white hover:bg-gray-700">Blueprints</SelectItem>
-                  <SelectItem value="Contracts" className="text-white hover:bg-gray-700">Contracts</SelectItem>
-                  <SelectItem value="Permits" className="text-white hover:bg-gray-700">Permits</SelectItem>
-                  <SelectItem value="Reports" className="text-white hover:bg-gray-700">Reports</SelectItem>
-                  <SelectItem value="Manuals" className="text-white hover:bg-gray-700">Manuals</SelectItem>
-                  <SelectItem value="Other" className="text-white hover:bg-gray-700">Other</SelectItem>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="General" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">General</SelectItem>
+                  <SelectItem value="Blueprints" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Blueprints</SelectItem>
+                  <SelectItem value="Contracts" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Contracts</SelectItem>
+                  <SelectItem value="Permits" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Permits</SelectItem>
+                  <SelectItem value="Reports" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Reports</SelectItem>
+                  <SelectItem value="Manuals" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Manuals</SelectItem>
+                  <SelectItem value="Other" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="tags" className="text-white">Tags</Label>
+              <Label htmlFor="tags" className="text-foreground">Tags</Label>
               <Input
                 id="tags"
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="Enter tags separated by commas"
-                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400"
+                className="bg-input border-border text-foreground placeholder-muted-foreground"
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Separate multiple tags with commas (e.g., "important, 2024, renovation")
               </p>
             </div>
@@ -227,14 +227,14 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
               variant="outline"
               onClick={onClose}
               disabled={isUploading}
-              className="border-gray-700 text-gray-300 hover:bg-gray-800"
+              className="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={!selectedFile || !documentName || isUploading}
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
             >
               {isUploading ? 'Uploading...' : 'Upload Document'}
             </Button>

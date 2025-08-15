@@ -145,15 +145,15 @@ export default function EditFacilityModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-gray-900 text-white border border-gray-700/50 sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-background text-foreground border border-border sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="pb-6">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 shadow-lg">
-              <Building2 className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary shadow-lg">
+              <Building2 className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-bold text-white">Edit Facility</DialogTitle>
-              <p className="text-gray-400 text-sm">Update facility information and restroom details</p>
+              <DialogTitle className="text-2xl font-bold text-foreground">Edit Facility</DialogTitle>
+              <p className="text-muted-foreground text-sm">Update facility information and restroom details</p>
             </div>
           </div>
         </DialogHeader>
@@ -161,40 +161,40 @@ export default function EditFacilityModal({
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Basic Information Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                <MapPin className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center gap-3 pb-4 border-b border-border">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                <MapPin className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Basic Information</h3>
+              <h3 className="text-lg font-semibold text-foreground">Basic Information</h3>
             </div>
 
             <div className="space-y-4">
               <div>
-                <Label className="text-sm font-medium text-gray-300">Facility Name</Label>
+                <Label className="text-sm font-medium text-foreground">Facility Name</Label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                   required
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-300">Street Address</Label>
+                  <Label className="text-sm font-medium text-foreground">Street Address</Label>
                   <Input
                     value={formData.street}
                     onChange={(e) => setFormData({ ...formData, street: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                     required
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-300">City</Label>
+                  <Label className="text-sm font-medium text-foreground">City</Label>
                   <Input
                     value={formData.city}
                     onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                     required
                   />
                 </div>
@@ -202,20 +202,20 @@ export default function EditFacilityModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-sm font-medium text-gray-300">State</Label>
+                  <Label className="text-sm font-medium text-foreground">State</Label>
                   <Input
                     value={formData.state}
                     onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                     required
                   />
                 </div>
                 <div>
-                  <Label className="text-sm font-medium text-gray-300">ZIP Code</Label>
+                  <Label className="text-sm font-medium text-foreground">ZIP Code</Label>
                   <Input
                     value={formData.zip}
                     onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                     required
                   />
                 </div>
@@ -225,48 +225,48 @@ export default function EditFacilityModal({
 
           {/* Classification Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                <Settings className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center gap-3 pb-4 border-b border-border">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                <Settings className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Classification</h3>
+              <h3 className="text-lg font-semibold text-foreground">Classification</h3>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium text-gray-300">Facility Type</Label>
+                <Label className="text-sm font-medium text-foreground">Facility Type</Label>
                 <Select
                   value={formData.type}
                   onValueChange={(value) => setFormData({ ...formData, type: value as FacilityType })}
                 >
-                  <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white h-11 focus:border-purple-500 focus:ring-purple-500/20">
+                  <SelectTrigger className="bg-input border-border text-foreground h-11 focus:border-ring focus:ring-ring/20">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="Elementary School" className="text-white hover:bg-gray-700">Elementary School</SelectItem>
-                    <SelectItem value="Middle School" className="text-white hover:bg-gray-700">Middle School</SelectItem>
-                    <SelectItem value="High School" className="text-white hover:bg-gray-700">High School</SelectItem>
-                    <SelectItem value="Office" className="text-white hover:bg-gray-700">Office</SelectItem>
-                    <SelectItem value="Warehouse" className="text-white hover:bg-gray-700">Warehouse</SelectItem>
-                    <SelectItem value="Commercial" className="text-white hover:bg-gray-700">Commercial</SelectItem>
-                    <SelectItem value="Hospital" className="text-white hover:bg-gray-700">Hospital</SelectItem>
-                    <SelectItem value="Other" className="text-white hover:bg-gray-700">Other</SelectItem>
+                  <SelectContent className="bg-popover border-border">
+                    <SelectItem value="Elementary School" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Elementary School</SelectItem>
+                    <SelectItem value="Middle School" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Middle School</SelectItem>
+                    <SelectItem value="High School" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">High School</SelectItem>
+                    <SelectItem value="Office" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Office</SelectItem>
+                    <SelectItem value="Warehouse" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Warehouse</SelectItem>
+                    <SelectItem value="Commercial" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Commercial</SelectItem>
+                    <SelectItem value="Hospital" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Hospital</SelectItem>
+                    <SelectItem value="Other" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-300">Status</Label>
+                <Label className="text-sm font-medium text-foreground">Status</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) => setFormData({ ...formData, status: value as FacilityStatus })}
                 >
-                  <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white h-11 focus:border-purple-500 focus:ring-purple-500/20">
+                  <SelectTrigger className="bg-input border-border text-foreground h-11 focus:border-ring focus:ring-ring/20">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
-                    <SelectItem value="active" className="text-white hover:bg-gray-700">Active</SelectItem>
-                    <SelectItem value="maintenance" className="text-white hover:bg-gray-700">Maintenance</SelectItem>
-                    <SelectItem value="inactive" className="text-white hover:bg-gray-700">Inactive</SelectItem>
+                  <SelectContent className="bg-popover border-border">
+                    <SelectItem value="active" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Active</SelectItem>
+                    <SelectItem value="maintenance" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Maintenance</SelectItem>
+                    <SelectItem value="inactive" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Inactive</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -275,41 +275,41 @@ export default function EditFacilityModal({
 
           {/* Specifications Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                <Building2 className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center gap-3 pb-4 border-b border-border">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                <Building2 className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Specifications</h3>
+              <h3 className="text-lg font-semibold text-foreground">Specifications</h3>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label className="text-sm font-medium text-gray-300">Acres</Label>
+                <Label className="text-sm font-medium text-foreground">Acres</Label>
                 <Input
                   type="number"
                   value={formData.squareFootage}
                   onChange={(e) => setFormData({ ...formData, squareFootage: e.target.value })}
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                   required
                 />
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-300">Year Built</Label>
+                <Label className="text-sm font-medium text-foreground">Year Built</Label>
                 <Input
                   type="number"
                   value={formData.yearBuilt}
                   onChange={(e) => setFormData({ ...formData, yearBuilt: e.target.value })}
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                   required
                 />
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-300">FCI Score (0-100)</Label>
+                <Label className="text-sm font-medium text-foreground">FCI Score (0-100)</Label>
                 <Input
                   type="number"
                   value={formData.facilityConditionIndex}
                   onChange={(e) => setFormData({ ...formData, facilityConditionIndex: e.target.value })}
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-11"
+                  className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-11"
                   min="0"
                   max="100"
                   required
@@ -320,58 +320,58 @@ export default function EditFacilityModal({
 
           {/* Restroom Information Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                <Toilet className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center gap-3 pb-4 border-b border-border">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                <Toilet className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-white">Restroom Information</h3>
+                <h3 className="text-lg font-semibold text-foreground">Restroom Information</h3>
                 <p className="text-sm text-gray-400">Used for automatic compliance calculations</p>
               </div>
             </div>
             
             {/* Boys Restrooms */}
             <div className="space-y-4">
-              <h4 className="text-md font-medium text-purple-300">Boys Restrooms</h4>
+              <h4 className="text-md font-medium text-primary">Boys Restrooms</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-300">Toilets</Label>
+                  <Label className="text-sm text-foreground">Toilets</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.boysToilets}
                     onChange={(e) => setFormData({ ...formData, boysToilets: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Urinals</Label>
+                  <Label className="text-sm text-foreground">Urinals</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.boysUrinals}
                     onChange={(e) => setFormData({ ...formData, boysUrinals: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Sinks</Label>
+                  <Label className="text-sm text-foreground">Sinks</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.boysSinks}
                     onChange={(e) => setFormData({ ...formData, boysSinks: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Restrooms</Label>
+                  <Label className="text-sm text-foreground">Restrooms</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.boysRestroomsCount}
                     onChange={(e) => setFormData({ ...formData, boysRestroomsCount: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
               </div>
@@ -379,46 +379,46 @@ export default function EditFacilityModal({
 
             {/* Girls Restrooms */}
             <div className="space-y-4">
-              <h4 className="text-md font-medium text-purple-300">Girls Restrooms</h4>
+              <h4 className="text-md font-medium text-primary">Girls Restrooms</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-300">Toilets</Label>
+                  <Label className="text-sm text-foreground">Toilets</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.girlsToilets}
                     onChange={(e) => setFormData({ ...formData, girlsToilets: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Urinals</Label>
+                  <Label className="text-sm text-foreground">Urinals</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.girlsUrinals}
                     onChange={(e) => setFormData({ ...formData, girlsUrinals: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Sinks</Label>
+                  <Label className="text-sm text-foreground">Sinks</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.girlsSinks}
                     onChange={(e) => setFormData({ ...formData, girlsSinks: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Restrooms</Label>
+                  <Label className="text-sm text-foreground">Restrooms</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.girlsRestroomsCount}
                     onChange={(e) => setFormData({ ...formData, girlsRestroomsCount: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
               </div>
@@ -426,36 +426,36 @@ export default function EditFacilityModal({
 
             {/* Unisex/Family Restrooms */}
             <div className="space-y-4">
-              <h4 className="text-md font-medium text-purple-300">Unisex/Family Restrooms</h4>
+              <h4 className="text-md font-medium text-primary">Unisex/Family Restrooms</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-300">Toilets</Label>
+                  <Label className="text-sm text-foreground">Toilets</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.unisexToilets}
                     onChange={(e) => setFormData({ ...formData, unisexToilets: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Sinks</Label>
+                  <Label className="text-sm text-foreground">Sinks</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.unisexSinks}
                     onChange={(e) => setFormData({ ...formData, unisexSinks: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Restrooms</Label>
+                  <Label className="text-sm text-foreground">Restrooms</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.unisexRestroomsCount}
                     onChange={(e) => setFormData({ ...formData, unisexRestroomsCount: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
               </div>
@@ -463,36 +463,36 @@ export default function EditFacilityModal({
 
             {/* Staff Restrooms */}
             <div className="space-y-4">
-              <h4 className="text-md font-medium text-purple-300">Staff Restrooms</h4>
+              <h4 className="text-md font-medium text-primary">Staff Restrooms</h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                  <Label className="text-sm text-gray-300">Toilets</Label>
+                  <Label className="text-sm text-foreground">Toilets</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.staffToilets}
                     onChange={(e) => setFormData({ ...formData, staffToilets: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Sinks</Label>
+                  <Label className="text-sm text-foreground">Sinks</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.staffSinks}
                     onChange={(e) => setFormData({ ...formData, staffSinks: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
                 <div>
-                  <Label className="text-sm text-gray-300">Restrooms</Label>
+                  <Label className="text-sm text-foreground">Restrooms</Label>
                   <Input
                     type="number"
                     min="0"
                     value={formData.staffRestroomsCount}
                     onChange={(e) => setFormData({ ...formData, staffRestroomsCount: e.target.value })}
-                    className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 h-10"
+                    className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 h-10"
                   />
                 </div>
               </div>
@@ -501,19 +501,19 @@ export default function EditFacilityModal({
 
           {/* Description Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-3 pb-4 border-b border-gray-700/50">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-purple-600/20">
-                <Users className="w-4 h-4 text-purple-400" />
+            <div className="flex items-center gap-3 pb-4 border-b border-border">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/20">
+                <Users className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold text-white">Additional Information</h3>
+              <h3 className="text-lg font-semibold text-foreground">Additional Information</h3>
             </div>
 
             <div>
-              <Label className="text-sm font-medium text-gray-300">Description (Optional)</Label>
+              <Label className="text-sm font-medium text-foreground">Description (Optional)</Label>
               <Textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="bg-gray-800/50 border-gray-700 text-white placeholder-gray-400 focus:border-purple-500 focus:ring-purple-500/20 min-h-[80px] resize-none"
+                className="bg-input border-border text-foreground placeholder-muted-foreground focus:border-ring focus:ring-ring/20 min-h-[80px] resize-none"
                 placeholder="Additional notes about this facility"
               />
             </div>
@@ -522,19 +522,19 @@ export default function EditFacilityModal({
 
 
           {/* Form Actions */}
-          <div className="flex justify-end gap-4 pt-6 border-t border-gray-700/50">
+          <div className="flex justify-end gap-4 pt-6 border-t border-border">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white px-6 h-11"
+              className="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground px-6 h-11"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isLoading}
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-8 h-11 shadow-lg"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 h-11 shadow-lg"
             >
               {isLoading ? 'Updating...' : 'Update Facility'}
             </Button>
