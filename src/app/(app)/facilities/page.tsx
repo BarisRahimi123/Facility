@@ -76,17 +76,28 @@ export default function FacilitiesPage() {
           return;
         }
         
-        // Get detailed permissions
-        const permissions = await getUserPermissions();
+        // Get detailed permissions with timeout
+        const timeoutPromise = new Promise<UserPermissionsSummary | null>((_, reject) => 
+          setTimeout(() => reject(new Error('Permission check timeout after 10 seconds')), 10000)
+        );
+        
+        const permissions = await Promise.race([
+          getUserPermissions(user.id),
+          timeoutPromise
+        ]);
+        
         if (permissions) {
           setUserPermissions(permissions);
-          console.log('User permissions loaded:', permissions);
         }
         
         setIsAuthorized(true);
       } catch (error) {
         console.error('Error checking authorization:', error);
-        toast.error('Error checking permissions');
+        if (error instanceof Error && error.message.includes('timeout')) {
+          toast.error('Permission check timed out. Please try refreshing the page.');
+        } else {
+          toast.error('Error checking permissions');
+        }
         router.push('/facilities-map');
       } finally {
         setAuthLoading(false);
@@ -377,4 +388,4 @@ export default function FacilitiesPage() {
       />
     </div>
   );
-}  
+}            

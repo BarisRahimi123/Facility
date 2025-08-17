@@ -29,21 +29,25 @@ export interface UserPermissionsSummary {
   can_share_all: boolean;
 }
 
-export async function getUserPermissions(): Promise<UserPermissionsSummary | null> {
+export async function getUserPermissions(userId?: string): Promise<UserPermissionsSummary | null> {
   try {
     const supabase = await createClient();
     
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return null;
+    let userIdToUse = userId;
+    
+    if (!userIdToUse) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return null;
+      }
+      userIdToUse = user.id;
     }
 
     // Get user profile
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userIdToUse)
       .single();
 
     if (profileError) {
@@ -67,7 +71,7 @@ export async function getUserPermissions(): Promise<UserPermissionsSummary | nul
       const { data: assignments, error: assignmentsError } = await supabase
         .from('staff_facility_assignments')
         .select('facility_id, permissions, role')
-        .eq('user_id', user.id);
+        .eq('user_id', userIdToUse);
 
       if (!assignmentsError && assignments) {
         facilityPermissions = assignments.map(assignment => ({
@@ -200,4 +204,4 @@ export async function getStaffAssignedFacilities(): Promise<string[]> {
     console.error('Error getting staff assigned facilities:', error);
     return [];
   }
-} 
+}      
