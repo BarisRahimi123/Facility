@@ -11,6 +11,7 @@ import { GlassNavbar } from '@/components/ui/glass-navbar';
 import { createClient } from '@/lib/supabase/client';
 import { NoSSR } from '@/components/ui/no-ssr';
 import { AuthLoadingSkeleton } from '@/components/ui/auth-loading-skeleton';
+import { clearAuthCache } from '@/utils/authCache';
 
 function SignInForm() {
   const [email, setEmail] = useState('');
@@ -19,6 +20,11 @@ function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  
+  // Clear any stale auth state on sign-in page load
+  useState(() => {
+    clearAuthCache();
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -19,6 +19,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { clearAuthCache } from '@/utils/authCache';
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -31,11 +32,16 @@ export default function Sidebar() {
   // Use a consistent initial href to prevent hydration mismatches
   // Default to "/" during initial render, will update after hydration
   const [logoHref, setLogoHref] = useState('/');
+  const [menuReady, setMenuReady] = useState(false);
   
   // Update logo href after hydration based on user state
   useEffect(() => {
     setLogoHref(user ? '/facilities-map' : '/');
-  }, [user]);
+    // Only show menu items after initial load to prevent flashing
+    if (!isLoading) {
+      setMenuReady(true);
+    }
+  }, [user, isLoading]);
 
   const handleSignOut = async () => {
     try {
@@ -51,11 +57,8 @@ export default function Sidebar() {
         throw new Error('Sign-out failed');
       }
 
-      // Clear local storage
-      if (typeof window !== 'undefined') {
-        localStorage.clear();
-        sessionStorage.clear();
-      }
+      // Clear all auth cache
+      clearAuthCache();
 
       toast({
         title: "Signed out successfully",
@@ -75,8 +78,7 @@ export default function Sidebar() {
       });
       
       // Still redirect even if there's an error
-      localStorage.clear();
-      sessionStorage.clear();
+      clearAuthCache();
       setTimeout(() => {
         window.location.href = '/auth/sign-in';
       }, 1000);
@@ -217,7 +219,8 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-4 py-6">
-        {isLoading ? (
+        {/* Show menu immediately if user exists (even from cache), only show loading for initial auth check */}
+        {!user && isLoading ? (
           <div className="space-y-4">
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>

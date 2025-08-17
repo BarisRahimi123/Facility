@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@/types/user';
+import { clearAuthCache, getCachedUser, cacheUser } from '@/utils/authCache';
 
 interface AuthContextType {
   user: User | null;
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -71,9 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Found user by email instead of ID');
           setUser(userByEmail);
           // Cache user data
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('facilitycore_user', JSON.stringify(userByEmail));
-          }
+          cacheUser(userByEmail);
         } else {
           // Still set basic user info from auth
           console.log('Using basic auth info as fallback');
@@ -87,17 +87,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           };
           setUser(basicUser);
           // Cache basic user data
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('facilitycore_user', JSON.stringify(basicUser));
-          }
+          cacheUser(basicUser);
         }
       } else {
         console.log('AuthContext: User profile loaded:', userData.email, userData.role);
         setUser(userData);
         // Cache user data for faster initial load
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('facilitycore_user', JSON.stringify(userData));
-        }
+        cacheUser(userData);
       }
       
       setLoading(false);
@@ -106,9 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(error instanceof Error ? error.message : 'Failed to load user');
       setUser(null);
       // Clear cached user on error
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('facilitycore_user');
-      }
+      clearAuthCache();
       setLoading(false);
     }
   };
@@ -116,16 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Load cached user after hydration to prevent mismatch
     if (typeof window !== 'undefined' && !hydrated) {
-      try {
-        const cached = localStorage.getItem('facilitycore_user');
-        if (cached) {
-          const cachedUser = JSON.parse(cached);
-          console.log('AuthContext: Loaded cached user:', cachedUser.email);
-          setUser(cachedUser);
-          setLoading(false); // Show UI immediately with cached data
-        }
-      } catch (error) {
-        console.error('Error loading cached user:', error);
+      const cachedUser = getCachedUser();
+      if (cachedUser) {
+        console.log('AuthContext: Loaded cached user:', cachedUser.email);
+        setUser(cachedUser);
+        // Don't set loading to false here - wait for session check
       }
       setHydrated(true);
     }
@@ -135,22 +124,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
     
     const checkInitialSession = async () => {
+      if (sessionChecked) return; // Prevent duplicate checks
+      
       console.log('AuthContext: Checking initial session...');
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!mounted) return;
       
+      setSessionChecked(true);
+      
       if (session) {
-        console.log('AuthContext: Session found, refreshing user...');
-        await refreshUser();
+        console.log('AuthContext: Session found');
+        // Only refresh if we don't have cached user or if cached user ID doesn't match
+        const cachedUser = getCachedUser();
+        
+        if (!cachedUser || cachedUser.id !== session.user.id) {
+          console.log('AuthContext: Refreshing user data (cache miss or mismatch)');
+          await refreshUser();
+        } else {
+          console.log('AuthContext: Using cached user (cache hit)');
+          setLoading(false);
+        }
       } else {
         console.log('AuthContext: No session found');
+        setUser(null);
+        clearAuthCache();
         setLoading(false);
       }
     };
 
     // Only check session after hydration
-    if (hydrated) {
+    if (hydrated && !sessionChecked) {
       checkInitialSession();
     }
 
@@ -160,17 +164,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log('Auth state changed:', event);
       
+      // Skip initial session event to avoid duplicate checks
+      if (event === 'INITIAL_SESSION') {
+        return;
+      }
+      
       if (event === 'SIGNED_IN' && session?.user) {
+        setSessionChecked(true);
         await refreshUser();
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setLoading(false);
+        setSessionChecked(false);
         // Clear cached user data
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('facilitycore_user');
+        clearAuthCache();
+      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+        // Only refresh if necessary
+        if (user && user.id === session.user.id) {
+          console.log('Token refreshed but user unchanged, skipping refresh');
+        } else {
+          await refreshUser();
         }
-      } else if (event === 'TOKEN_REFRESHED') {
-        await refreshUser();
       }
     });
 
@@ -178,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [hydrated]);
+  }, [hydrated, sessionChecked, user]);
 
   return (
     <AuthContext.Provider value={{ user, loading, error, refreshUser }}>
