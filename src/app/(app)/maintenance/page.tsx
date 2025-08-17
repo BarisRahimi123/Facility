@@ -219,7 +219,7 @@ const IssueTrackingBoard = dynamic(() => import('@/components/maintenance/IssueT
 });
 
 export default function MaintenancePage() {
-  const router = useRouter();
+  // Initialize all state variables first
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
   const [tasks, setTasks] = useState<MaintenanceTask[]>([]);
@@ -231,7 +231,6 @@ export default function MaintenancePage() {
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedFacility, setSelectedFacility] = useState<string>('f47ac10b-58cc-4372-a567-0e02b2c3d479');
-  const { toast } = useToast();
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [assignmentType, setAssignmentType] = useState<'internal' | 'contractor' | undefined>(undefined);
@@ -249,6 +248,10 @@ export default function MaintenancePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [activeActionTab, setActiveActionTab] = useState<'new' | 'pending' | 'escalated'>('new');
+
+  // Initialize hooks after state
+  const router = useRouter();
+  const { toast } = useToast();
 
   // Mock data for team members and contractors
   const teamMembers = [
@@ -330,14 +333,14 @@ export default function MaintenancePage() {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast]); // Only depend on toast, not dataLoaded
 
-  // Load all data on component mount
+  // Load all data on component mount - only run once
   useEffect(() => {
     if (!dataLoaded) {
       loadAllData();
     }
-  }, []); // Empty dependency array - only run once on mount
+  }, [dataLoaded, loadAllData]); // Check dataLoaded to prevent re-running
 
   // Load tasks when facility changes with proper cleanup
   useEffect(() => {
@@ -345,7 +348,26 @@ export default function MaintenancePage() {
     
     const fetchData = async () => {
       if (isMounted) {
-        await loadTasks();
+        setIsLoading(true);
+        try {
+          const tasksData = await getMaintenanceTasks(selectedFacility);
+          if (isMounted) {
+            setTasks(tasksData);
+          }
+        } catch (error) {
+          console.error('Error loading tasks:', error);
+          if (isMounted) {
+            toast({
+              title: 'Error',
+              description: 'Failed to load maintenance tasks.',
+              variant: 'destructive',
+            });
+          }
+        } finally {
+          if (isMounted) {
+            setIsLoading(false);
+          }
+        }
       }
     };
     
@@ -355,9 +377,7 @@ export default function MaintenancePage() {
     return () => {
       isMounted = false;
     };
-    // Remove loadTasks from the dependency array to avoid potential infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFacility]);
+  }, [selectedFacility, toast]); // Only depend on selectedFacility and toast
 
   // Separate useEffect for BroadcastChannel with proper cleanup
   useEffect(() => {
@@ -366,13 +386,21 @@ export default function MaintenancePage() {
     
     try {
       bc = new BroadcastChannel('tasks-update');
-      bc.onmessage = (event) => {
+      bc.onmessage = async (event) => {
         if (event.data.type === 'new-task' && isMounted) {
-          loadTasks();
-          toast({
-            title: "New Task Added",
-            description: "A new maintenance task has been added to the board.",
-          });
+          // Reload tasks inline to avoid dependency issues
+          try {
+            const tasksData = await getMaintenanceTasks(selectedFacility);
+            if (isMounted) {
+              setTasks(tasksData);
+              toast({
+                title: "New Task Added",
+                description: "A new maintenance task has been added to the board.",
+              });
+            }
+          } catch (error) {
+            console.error('Error reloading tasks:', error);
+          }
         }
       };
     } catch (error) {
@@ -386,9 +414,7 @@ export default function MaintenancePage() {
         bc.close();
       }
     };
-    // Remove loadTasks from the dependency array to avoid potential infinite loops
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast]);
+  }, [selectedFacility, toast]); // Only depend on selectedFacility and toast
 
   // Add cleanup when component unmounts to prevent memory leaks
   useEffect(() => {
@@ -434,11 +460,8 @@ export default function MaintenancePage() {
 
   const handleTimeSlotSelect = (start: Date, end: Date) => {
     setIsTaskModalOpen(true);
-    // Pre-fill the task form with the selected time slot
-    handleCreateTask({
-      startDate: start.toISOString(),
-      estimatedDuration: Math.round((end.getTime() - start.getTime()) / (1000 * 60)) // Convert to minutes
-    });
+    // Note: Task form will be pre-filled via the modal's internal state
+    // We don't need to call handleCreateTask here as that would create a task immediately
   };
 
   // Update the handleTaskUpdate function
@@ -993,7 +1016,7 @@ export default function MaintenancePage() {
 
       {/* Issue Report Modal */}
       <IssueReportModal
-        key={isIssueReportModalOpen ? 'open' : 'closed'}
+        key={isIssueReportModalOpen ? 'issue-report-open' : 'issue-report-closed'}
         isOpen={isIssueReportModalOpen}
         onClose={() => setIsIssueReportModalOpen(false)}
         onSuccess={() => {

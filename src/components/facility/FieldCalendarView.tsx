@@ -521,7 +521,7 @@ export function FieldCalendarView({ facilityId, fields, reservations }: FieldCal
 
       {/* Blackout Date Management Modal */}
       <BlackoutDateModal
-        key={isBlackoutModalOpen ? 'open' : 'closed'}
+        key={isBlackoutModalOpen ? 'blackout-open' : 'blackout-closed'}
         isOpen={isBlackoutModalOpen}
         onClose={() => setIsBlackoutModalOpen(false)}
         onSave={handleBlackoutSave}

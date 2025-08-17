@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { createClient } from '@/lib/supabase/client';
 import type { Building, BuildingFormData, Room } from '@/types/building';
 
 interface RenovationData {
@@ -55,6 +55,7 @@ export class BuildingService {
    * Create a new building
    */
   static async createBuilding(buildingData: BuildingFormData): Promise<Building> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('buildings')
       .insert(buildingData)
@@ -70,6 +71,7 @@ export class BuildingService {
    */
   static async getBuildingById(id: string): Promise<Building | null> {
     try {
+      const supabase = createClient();
       console.log(`Fetching building with ID: ${id}`);
       
       // First, get the basic building data without joins
@@ -119,6 +121,7 @@ export class BuildingService {
    */
   static async getBuildingsByFacilityId(facilityId: string): Promise<Building[]> {
     try {
+      const supabase = createClient();
       console.log(`🔍 BuildingService: Fetching buildings for facility ${facilityId}`);
       console.log(`🔍 BuildingService: facilityId type: ${typeof facilityId}, value: "${facilityId}"`);
       
@@ -181,6 +184,7 @@ export class BuildingService {
    * Update a building
    */
   static async updateBuilding(id: string, buildingData: Partial<Building>): Promise<Building> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('buildings')
       .update(buildingData)
@@ -196,6 +200,7 @@ export class BuildingService {
    * Delete a building
    */
   static async deleteBuilding(id: string): Promise<void> {
+    const supabase = createClient();
     const { error } = await supabase
       .from('buildings')
       .delete()
@@ -208,6 +213,7 @@ export class BuildingService {
    * Add a room to a building
    */
   static async addRoom(roomData: Room): Promise<Room> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('rooms')
       .insert(roomData)
@@ -222,6 +228,7 @@ export class BuildingService {
    * Add a renovation to a building
    */
   static async addRenovation(buildingId: string, renovationData: RenovationData): Promise<RenovationResponse> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('building_renovations')
       .insert({
@@ -243,6 +250,7 @@ export class BuildingService {
    * Search buildings by name or number
    */
   static async searchBuildings(facilityId: string, query: string): Promise<Building[]> {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from('buildings')
       .select(`

@@ -516,7 +516,7 @@ export function FacilityFields({ facilityId }: FacilityFieldsProps) {
           </div>
 
           <AddFieldModal
-            key={isCreateModalOpen ? 'open' : 'closed'}
+            key={isCreateModalOpen ? 'create-field-open' : 'create-field-closed'}
             isOpen={isCreateModalOpen}
             onClose={() => setIsCreateModalOpen(false)}
             onSubmit={handleCreateField}

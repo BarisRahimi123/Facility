@@ -29,18 +29,31 @@ export default function Sidebar() {
 
   const handleSignOut = async () => {
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Call the API route to handle sign-out
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Sign-out failed');
+      }
+
+      // Clear local storage
+      if (typeof window !== 'undefined') {
+        localStorage.clear();
+        sessionStorage.clear();
+      }
 
       toast({
         title: "Signed out successfully",
         variant: "default"
       });
 
-      // Add a small delay to ensure the session is cleared and toast is shown
+      // Force redirect to sign-in page
       setTimeout(() => {
-        // Use window.location.href for full page reload to ensure auth state is cleared
         window.location.href = '/auth/sign-in';
       }, 500);
     } catch (error) {
@@ -51,7 +64,9 @@ export default function Sidebar() {
         variant: "destructive"
       });
       
-      // Still redirect even if there's an error, after showing the error toast
+      // Still redirect even if there's an error
+      localStorage.clear();
+      sessionStorage.clear();
       setTimeout(() => {
         window.location.href = '/auth/sign-in';
       }, 1000);

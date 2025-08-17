@@ -369,7 +369,7 @@ export default function FacilitiesPage() {
 
       {/* Share Facility Modal */}
       <ShareFacilityModal
-        key={shareModalOpen ? 'open' : 'closed'}
+        key={shareModalOpen ? 'share-facility-open' : 'share-facility-closed'}
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
         facility={selectedFacility}

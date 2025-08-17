@@ -132,7 +132,13 @@ export default function NotificationSettings() {
       const data = await response.json();
       
       if (data.success) {
-        setSMSConfig(data.settings);
+        setSMSConfig({
+          ...data.settings,
+          // If auth token is masked, keep the existing one if any
+          authToken: data.settings.authToken === '••••••••' 
+            ? smsConfig.authToken 
+            : data.settings.authToken
+        });
       } else {
         throw new Error(data.error);
       }
@@ -178,6 +184,55 @@ export default function NotificationSettings() {
   };
 
   const handleSMSConfigSave = async () => {
+    // Client-side validation
+    if (smsConfig.enabled) {
+      if (!smsConfig.accountSid || smsConfig.accountSid.trim() === '') {
+        toast({
+          title: "Missing Account SID",
+          description: "Please enter your Twilio Account SID",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!smsConfig.authToken || smsConfig.authToken.trim() === '') {
+        toast({
+          title: "Missing Auth Token",
+          description: "Please enter your Twilio Auth Token",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!smsConfig.phoneNumber || smsConfig.phoneNumber.trim() === '') {
+        toast({
+          title: "Missing Phone Number",
+          description: "Please enter your Twilio phone number",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Basic format validation
+      if (!smsConfig.accountSid.trim().startsWith('AC')) {
+        toast({
+          title: "Invalid Account SID",
+          description: "Account SID should start with 'AC'. Check your Twilio Console.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!smsConfig.phoneNumber.trim().startsWith('+')) {
+        toast({
+          title: "Invalid Phone Number",
+          description: "Phone number must include country code (e.g., +14155552671)",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+    
     try {
       setLoading(true);
       const response = await fetch('/api/settings/sms', {
@@ -191,8 +246,10 @@ export default function NotificationSettings() {
       if (data.success) {
         toast({
           title: "Settings saved",
-          description: "SMS configuration has been updated successfully.",
+          description: data.message || "SMS configuration has been updated successfully.",
         });
+        // Reload settings to get the updated values
+        loadSMSSettings();
       } else {
         throw new Error(data.error);
       }
@@ -439,17 +496,31 @@ export default function NotificationSettings() {
 
         {smsConfig.enabled && (
           <div className="space-y-4">
+            {(smsConfig.accountSid || smsConfig.phoneNumber) && (
+              <Alert className="bg-green-50 border-green-200">
+                <AlertDescription className="text-green-800">
+                  {smsConfig.accountSid && smsConfig.phoneNumber ? (
+                    <>✓ Twilio credentials detected. You can update them below or keep the existing configuration.</>
+                  ) : (
+                    <>⚠️ Partial Twilio configuration detected. Please complete all fields below.</>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <div>
               <Label htmlFor="accountSid">Twilio Account SID</Label>
               <Input
                 id="accountSid"
-                type="password"
+                type="text"
                 value={smsConfig.accountSid}
-                onChange={(e) => setSMSConfig(prev => ({ ...prev, accountSid: e.target.value }))}
-                placeholder="AC..."
+                onChange={(e) => setSMSConfig(prev => ({ ...prev, accountSid: e.target.value.trim() }))}
+                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="font-mono"
+                maxLength={34}
               />
               <p className="text-sm text-gray-500 mt-1">
-                Your Twilio Account SID should start with "AC"
+                Find this in your Twilio Console Dashboard - starts with "AC" (34 characters)
               </p>
             </div>
 
@@ -459,9 +530,13 @@ export default function NotificationSettings() {
                 id="authToken"
                 type="password"
                 value={smsConfig.authToken}
-                onChange={(e) => setSMSConfig(prev => ({ ...prev, authToken: e.target.value }))}
-                placeholder="Enter your Twilio Auth Token"
+                onChange={(e) => setSMSConfig(prev => ({ ...prev, authToken: e.target.value.trim() }))}
+                placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                className="font-mono"
               />
+              <p className="text-sm text-gray-500 mt-1">
+                Click "Show" in your Twilio Console to reveal this token (32 characters)
+              </p>
             </div>
 
             <div>
@@ -470,18 +545,27 @@ export default function NotificationSettings() {
                 id="phoneNumber"
                 type="tel"
                 value={smsConfig.phoneNumber}
-                onChange={(e) => setSMSConfig(prev => ({ ...prev, phoneNumber: e.target.value }))}
-                placeholder="+1234567890"
+                onChange={(e) => setSMSConfig(prev => ({ ...prev, phoneNumber: e.target.value.trim() }))}
+                placeholder="+14155552671"
+                className="font-mono"
               />
               <p className="text-sm text-gray-500 mt-1">
-                Include country code (e.g., +1 for US)
+                Your Twilio phone number with country code (e.g., +14155552671 for US)
               </p>
             </div>
 
             <Alert>
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Make sure your Twilio phone number is verified and has SMS capabilities enabled.
+                <div className="space-y-2">
+                  <p>To get your Twilio credentials:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-sm">
+                    <li>Sign up at <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">twilio.com</a></li>
+                    <li>Find your Account SID and Auth Token in the Console Dashboard</li>
+                    <li>Get a phone number from Phone Numbers → Buy a Number</li>
+                    <li>For trial accounts, verify recipient numbers in Phone Numbers → Verified Caller IDs</li>
+                  </ol>
+                </div>
               </AlertDescription>
             </Alert>
 

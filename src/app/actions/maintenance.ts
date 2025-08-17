@@ -4,6 +4,7 @@ import { createServerSupabaseClient, getServiceRoleClient } from '@/lib/supabase
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { MaintenanceTask, MaintenanceType, MaintenancePriority, MaintenanceStatus } from '@/types/maintenance';
+import { sendSMS, sendBatchSMS } from '@/lib/sms';
 
 export interface CreateMaintenanceTaskData {
   title: string;
@@ -113,6 +114,37 @@ export async function createMaintenanceTask(data: CreateMaintenanceTaskData) {
         p_action: 'assigned_staff',
         p_details: { assignments: data.internalAssignments }
       });
+
+      // Send SMS notifications to assigned staff
+      const assignedUserIds = data.internalAssignments
+        .filter(a => a.role === 'assignee')
+        .map(a => a.userId);
+      
+      if (assignedUserIds.length > 0) {
+        const { data: assignedUsers } = await supabase
+          .from('users')
+          .select('id, phone, name')
+          .in('id', assignedUserIds);
+
+        if (assignedUsers) {
+          const { data: facility } = await supabase
+            .from('facilities')
+            .select('name')
+            .eq('id', data.facilityId)
+            .single();
+
+          for (const assignedUser of assignedUsers) {
+            if (assignedUser.phone) {
+              await sendSMS(assignedUser.phone, 'issue_assigned', {
+                facilityName: facility?.name || 'Unknown Facility',
+                issueTitle: data.title,
+                dueDate: data.dueDate || 'ASAP',
+                link: `${process.env.NEXT_PUBLIC_APP_URL}/maintenance`
+              });
+            }
+          }
+        }
+      }
     }
 
     // Handle external contractor invitations
@@ -147,8 +179,24 @@ export async function createMaintenanceTask(data: CreateMaintenanceTaskData) {
         p_details: { invitations: data.externalAssignments }
       });
 
-      // TODO: Send invitation emails to contractors
-      // This would integrate with your email service
+      // Send SMS notifications to contractors
+      const { data: facility } = await supabase
+        .from('facilities')
+        .select('name')
+        .eq('id', data.facilityId)
+        .single();
+
+      for (const external of data.externalAssignments) {
+        if (external.phone) {
+          const invitation = invitations.find(inv => inv.email === external.email);
+          await sendSMS(external.phone, 'contractor_invited', {
+            facilityName: facility?.name || 'Unknown Facility',
+            taskTitle: data.title,
+            deadline: data.dueDate || 'TBD',
+            link: `${process.env.NEXT_PUBLIC_APP_URL}/contractor-form/${invitation?.token}`
+          });
+        }
+      }
     }
 
     revalidatePath('/maintenance');
@@ -197,7 +245,7 @@ export async function getMaintenanceTasks(facilityId?: string) {
           id,
           user_id,
           role,
-          user:users(name, email)
+          user:users!task_assignments_user_id_fkey(name, email)
         ),
         task_contractor_invitations(
           id,

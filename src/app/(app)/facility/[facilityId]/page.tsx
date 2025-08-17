@@ -1402,7 +1402,7 @@ export default function FacilityOverviewPage() {
 
       {/* Share Facility Modal */}
       <ShareFacilityModal
-        key={isShareModalOpen ? 'open' : 'closed'}
+        key={isShareModalOpen ? 'share-modal-open' : 'share-modal-closed'}
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         facility={facility}

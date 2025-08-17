@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { mapLegacyRole, canInviteRole, hasOrgAccess, type UserRole } from '@/types/user';
 
@@ -57,6 +57,7 @@ export function useAuth() {
   useEffect(() => {
     async function loadUser() {
       try {
+        const supabase = createClient();
         const { data: { user: authUser } } = await supabase.auth.getUser();
         
         if (!authUser) {
@@ -88,6 +89,7 @@ export function useAuth() {
     loadUser();
 
     // Subscribe to auth changes
+    const supabase = createClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         const { data: profile } = await supabase
@@ -114,6 +116,7 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
+      const supabase = createClient();
       await supabase.auth.signOut();
       toast.success('Signed out successfully');
       window.location.href = '/';

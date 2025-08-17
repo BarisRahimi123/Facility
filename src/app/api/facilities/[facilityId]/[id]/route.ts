@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
 
 // Import the mockFacilities data to reuse it
 // In a real application, we would fetch this from Supabase

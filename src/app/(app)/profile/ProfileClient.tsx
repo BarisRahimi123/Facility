@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -56,6 +56,7 @@ export default function ProfileClient() {
         setHasError(false);
         
         // Get current authenticated user
+        const supabase = createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         
         if (authError) {
@@ -196,6 +197,7 @@ export default function ProfileClient() {
       }
       
       // Update auth metadata
+      const supabase = createClient();
       const { error } = await supabase.auth.updateUser({
         data: {
           first_name: profileData.firstName,

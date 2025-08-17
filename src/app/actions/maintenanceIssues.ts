@@ -2,6 +2,7 @@
 
 import { createServerSupabaseClient, getServiceRoleClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { sendIssueReportNotification } from './notifications';
 
 // Types
 export interface MaintenanceQRCode {
@@ -234,6 +235,21 @@ export async function createIssueReport(data: CreateIssueReportData) {
         p_description: 'Issue report created'
       });
     }
+
+    // Send SMS notification to facility managers
+    await sendIssueReportNotification({
+      facilityId: data.facility_id,
+      buildingId: data.building_id,
+      roomId: data.room_id,
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      reportedBy: {
+        name: data.reporter_name || 'Anonymous',
+        email: data.reporter_email || '',
+        phone: data.reporter_phone
+      }
+    });
 
     revalidatePath('/maintenance');
     return { data: issue };

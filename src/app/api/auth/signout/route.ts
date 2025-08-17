@@ -1,65 +1,45 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
 
 export async function POST() {
   try {
     const supabase = await createServerSupabaseClient();
     
-    // Sign out the user
+    // Sign out from Supabase
     const { error } = await supabase.auth.signOut();
     
     if (error) {
-      console.error('Server-side sign out error:', error);
+      console.error('Supabase signOut error:', error);
     }
-
-    // Create response that clears all auth cookies
-    const response = NextResponse.json({ success: true });
     
-    // Clear all possible Supabase auth cookies
-    const cookiesToClear = [
-      'sb-access-token',
-      'sb-refresh-token', 
-      'supabase-auth-token',
-      'supabase.auth.token',
-      'sb-auth-token'
-    ];
+    // Clear all auth-related cookies
+    const cookieStore = cookies();
+    const allCookies = cookieStore.getAll();
     
-    cookiesToClear.forEach(cookieName => {
-      response.cookies.set({
-        name: cookieName,
-        value: '',
-        expires: new Date(0),
-        path: '/',
-        domain: undefined,
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax'
-      });
+    // Clear Supabase auth cookies
+    const response = NextResponse.json(
+      { success: true, message: 'Signed out successfully' },
+      { status: 200 }
+    );
+    
+    // Delete all auth-related cookies
+    allCookies.forEach(cookie => {
+      if (cookie.name.includes('supabase') || cookie.name.includes('auth')) {
+        response.cookies.delete(cookie.name);
+      }
     });
-
-    // Also clear any cookies that start with sb-
-    const allCookieNames = [
-      'sb-localhost-auth-token',
-      'sb-127-auth-token',
-      'sb-project-ref-auth-token'
-    ];
     
-    allCookieNames.forEach(cookieName => {
-      response.cookies.set({
-        name: cookieName,
-        value: '',
-        expires: new Date(0),
-        path: '/',
-        domain: undefined,
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        sameSite: 'lax'
-      });
-    });
-
     return response;
   } catch (error) {
-    console.error('Error in signout API:', error);
-    return NextResponse.json({ error: 'Sign out failed' }, { status: 500 });
+    console.error('Sign out error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to sign out' },
+      { status: 500 }
+    );
   }
-} 
+}
+
+export async function GET() {
+  return NextResponse.json({ message: 'Use POST method to sign out' });
+}

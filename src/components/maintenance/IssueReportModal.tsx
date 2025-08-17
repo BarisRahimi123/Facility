@@ -59,6 +59,10 @@ export function IssueReportModal({
 }: IssueReportModalProps) {
   const { toast } = useToast();
   
+  // Initialize loading states first to avoid temporal dead zone
+  const [loading, setLoading] = useState(false);
+  const [loadingQR, setLoadingQR] = useState(false);
+  
   // Handle Escape key
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -114,8 +118,6 @@ export function IssueReportModal({
   
   // Use test data if buildings is empty for debugging
   const effectiveBuildings = buildings && buildings.length > 0 ? buildings : testBuildings;
-  const [loading, setLoading] = useState(false);
-  const [loadingQR, setLoadingQR] = useState(false);
   
   // Form state
   const [locationType, setLocationType] = useState<'facility' | 'building' | 'room' | 'field'>('facility');

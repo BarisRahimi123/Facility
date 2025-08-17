@@ -1124,13 +1124,14 @@ export default function BuildingDetailClient({
       </Tabs>
 
       <AddRoomModal 
-        key={isRoomModalOpen ? 'open' : 'closed'}
+        key={isRoomModalOpen ? 'add-room-open' : 'add-room-closed'}
         buildingId={buildingId}
         isOpen={isRoomModalOpen}
         onClose={() => setIsRoomModalOpen(false)}
       />
       
       <EditRoomModal 
+        key={isEditRoomModalOpen ? 'edit-room-open' : 'edit-room-closed'}
         room={selectedRoom}
         isOpen={isEditRoomModalOpen}
         onClose={() => {
@@ -1140,13 +1141,14 @@ export default function BuildingDetailClient({
       />
       
       <AddSystemModal 
-        key={isSystemModalOpen ? 'open' : 'closed'}
+        key={isSystemModalOpen ? 'add-system-open' : 'add-system-closed'}
         buildingId={buildingId}
         isOpen={isSystemModalOpen}
         onClose={() => setIsSystemModalOpen(false)}
       />
       
       <EditSystemModal 
+        key={isEditSystemModalOpen ? 'edit-system-open' : 'edit-system-closed'}
         system={selectedSystem}
         buildingId={buildingId}
         isOpen={isEditSystemModalOpen}
@@ -1157,12 +1159,14 @@ export default function BuildingDetailClient({
       />
       
       <AddRenovationModal 
+        key={isRenovationModalOpen ? 'add-renovation-open' : 'add-renovation-closed'}
         buildingId={buildingId}
         isOpen={isRenovationModalOpen}
         onClose={() => setIsRenovationModalOpen(false)}
       />
       
       <EditRenovationModal 
+        key={isEditRenovationModalOpen ? 'edit-renovation-open' : 'edit-renovation-closed'}
         renovation={selectedRenovation}
         buildingId={buildingId}
         isOpen={isEditRenovationModalOpen}
@@ -1173,7 +1177,7 @@ export default function BuildingDetailClient({
       />
       
       <EditBuildingModal 
-        key={isEditBuildingModalOpen ? 'edit-building-modal-open' : 'edit-building-modal-closed'}
+        key={isEditBuildingModalOpen ? 'edit-building-open' : 'edit-building-closed'}
         building={building}
         isOpen={isEditBuildingModalOpen}
         onClose={() => {
@@ -1185,6 +1189,7 @@ export default function BuildingDetailClient({
 
       {assigningStaffRoom && (
         <AssignStaffToRoomModal 
+          key={isRoomStaffAssignModalOpen ? 'assign-room-staff-open' : 'assign-room-staff-closed'}
           isOpen={isRoomStaffAssignModalOpen}
           onClose={() => {
             setIsRoomStaffAssignModalOpen(false);
@@ -1201,6 +1206,7 @@ export default function BuildingDetailClient({
       )}
 
       <AddMaintenanceRequestForm
+        key={isMaintenanceModalOpen ? 'add-maintenance-open' : 'add-maintenance-closed'}
         buildingId={buildingId}
         isOpen={isMaintenanceModalOpen}
         onClose={() => setIsMaintenanceModalOpen(false)}
@@ -1211,6 +1217,7 @@ export default function BuildingDetailClient({
 
       {selectedRequest && (
         <AddMaintenanceRequestForm
+          key={isEditMaintenanceModalOpen ? 'edit-maintenance-open' : 'edit-maintenance-closed'}
           buildingId={buildingId}
           isOpen={isEditMaintenanceModalOpen}
           onClose={() => {

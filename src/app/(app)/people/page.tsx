@@ -873,7 +873,7 @@ export default function PeoplePage() {
 
         {/* Add User Modal */}
         <AddUserModal
-          key={isAddModalOpen ? 'open' : 'closed'}
+          key={isAddModalOpen ? 'add-user-open' : 'add-user-closed'}
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
           onUserAdded={loadData}
@@ -882,7 +882,7 @@ export default function PeoplePage() {
 
         {/* Add Organization Modal */}
         <AddOrganizationModal
-          key={isAddOrgModalOpen ? 'open' : 'closed'}
+          key={isAddOrgModalOpen ? 'add-org-open' : 'add-org-closed'}
           isOpen={isAddOrgModalOpen}
           onClose={() => setIsAddOrgModalOpen(false)}
           onOrganizationAdded={loadData}
@@ -890,7 +890,7 @@ export default function PeoplePage() {
 
         {/* Invite User Modal */}
         <InviteUserModal
-          key={isInviteModalOpen ? 'open' : 'closed'}
+          key={isInviteModalOpen ? 'invite-user-open' : 'invite-user-closed'}
           isOpen={isInviteModalOpen}
           onClose={() => setIsInviteModalOpen(false)}
           currentUserRole={userRole || ''}
@@ -899,7 +899,7 @@ export default function PeoplePage() {
 
         {/* Edit Role Modal */}
         <EditRoleModal
-          key={isEditRoleModalOpen ? 'open' : 'closed'}
+          key={isEditRoleModalOpen ? 'edit-role-open' : 'edit-role-closed'}
           isOpen={isEditRoleModalOpen}
           onClose={() => {
             setIsEditRoleModalOpen(false);
