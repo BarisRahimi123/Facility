@@ -52,18 +52,7 @@ export function FacilitiesMapClient({ facilities, fields = [] }: FacilitiesMapCl
   const [selectedField, setSelectedField] = useState<Field | null>(null);
   const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
 
-  // Debug logging
-  console.log('🔍 FacilitiesMapClient received:', {
-    facilitiesCount: facilities.length,
-    fieldsCount: fields.length,
-    facilities: facilities.map(f => ({ name: f.name, type: f.facility_type })),
-    fields: fields.map(f => ({ 
-      name: f.name, 
-      type: f.type,
-      hasImage: !!f.image_url, 
-      imageUrl: f.image_url 
-    }))
-  });
+  // Avoid heavy debug logging in production to keep initial render fast
   
   // Search and filter state
   const [searchQuery, setSearchQuery] = useState('');

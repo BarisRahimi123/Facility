@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,6 +27,15 @@ export default function Sidebar() {
   const { user, loading: isLoading } = useAuth();
   const userRole = user?.role || null;
   const isActive = (href: string) => pathname === href;
+  
+  // Use a consistent initial href to prevent hydration mismatches
+  // Default to "/" during initial render, will update after hydration
+  const [logoHref, setLogoHref] = useState('/');
+  
+  // Update logo href after hydration based on user state
+  useEffect(() => {
+    setLogoHref(user ? '/facilities-map' : '/');
+  }, [user]);
 
   const handleSignOut = async () => {
     try {
@@ -195,7 +205,7 @@ export default function Sidebar() {
     <div className="h-full flex flex-col bg-background border-r border-border">
       {/* Logo/Brand Section */}
       <div className="p-6 border-b border-border">
-        <Link href={user ? "/facilities-map" : "/"} className="flex items-center gap-3 group">
+        <Link href={logoHref} className="flex items-center gap-3 group">
           <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-200">
             <Building2 className="w-6 h-6 text-white" />
           </div>

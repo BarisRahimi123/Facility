@@ -155,7 +155,7 @@ export async function getStaffRoomAssignments(): Promise<StaffRoomAssignmentResp
         *,
         rooms (
           id,
-          number,
+          room_number,
           type,
           building_id,
           buildings (
@@ -247,7 +247,7 @@ export async function getStaffDashboardData(): Promise<StaffDashboardResponse> {
         *,
         rooms (
           id,
-          number,
+          room_number,
           type,
           building_id,
           buildings (
@@ -302,7 +302,7 @@ export async function getStaffDashboardData(): Promise<StaffDashboardResponse> {
           *,
           rooms (
             id,
-            number,
+            room_number,
             building_id,
             buildings (
               name,
@@ -990,7 +990,7 @@ export async function getAvailableRooms(): Promise<{ data: AssignmentRoom[] | nu
 
     const rooms = data?.map((room: any) => ({
       id: room.id,
-      number: room.number,
+      number: room.room_number,
       type: room.type,
       building_id: room.building_id,
       building_name: room.buildings.name,

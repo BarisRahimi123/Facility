@@ -881,9 +881,17 @@ export async function getBuildings(): Promise<Building[]> {
     console.log('Fetching all buildings from database...');
     
     // Use service role client for direct database access
-    const serviceRoleClient = getServiceRoleClient();
+    let serviceRoleClient;
+    try {
+      serviceRoleClient = getServiceRoleClient();
+    } catch (error) {
+      console.error('Failed to initialize Supabase client:', error);
+      return [];
+    }
+    
     if (!serviceRoleClient) {
-      throw new Error('Supabase client not initialized');
+      console.error('Supabase client not initialized');
+      return [];
     }
     
     const { data, error } = await serviceRoleClient
@@ -920,9 +928,17 @@ export async function getRooms(buildingId: string): Promise<Room[]> {
     console.log('Fetching rooms for building:', buildingId);
     
     // Use service role client for direct database access
-    const serviceRoleClient = getServiceRoleClient();
+    let serviceRoleClient;
+    try {
+      serviceRoleClient = getServiceRoleClient();
+    } catch (error) {
+      console.error('Failed to initialize Supabase client for rooms:', error);
+      return [];
+    }
+    
     if (!serviceRoleClient) {
-      throw new Error('Supabase client not available');
+      console.error('Supabase client not available');
+      return [];
     }
     
     const { data: rooms, error } = await serviceRoleClient

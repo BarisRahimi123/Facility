@@ -92,9 +92,9 @@ export function IssueReportModal({
       setSelectedRoom('');
       setSelectedField('');
       setLocationType('facility');
-      setName('');
-      setEmail('');
-      setPhone('');
+      setReporterName('');
+      setReporterEmail('');
+      setReporterPhone('');
       setImages([]);
       setLoading(false);
     }

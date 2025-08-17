@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense, useMemo, useRef } from 'react';
 import { Plus, Calendar as CalendarIcon, List, Share2, LayoutGrid, Filter, Search, Sliders, ExternalLink, AlertTriangle } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -219,6 +219,10 @@ const IssueTrackingBoard = dynamic(() => import('@/components/maintenance/IssueT
 });
 
 export default function MaintenancePage() {
+  // Use refs to prevent multiple initializations
+  const hasInitialized = useRef(false);
+  const hasLoadedTasks = useRef(false);
+  
   // Initialize all state variables first
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isPurchaseOrderModalOpen, setIsPurchaseOrderModalOpen] = useState(false);
@@ -280,18 +284,16 @@ export default function MaintenancePage() {
       setTasks(tasksData);
     } catch (error) {
       console.error('Error loading tasks:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load maintenance tasks.',
-        variant: 'destructive',
-      });
+      // Don't use toast here to avoid circular dependencies
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFacility, toast]);
+  }, [selectedFacility]); // Only depend on selectedFacility
 
   const loadAllData = useCallback(async () => {
     try {
+      setIsLoading(true);
+      
       // Load facilities
       const facilitiesData = await getAllFacilities();
       setFacilities(facilitiesData);
@@ -323,31 +325,47 @@ export default function MaintenancePage() {
         }
       }
       setFields(allFields);
+      
+      // Also load initial tasks for the selected facility
+      try {
+        const tasksData = await getMaintenanceTasks(selectedFacility);
+        setTasks(tasksData);
+      } catch (error) {
+        console.error('Error loading initial tasks:', error);
+      }
+      
       setDataLoaded(true); // Mark as loaded
 
     } catch (error) {
       console.error('Failed to load data:', error);
-      toast({
-        title: "Error", 
-        description: "Failed to load facility data",
-        variant: "destructive",
-      });
+      // Don't use toast in the callback to avoid dependency issues
+      setDataLoaded(true); // Still mark as loaded to prevent infinite retries
+    } finally {
+      setIsLoading(false);
     }
-  }, [toast]); // Only depend on toast, not dataLoaded
+  }, [selectedFacility]); // Depend on selectedFacility for initial load
 
   // Load all data on component mount - only run once
   useEffect(() => {
-    if (!dataLoaded) {
+    // Use ref to ensure we only initialize once
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
       loadAllData();
     }
-  }, [dataLoaded, loadAllData]); // Check dataLoaded to prevent re-running
+  }, []); // Empty dependency array - only run once on mount
 
-  // Load tasks when facility changes with proper cleanup
+  // Load tasks when facility changes - but skip on initial mount
   useEffect(() => {
+    // Skip the first run on mount (handled by loadAllData)
+    if (!hasLoadedTasks.current) {
+      hasLoadedTasks.current = true;
+      return;
+    }
+    
     let isMounted = true;
     
     const fetchData = async () => {
-      if (isMounted) {
+      if (isMounted && selectedFacility) {  // Only run if we have a facility
         setIsLoading(true);
         try {
           const tasksData = await getMaintenanceTasks(selectedFacility);
@@ -356,13 +374,7 @@ export default function MaintenancePage() {
           }
         } catch (error) {
           console.error('Error loading tasks:', error);
-          if (isMounted) {
-            toast({
-              title: 'Error',
-              description: 'Failed to load maintenance tasks.',
-              variant: 'destructive',
-            });
-          }
+          // Don't show toast to avoid dependency issues
         } finally {
           if (isMounted) {
             setIsLoading(false);
@@ -377,7 +389,7 @@ export default function MaintenancePage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedFacility, toast]); // Only depend on selectedFacility and toast
+  }, [selectedFacility]); // Only depend on selectedFacility, not toast
 
   // Separate useEffect for BroadcastChannel with proper cleanup
   useEffect(() => {
@@ -388,19 +400,8 @@ export default function MaintenancePage() {
       bc = new BroadcastChannel('tasks-update');
       bc.onmessage = async (event) => {
         if (event.data.type === 'new-task' && isMounted) {
-          // Reload tasks inline to avoid dependency issues
-          try {
-            const tasksData = await getMaintenanceTasks(selectedFacility);
-            if (isMounted) {
-              setTasks(tasksData);
-              toast({
-                title: "New Task Added",
-                description: "A new maintenance task has been added to the board.",
-              });
-            }
-          } catch (error) {
-            console.error('Error reloading tasks:', error);
-          }
+          // Just trigger a reload by calling loadTasks
+          loadTasks();
         }
       };
     } catch (error) {
@@ -414,7 +415,7 @@ export default function MaintenancePage() {
         bc.close();
       }
     };
-  }, [selectedFacility, toast]); // Only depend on selectedFacility and toast
+  }, []); // Empty dependencies - set up once
 
   // Add cleanup when component unmounts to prevent memory leaks
   useEffect(() => {
@@ -567,7 +568,7 @@ export default function MaintenancePage() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, facilityFilter]);
+  }, [searchQuery, facilityFilter, statusFilter, priorityFilter]); // Include all filter dependencies
 
   // Add pagination controls component
   const PaginationControls = () => {
@@ -655,40 +656,8 @@ export default function MaintenancePage() {
     };
   }, [toast]);
 
-  // Add navigation performance optimization
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Save important state to sessionStorage before navigating away
-      sessionStorage.setItem('maintenance_state', JSON.stringify({
-        selectedFacility,
-        viewMode,
-        activeTab,
-        currentPage,
-        searchQuery
-      }));
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    // Try to restore state on mount
-    const savedState = sessionStorage.getItem('maintenance_state');
-    if (savedState) {
-      try {
-        const parsedState = JSON.parse(savedState);
-        if (parsedState.selectedFacility) setSelectedFacility(parsedState.selectedFacility);
-        if (parsedState.viewMode) setViewMode(parsedState.viewMode as any);
-        if (parsedState.activeTab) setActiveTab(parsedState.activeTab as any);
-        if (parsedState.currentPage) setCurrentPage(parsedState.currentPage);
-        if (parsedState.searchQuery) setSearchQuery(parsedState.searchQuery);
-      } catch (e) {
-        console.error('Error restoring state:', e);
-      }
-    }
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [selectedFacility, viewMode, activeTab, currentPage, searchQuery]);
+  // Add navigation performance optimization - removed to prevent loops
+  // This effect was causing issues by updating state based on its own dependencies
 
   return (
     <div className="min-h-screen bg-background text-foreground">

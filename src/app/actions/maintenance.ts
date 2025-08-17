@@ -211,27 +211,37 @@ export async function createMaintenanceTask(data: CreateMaintenanceTaskData) {
 }
 
 export async function getMaintenanceTasks(facilityId?: string) {
-  const authClient = await createServerSupabaseClient();
-  const supabase = getServiceRoleClient();
-
-  // Get the current user
-  const { data: { user } } = await authClient.auth.getUser();
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
-  // Get user's role and organization
-  const { data: userData } = await supabase
-    .from('users')
-    .select('role, organization_id')
-    .eq('id', user.id)
-    .single();
-
-  if (!userData) {
-    throw new Error('User data not found');
-  }
-
   try {
+    const authClient = await createServerSupabaseClient();
+    
+    // Try to get service role client
+    let supabase;
+    try {
+      supabase = getServiceRoleClient();
+    } catch (error) {
+      console.error('Failed to initialize service role client:', error);
+      return [];
+    }
+
+    // Get the current user
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) {
+      console.log('User not authenticated - returning empty tasks');
+      return [];
+    }
+
+    // Get user's role and organization
+    const { data: userData } = await supabase
+      .from('users')
+      .select('role, organization_id')
+      .eq('id', user.id)
+      .single();
+
+    if (!userData) {
+      console.log('User data not found - returning empty tasks');
+      return [];
+    }
+
     let query = supabase
       .from('maintenance_tasks')
       .select(`
@@ -271,7 +281,66 @@ export async function getMaintenanceTasks(facilityId?: string) {
 
     if (error) throw error;
 
-    return tasks || [];
+    // Also fetch issue reports and convert them to tasks for display
+    let issueReports = [];
+    try {
+      const { data: issues, error: issuesError } = await supabase
+        .from('maintenance_issue_reports')
+        .select(`
+          *,
+          facilities!facility_id(name),
+          buildings!building_id(name),
+          rooms!room_id(room_number)
+        `)
+        .eq('organization_id', userData.organization_id)
+        .or(`status.eq.pending,status.eq.acknowledged,status.eq.in_progress`);
+
+      if (!issuesError && issues) {
+        // Convert issue reports to maintenance task format
+        issueReports = issues.map((issue: any) => ({
+          id: issue.id,
+          title: `[Issue Report] ${issue.title}`,
+          description: issue.description,
+          type: 'corrective' as const,
+          priority: issue.priority || 'medium',
+          status: issue.status === 'pending' ? 'new' : issue.status,
+          facility_id: issue.facility_id,
+          building_id: issue.building_id,
+          room_id: issue.room_id,
+          location: issue.location_name,
+          created_by: issue.reported_by,
+          created_at: issue.created_at,
+          updated_at: issue.updated_at,
+          due_date: null,
+          estimated_duration: null,
+          assigned_to: issue.assigned_to,
+          facility: issue.facilities,
+          building: issue.buildings,
+          room: issue.rooms,
+          notes: issue.notes,
+          // Add a flag to identify this as an issue report
+          isIssueReport: true,
+          reporter_name: issue.reporter_name,
+          reporter_email: issue.reporter_email,
+          reporter_phone: issue.reporter_phone
+        }));
+      }
+    } catch (issueError) {
+      console.error('Error fetching issue reports:', issueError);
+      // Continue without issue reports
+    }
+
+    // Combine tasks and issue reports
+    const allTasks = [...(tasks || []), ...issueReports];
+    
+    // Sort by created_at date (newest first)
+    allTasks.sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return allTasks;
   } catch (error) {
     console.error('Error fetching maintenance tasks:', error);
     return [];

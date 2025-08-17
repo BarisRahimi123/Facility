@@ -214,7 +214,7 @@ async function getStaffDashboardData(): Promise<{ data: StaffDashboardData | nul
         *,
         rooms (
           id,
-          number,
+          room_number,
           type,
           building_id,
           buildings (
@@ -638,7 +638,7 @@ export default function StaffDashboard() {
                   <CardContent className="space-y-3">
                     {dashboardData.assigned_rooms.slice(0, 3).map((room) => (
                       <div key={room.id} className="p-3 border rounded-lg">
-                        <h4 className="font-medium text-sm">Room {room.number}</h4>
+                        <h4 className="font-medium text-sm">Room {room.room_number}</h4>
                         <p className="text-xs text-muted-foreground">
                           {room.type}
                         </p>
@@ -849,7 +849,7 @@ export default function StaffDashboard() {
                   <CardHeader className="pb-3">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Home className="h-5 w-5" />
-                      Room {room.number}
+                      Room {room.room_number}
                     </CardTitle>
                     <Badge variant="outline" className="w-fit">
                       {room.type}

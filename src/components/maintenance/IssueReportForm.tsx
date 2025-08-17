@@ -316,7 +316,7 @@ export default function IssueReportForm({ onSubmit, defaultValues = {} }: IssueR
               <SelectContent className="bg-white z-50">
                 {availableRooms.map(room => (
                   <SelectItem key={room.id} value={room.id}>
-                    Room {room.number}
+                    Room {room.room_number}
                   </SelectItem>
                 ))}
               </SelectContent>

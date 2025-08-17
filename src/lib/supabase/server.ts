@@ -106,11 +106,13 @@ export function getServiceRoleClient() {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!supabaseUrl) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+    console.error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+    throw new Error('Supabase configuration error: Missing URL');
   }
 
   if (!serviceKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+    console.error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+    throw new Error('Supabase configuration error: Missing service key');
   }
 
   return createSupabaseClient<Database>(

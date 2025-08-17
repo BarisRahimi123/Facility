@@ -203,10 +203,16 @@ export async function getQRCodeByCode(code: string) {
 // Create an issue report
 export async function createIssueReport(data: CreateIssueReportData) {
   try {
-    const authClient = createServerSupabaseClient();
+    const authClient = await createServerSupabaseClient();
     const { data: user } = await authClient.auth.getUser();
     
-    const serviceRoleClient = getServiceRoleClient();
+    let serviceRoleClient;
+    try {
+      serviceRoleClient = getServiceRoleClient();
+    } catch (error) {
+      console.error('Failed to initialize Supabase client:', error);
+      return { error: 'Failed to initialize database connection' };
+    }
 
     // Create the issue report
     const { data: issue, error } = await serviceRoleClient
@@ -226,30 +232,40 @@ export async function createIssueReport(data: CreateIssueReportData) {
       return { error: 'Failed to create issue report' };
     }
 
-    // Log the creation activity
+    // Log the creation activity (skip if function doesn't exist)
     if (user?.user) {
-      await serviceRoleClient.rpc('log_issue_activity', {
-        p_issue_id: issue.id,
-        p_user_id: user.user.id,
-        p_action: 'created',
-        p_description: 'Issue report created'
-      });
+      try {
+        await serviceRoleClient.rpc('log_issue_activity', {
+          p_issue_id: issue.id,
+          p_user_id: user.user.id,
+          p_action: 'created',
+          p_description: 'Issue report created'
+        });
+      } catch (error) {
+        console.log('Could not log issue activity (function may not exist):', error);
+        // Continue without logging - it's not critical
+      }
     }
 
-    // Send SMS notification to facility managers
-    await sendIssueReportNotification({
-      facilityId: data.facility_id,
-      buildingId: data.building_id,
-      roomId: data.room_id,
-      title: data.title,
-      description: data.description,
-      priority: data.priority,
-      reportedBy: {
-        name: data.reporter_name || 'Anonymous',
-        email: data.reporter_email || '',
-        phone: data.reporter_phone
-      }
-    });
+    // Send SMS notification to facility managers (don't let this fail the submission)
+    try {
+      await sendIssueReportNotification({
+        facilityId: data.facility_id,
+        buildingId: data.building_id,
+        roomId: data.room_id,
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        reportedBy: {
+          name: data.reporter_name || 'Anonymous',
+          email: data.reporter_email || '',
+          phone: data.reporter_phone
+        }
+      });
+    } catch (notificationError) {
+      console.error('Failed to send notification (non-critical):', notificationError);
+      // Continue - notification failure shouldn't prevent issue creation
+    }
 
     revalidatePath('/maintenance');
     return { data: issue };
@@ -338,15 +354,20 @@ export async function updateIssueStatus(
       return { error: 'Failed to update issue status' };
     }
 
-    // Log the activity
-    await serviceRoleClient.rpc('log_issue_activity', {
-      p_issue_id: issueId,
-      p_user_id: user.user.id,
-      p_action: 'status_changed',
-      p_description: `Status changed from ${currentIssue?.status} to ${status}`,
-      p_old_value: { status: currentIssue?.status },
-      p_new_value: { status }
-    });
+    // Log the activity (skip if function doesn't exist)
+    try {
+      await serviceRoleClient.rpc('log_issue_activity', {
+        p_issue_id: issueId,
+        p_user_id: user.user.id,
+        p_action: 'status_changed',
+        p_description: `Status changed from ${currentIssue?.status} to ${status}`,
+        p_old_value: { status: currentIssue?.status },
+        p_new_value: { status }
+      });
+    } catch (error) {
+      console.log('Could not log issue activity (function may not exist):', error);
+      // Continue without logging - it's not critical
+    }
 
     revalidatePath('/maintenance');
     return { data: issue };

@@ -139,6 +139,15 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 
 ## Cursor learned
 
+- Issue report submission fix: When createIssueReport server action is stuck, ensure: 1) Use await for createServerSupabaseClient(), 2) Wrap RPC calls like log_issue_activity in try-catch blocks as they may not exist, 3) Wrap notification functions in try-catch to prevent submission failure, 4) Issue reports should be fetched along with maintenance tasks and converted to task format for display. Added email notifications alongside SMS for building managers using HTML templates.
+
+- Server action Supabase client best practice: Always use the centralized Supabase client creation functions from `@/lib/supabase/server` (getServiceRoleClient, createServerSupabaseClient) for server actions. Never create custom implementations that return null when env vars are missing. The centralized functions properly handle Next.js server-side environment variable loading and throw descriptive errors. This prevents "Failed to fetch" errors caused by "Supabase client not initialized" in server actions.
+- Room database column naming: The rooms table uses 'room_number' as the column name, not 'number'. When querying room data in Supabase queries or accessing room properties in TypeScript, always use 'room_number'. Common error: "column rooms_1.number does not exist" indicates incorrect column reference.
+
+- Hydration error fix: To prevent "Hydration failed because the server rendered HTML didn't match the client" errors, ensure server and client render same initial state. AuthContext starts with user=null and loading=true on both server and client, then loads cached user from localStorage only after hydration using useEffect. Sidebar uses consistent initial logoHref="/" and updates it after component mounts based on user state. This prevents mismatches where server renders href="/" but client renders href="/facilities-map" when cached user exists.
+- Sidebar loading optimization: AuthContext implements user data caching in localStorage ('facilitycore_user' key). Cached user is loaded after hydration to show navigation immediately while refreshing data from Supabase in background. Sign-in uses window.location.href for full page reload to ensure proper auth state initialization.
+- Logo navigation fix: The Sidebar logo uses a state variable for href that starts with "/" and updates to "/facilities-map" or "/" based on user authentication after hydration. This prevents hydration mismatches while maintaining correct navigation behavior.
+
 - For search results, ensure proper handling of different character encodings (UTF-8) for international queries
 - When using seaborn styles in matplotlib, use 'seaborn-v0_8' instead of 'seaborn' as the style name due to recent seaborn version changes
 

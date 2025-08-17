@@ -242,7 +242,8 @@ export async function sendIssueReportNotification(issueData: {
       .eq('manage_maintenance', true);
     
     if (managers && managers.length > 0) {
-      const recipients = managers
+      // Send SMS notifications
+      const smsRecipients = managers
         .filter(m => m.user?.phone)
         .map(m => ({
           phone: m.user.phone,
@@ -255,18 +256,70 @@ export async function sendIssueReportNotification(issueData: {
           }
         }));
       
-      if (recipients.length > 0) {
-        const results = await sendBatchSMS(
-          recipients,
-          'issue_submitted',
-          {}
-        );
-        
-        return {
-          success: true,
-          message: `Notified ${results.filter(r => r.success).length} managers`
-        };
+      let smsCount = 0;
+      if (smsRecipients.length > 0) {
+        try {
+          const results = await sendBatchSMS(
+            smsRecipients,
+            'issue_submitted',
+            {}
+          );
+          smsCount = results.filter(r => r.success).length;
+        } catch (error) {
+          console.error('SMS notification failed:', error);
+        }
       }
+      
+      // Send email notifications
+      let emailCount = 0;
+      const emailRecipients = managers.filter(m => m.user?.email);
+      
+      for (const manager of emailRecipients) {
+        try {
+          const { sendEmail } = await import('@/lib/email');
+          
+          const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #007aff 0%, #0051cc 100%); padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">New Issue Report</h1>
+              </div>
+              <div style="padding: 30px; background: #f9fafb;">
+                <h2 style="color: #1f2937; margin-top: 0;">Issue Details</h2>
+                <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                  <p><strong>Facility:</strong> ${facility?.name || 'Unknown'}</p>
+                  ${buildingName ? `<p><strong>Building:</strong> ${buildingName}</p>` : ''}
+                  <p><strong>Title:</strong> ${issueData.title}</p>
+                  <p><strong>Priority:</strong> <span style="color: ${issueData.priority === 'urgent' ? '#dc2626' : issueData.priority === 'high' ? '#ea580c' : '#3b82f6'};">${issueData.priority.toUpperCase()}</span></p>
+                  <p><strong>Description:</strong> ${issueData.description}</p>
+                  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+                  <p><strong>Reported by:</strong> ${issueData.reportedBy.name}</p>
+                  ${issueData.reportedBy.email ? `<p><strong>Email:</strong> ${issueData.reportedBy.email}</p>` : ''}
+                  ${issueData.reportedBy.phone ? `<p><strong>Phone:</strong> ${issueData.reportedBy.phone}</p>` : ''}
+                </div>
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/maintenance" 
+                   style="display: inline-block; background: #007aff; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none;">
+                  View in Dashboard
+                </a>
+              </div>
+            </div>
+          `;
+          
+          await sendEmail({
+            to: manager.user.email,
+            subject: `[${issueData.priority.toUpperCase()}] New Issue Report - ${facility?.name || 'Facility'}`,
+            html: emailHtml
+          });
+          
+          emailCount++;
+        } catch (error) {
+          console.error('Email notification failed for manager:', manager.user.email, error);
+        }
+      }
+      
+      return {
+        success: true,
+        message: `Notified ${smsCount} managers via SMS and ${emailCount} via email`
+      };
     }
     
     return { success: true, message: 'No managers to notify' };

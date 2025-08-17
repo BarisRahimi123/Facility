@@ -38,8 +38,9 @@ function SignInForm() {
       }
 
       if (data.user) {
+        // Use window.location for full page reload to ensure auth state is properly loaded
         await new Promise(resolve => setTimeout(resolve, 100));
-        router.push('/facilities-map');
+        window.location.href = '/facilities-map';
         return;
       }
 

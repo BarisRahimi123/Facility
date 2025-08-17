@@ -34,7 +34,18 @@ interface CreateFacilityFormData {
 export async function getAllFacilities(): Promise<Facility[]> {
   try {
     // Use service role client to bypass authentication issues
-    const serviceClient = getServiceRoleClient();
+    let serviceClient;
+    try {
+      serviceClient = getServiceRoleClient();
+    } catch (error) {
+      console.error('Failed to initialize Supabase client for facilities:', error);
+      return [];
+    }
+    
+    if (!serviceClient) {
+      console.error('Service client not available');
+      return [];
+    }
     
     // Get all facilities without filtering for now
     const { data, error } = await serviceClient

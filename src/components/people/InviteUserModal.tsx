@@ -185,28 +185,37 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
       });
 
       if (error) {
-        console.error('Invitation error:', error);
+        console.error('Invitation error details:', {
+          error,
+          message: error?.message,
+          details: error?.details,
+          hint: error?.hint,
+          code: error?.code
+        });
+        
+        // Extract error message
+        const errorMessage = error?.message || error?.details || error?.hint || 'Failed to send invitation';
         
         // Check for specific error types
-        if (error.message?.includes('function') && error.message?.includes('does not exist')) {
+        if (errorMessage.includes('function') && errorMessage.includes('does not exist')) {
           throw new Error(
             'The invitation system is not properly configured. ' +
-            'Please run the SQL migration: scripts/fix-invitation-function.sql'
+            'Please apply the fix in Supabase SQL Editor: scripts/quick-fix-invitation-roles.sql'
           );
-        } else if (error.message?.includes('already exists')) {
+        } else if (errorMessage.includes('already exists')) {
           throw new Error('A user with this email address already exists');
-        } else if (error.message?.includes('already been sent')) {
+        } else if (errorMessage.includes('already been sent')) {
           throw new Error('An invitation has already been sent to this email address');
-        } else if (error.message?.includes('permission')) {
-          throw new Error('You do not have permission to invite this type of user');
-        } else if (error.message?.includes('ambiguous')) {
+        } else if (errorMessage.includes('permission')) {
+          throw new Error('You do not have permission to invite this type of user. Please apply the role fix in Supabase.');
+        } else if (errorMessage.includes('ambiguous')) {
           throw new Error(
             'Database configuration error. Please apply the fix: ' +
-            'Go to Supabase SQL Editor and run the contents of scripts/fix-invitation-function.sql'
+            'Go to Supabase SQL Editor and run the contents of scripts/quick-fix-invitation-roles.sql'
           );
         }
         
-        throw new Error(error.message || 'Failed to send invitation');
+        throw new Error(errorMessage);
       }
 
       console.log('Invitation sent successfully:', data);

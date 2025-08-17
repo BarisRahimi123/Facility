@@ -1,8 +1,4 @@
-'use client';
-
-import Link from 'next/link';
 import { Suspense } from 'react';
-import { usePathname } from 'next/navigation';
 import TopBar from '@/components/layout/TopBar';
 import Sidebar from '@/components/layout/Sidebar';
 
@@ -11,8 +7,6 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
   return (
     <div className="min-h-screen flex bg-background text-foreground">
       {/* Sidebar - Always visible */}

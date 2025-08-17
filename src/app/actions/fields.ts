@@ -10,9 +10,17 @@ import { format } from 'date-fns';
 // Field Actions
 export async function getFields(facilityId: string): Promise<Field[]> {
   try {
-    const supabase = getServiceRoleClient();
+    let supabase;
+    try {
+      supabase = getServiceRoleClient();
+    } catch (error) {
+      console.error('Failed to initialize Supabase client for fields:', error);
+      return [];
+    }
+    
     if (!supabase) {
-      throw new Error('Failed to initialize Supabase client');
+      console.error('Supabase client not available');
+      return [];
     }
 
     const { data: fields, error } = await supabase
