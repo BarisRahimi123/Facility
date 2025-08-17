@@ -279,28 +279,28 @@ function SignUpForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-6xl">
         {/* Back to Home */}
         <Link
           href="/"
-          className="inline-flex items-center text-gray-400 hover:text-white mb-8 transition-colors"
+          className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8 transition-colors"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Home
         </Link>
 
-        <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-gray-700 p-8">
+        <div className="bg-card/50 backdrop-blur-sm rounded-2xl shadow-2xl border border-border p-8">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <h1 className="text-3xl font-bold text-white">FacilityCore</h1>
-              <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded-full">BETA</span>
+              <h1 className="text-3xl font-bold text-foreground">FacilityCore</h1>
+              <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded-full">BETA</span>
             </div>
-            <h2 className="text-xl text-gray-300">Create your account</h2>
-            <p className="text-gray-400 mt-2">
+            <h2 className="text-xl text-foreground">Create your account</h2>
+            <p className="text-muted-foreground mt-2">
               Already have an account?{' '}
-              <Link href="/auth/sign-in" className="text-purple-400 hover:text-purple-300">
+              <Link href="/auth/sign-in" className="text-primary hover:text-primary/80">
                 Sign in
               </Link>
             </p>
@@ -308,29 +308,29 @@ function SignUpForm() {
 
           {/* Account Type Selection */}
           <div className="mb-8">
-            <Label className="text-gray-300 mb-4 block">Account Type</Label>
+            <Label className="text-foreground mb-4 block">Account Type</Label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card
                 className={`cursor-pointer transition-all ${
                   accountType === 'individual'
-                    ? 'bg-purple-600/20 border-purple-500'
-                    : 'bg-gray-700/50 border-gray-600 hover:bg-gray-700/70'
+                    ? 'bg-primary/20 border-primary'
+                    : 'bg-card border-border hover:bg-accent'
                 }`}
                 onClick={() => setAccountType('individual')}
               >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <Users className="h-6 w-6 text-purple-400 mt-1" />
+                      <Users className="h-6 w-6 text-primary mt-1" />
                       <div>
-                        <h3 className="font-semibold text-white">Individual</h3>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <h3 className="font-semibold text-foreground">Individual</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                           Personal account for individual facility rentals
                         </p>
                       </div>
                     </div>
                     {accountType === 'individual' && (
-                      <Check className="h-5 w-5 text-purple-400" />
+                      <Check className="h-5 w-5 text-primary" />
                     )}
                   </div>
                 </CardContent>
@@ -339,24 +339,24 @@ function SignUpForm() {
               <Card
                 className={`cursor-pointer transition-all ${
                   accountType === 'organization'
-                    ? 'bg-purple-600/20 border-purple-500'
-                    : 'bg-gray-700/50 border-gray-600 hover:bg-gray-700/70'
+                    ? 'bg-primary/20 border-primary'
+                    : 'bg-card border-border hover:bg-accent'
                 }`}
                 onClick={() => setAccountType('organization')}
               >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <Building2 className="h-6 w-6 text-purple-400 mt-1" />
+                      <Building2 className="h-6 w-6 text-primary mt-1" />
                       <div>
-                        <h3 className="font-semibold text-white">Organization</h3>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <h3 className="font-semibold text-foreground">Organization</h3>
+                        <p className="text-sm text-muted-foreground mt-1">
                           Business or organization account with multiple users
                         </p>
                       </div>
                     </div>
                     {accountType === 'organization' && (
-                      <Check className="h-5 w-5 text-purple-400" />
+                      <Check className="h-5 w-5 text-primary" />
                     )}
                   </div>
                 </CardContent>
@@ -369,7 +369,7 @@ function SignUpForm() {
             <form onSubmit={handleIndividualSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="full_name" className="text-gray-300">
+                  <Label htmlFor="full_name" className="text-foreground">
                     Full Name *
                   </Label>
                   <Input
@@ -380,12 +380,12 @@ function SignUpForm() {
                       setIndividualData({ ...individualData, full_name: e.target.value })
                     }
                     required
-                    className="bg-gray-700/50 border-gray-600 text-white"
+                    className="bg-input border-border text-foreground"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="email" className="text-gray-300">
+                  <Label htmlFor="email" className="text-foreground">
                     Email Address *
                   </Label>
                   <Input
@@ -396,12 +396,12 @@ function SignUpForm() {
                       setIndividualData({ ...individualData, email: e.target.value })
                     }
                     required
-                    className="bg-gray-700/50 border-gray-600 text-white"
+                    className="bg-input border-border text-foreground"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="phone" className="text-gray-300">
+                  <Label htmlFor="phone" className="text-foreground">
                     Phone Number *
                   </Label>
                   <Input
@@ -412,12 +412,12 @@ function SignUpForm() {
                       setIndividualData({ ...individualData, phone: e.target.value })
                     }
                     required
-                    className="bg-gray-700/50 border-gray-600 text-white"
+                    className="bg-input border-border text-foreground"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="password" className="text-gray-300">
+                  <Label htmlFor="password" className="text-foreground">
                     Password *
                   </Label>
                   <Input
@@ -428,12 +428,12 @@ function SignUpForm() {
                       setIndividualData({ ...individualData, password: e.target.value })
                     }
                     required
-                    className="bg-gray-700/50 border-gray-600 text-white"
+                    className="bg-input border-border text-foreground"
                   />
                 </div>
 
                 <div className="md:col-span-2">
-                  <Label htmlFor="confirmPassword" className="text-gray-300">
+                  <Label htmlFor="confirmPassword" className="text-foreground">
                     Confirm Password *
                   </Label>
                   <Input
@@ -444,7 +444,7 @@ function SignUpForm() {
                       setIndividualData({ ...individualData, confirmPassword: e.target.value })
                     }
                     required
-                    className="bg-gray-700/50 border-gray-600 text-white"
+                    className="bg-input border-border text-foreground"
                   />
                 </div>
               </div>
@@ -452,7 +452,7 @@ function SignUpForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {isLoading ? 'Creating account...' : 'Create individual account'}
               </Button>
@@ -461,10 +461,10 @@ function SignUpForm() {
             <form onSubmit={handleOrganizationSubmit} className="space-y-8">
               {/* Organization Information */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Organization Information</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Organization Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="org_name" className="text-gray-300">
+                    <Label htmlFor="org_name" className="text-foreground">
                       Organization Name *
                     </Label>
                     <Input
@@ -478,12 +478,12 @@ function SignUpForm() {
                         })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="org_type" className="text-gray-300">
+                    <Label htmlFor="org_type" className="text-foreground">
                       Organization Type *
                     </Label>
                     <Select
@@ -492,7 +492,7 @@ function SignUpForm() {
                         setOrganizationData({ ...organizationData, organization_type: value })
                       }
                     >
-                      <SelectTrigger className="bg-gray-700/50 border-gray-600 text-white">
+                      <SelectTrigger className="bg-input border-border text-foreground">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -503,7 +503,7 @@ function SignUpForm() {
                   </div>
 
                   <div>
-                    <Label htmlFor="tax_id" className="text-gray-300">
+                    <Label htmlFor="tax_id" className="text-foreground">
                       Tax ID / EIN (Optional)
                     </Label>
                     <Input
@@ -513,7 +513,7 @@ function SignUpForm() {
                       onChange={(e) =>
                         setOrganizationData({ ...organizationData, tax_id: e.target.value })
                       }
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
                 </div>
@@ -521,12 +521,12 @@ function SignUpForm() {
 
               {/* Primary Contact */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">
+                <h3 className="text-lg font-semibold text-foreground mb-4">
                   Primary Contact (Account Owner)
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="contact_name" className="text-gray-300">
+                    <Label htmlFor="contact_name" className="text-foreground">
                       Contact Name *
                     </Label>
                     <Input
@@ -537,12 +537,12 @@ function SignUpForm() {
                         setOrganizationData({ ...organizationData, contact_name: e.target.value })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="contact_email" className="text-gray-300">
+                    <Label htmlFor="contact_email" className="text-foreground">
                       Contact Email *
                     </Label>
                     <Input
@@ -553,12 +553,12 @@ function SignUpForm() {
                         setOrganizationData({ ...organizationData, contact_email: e.target.value })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="contact_phone" className="text-gray-300">
+                    <Label htmlFor="contact_phone" className="text-foreground">
                       Contact Phone *
                     </Label>
                     <Input
@@ -569,12 +569,12 @@ function SignUpForm() {
                         setOrganizationData({ ...organizationData, contact_phone: e.target.value })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="billing_email" className="text-gray-300">
+                    <Label htmlFor="billing_email" className="text-foreground">
                       Billing Email (Optional)
                     </Label>
                     <Input
@@ -584,7 +584,7 @@ function SignUpForm() {
                       onChange={(e) =>
                         setOrganizationData({ ...organizationData, billing_email: e.target.value })
                       }
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
                 </div>
@@ -592,10 +592,10 @@ function SignUpForm() {
 
               {/* Organization Address */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Organization Address</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Organization Address</h3>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="street_address" className="text-gray-300">
+                    <Label htmlFor="street_address" className="text-foreground">
                       Street Address *
                     </Label>
                     <Input
@@ -609,13 +609,13 @@ function SignUpForm() {
                         })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="city" className="text-gray-300">
+                      <Label htmlFor="city" className="text-foreground">
                         City *
                       </Label>
                       <Input
@@ -626,12 +626,12 @@ function SignUpForm() {
                           setOrganizationData({ ...organizationData, city: e.target.value })
                         }
                         required
-                        className="bg-gray-700/50 border-gray-600 text-white"
+                        className="bg-input border-border text-foreground"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="state" className="text-gray-300">
+                      <Label htmlFor="state" className="text-foreground">
                         State *
                       </Label>
                       <Input
@@ -642,12 +642,12 @@ function SignUpForm() {
                           setOrganizationData({ ...organizationData, state: e.target.value })
                         }
                         required
-                        className="bg-gray-700/50 border-gray-600 text-white"
+                        className="bg-input border-border text-foreground"
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="zip_code" className="text-gray-300">
+                      <Label htmlFor="zip_code" className="text-foreground">
                         ZIP Code *
                       </Label>
                       <Input
@@ -658,7 +658,7 @@ function SignUpForm() {
                           setOrganizationData({ ...organizationData, zip_code: e.target.value })
                         }
                         required
-                        className="bg-gray-700/50 border-gray-600 text-white"
+                        className="bg-input border-border text-foreground"
                       />
                     </div>
                   </div>
@@ -667,10 +667,10 @@ function SignUpForm() {
 
               {/* Account Security */}
               <div>
-                <h3 className="text-lg font-semibold text-white mb-4">Account Security</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-4">Account Security</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="org_password" className="text-gray-300">
+                    <Label htmlFor="org_password" className="text-foreground">
                       Password *
                     </Label>
                     <Input
@@ -681,12 +681,12 @@ function SignUpForm() {
                         setOrganizationData({ ...organizationData, password: e.target.value })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
 
                   <div>
-                    <Label htmlFor="org_confirmPassword" className="text-gray-300">
+                    <Label htmlFor="org_confirmPassword" className="text-foreground">
                       Confirm Password *
                     </Label>
                     <Input
@@ -700,7 +700,7 @@ function SignUpForm() {
                         })
                       }
                       required
-                      className="bg-gray-700/50 border-gray-600 text-white"
+                      className="bg-input border-border text-foreground"
                     />
                   </div>
                 </div>
@@ -709,7 +709,7 @@ function SignUpForm() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 {isLoading ? 'Creating organization...' : 'Create organization account'}
               </Button>

@@ -228,45 +228,8 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - Sign-in page LastPass hydration error fix: Fixed hydration error on sign-in page caused by LastPass browser extension injecting DOM elements (data-lastpass-icon-root). Applied the same NoSSR pattern used in sign-up page. Solution: 1) Split SignInPage into SignInForm component, 2) Wrapped SignInForm with NoSSR component that renders client-side only, 3) Added AuthLoadingSkeleton as fallback during SSR, 4) This prevents browser extension DOM modifications from causing hydration mismatches. The pattern maintains SSR benefits while gracefully handling browser extension interference. Key imports: NoSSR from '@/components/ui/no-ssr' and AuthLoadingSkeleton from '@/components/ui/auth-loading-skeleton'.
 - Light mode background fix: Fixed hardcoded theme colors that broke light mode compatibility. Key changes: 1) Replaced hardcoded bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 with bg-background, 2) Updated text-white to text-foreground, text-gray-300 to text-foreground, text-gray-400 to text-muted-foreground, 3) Changed bg-gray-800/50 to bg-card/50, border-gray-700 to border-border, 4) Updated purple colors to use primary (bg-purple-600/20 to bg-primary/20, text-purple-400 to text-primary), 5) Fixed form inputs to use bg-input, placeholder-muted-foreground, focus:border-ring, 6) Applied to buildings page and facilities/new page. Rule: Never use hardcoded colors like gray-900, text-white, border-gray-700 - always use semantic CSS variables (bg-background, text-foreground, border-border, etc.) for theme compatibility.
 - Field reservation sign-up flow fix: Fixed the flow where guest users submit field reservations and are redirected to sign-up. Implementation: 1) FieldDetailModal saves reservation data to localStorage as `pendingFieldDetailReservation` before showing auth modal, 2) Auth modal displays for 2 seconds with loading spinner then auto-redirects to sign-up page, 3) User dashboard checks for pending reservations in useEffect and auto-submits them after authentication, 4) Shows success toast and clears pending data after successful submission. Key pattern: Save complex form data to localStorage before auth redirect, restore and auto-process after sign-up to prevent data loss. Files: src/components/facility/FieldDetailModal.tsx handles pre-auth saving, src/app/(app)/user-dashboard/page.tsx handles post-auth submission. Documentation in FIELD_RESERVATION_SIGNUP_FIX.md.
+- Authentication and sign-up fixes (Feb 2025): Fixed two critical issues: 1) Sign-up page had hardcoded dark theme colors breaking light mode - replaced all with semantic CSS variables (bg-background, text-foreground, etc.), 2) Master admin access issues due to missing three-tier authentication migration - created safe migration script that adds organization support and RLS policies. Key learnings: The users table uses 'role' column not 'user_role', always use semantic CSS variables for theme compatibility, three-tier system requires proper organization assignment for access control.
 
 # Scratchpad
 
-## Current Task: SMS Consent Collection System - COMPLETED ✅
-
-Successfully created a comprehensive SMS consent collection system for Twilio TCPA compliance.
-
-### What was accomplished:
-[X] Research Twilio SMS opt-in requirements and regulations
-[X] Create SMS consent collection form component  
-[X] Implement database schema for SMS consent tracking
-[X] Add consent verification to SMS sending functions
-[X] Create consent management dashboard for users
-[X] Generate proof of consent documentation for Twilio
-
-### Implementation Summary:
-✅ **Database Migration:** Complete schema with audit trails and compliance tracking
-✅ **Consent Form Component:** React component with TCPA-compliant language and validation
-✅ **Consent Dashboard:** User management interface for preferences and opt-out
-✅ **SMS Service Integration:** Automatic consent verification before sending
-✅ **Server Actions:** Complete CRUD operations for consent management
-✅ **Twilio Documentation:** Comprehensive proof package for A2P 10DLC registration
-✅ **Setup Guides:** Step-by-step instructions for deployment and configuration
-
-### Key Files Created:
-- `supabase/migrations/20250201_create_sms_consent_system.sql` - Database schema
-- `src/components/sms/SMSConsentForm.tsx` - Consent collection form
-- `src/components/sms/SMSConsentDashboard.tsx` - User management dashboard
-- `src/app/actions/smsConsent.ts` - Server actions for consent operations
-- `src/lib/sms.ts` - Enhanced with consent verification
-- `TWILIO_SMS_CONSENT_PROOF.md` - Complete documentation for Twilio submission
-- `SMS_CONSENT_SYSTEM_SETUP.md` - Setup and deployment guide
-- `scripts/apply-sms-consent-migration.js` - Migration helper script
-
-### Next Steps for User:
-1. Apply database migration via Supabase dashboard
-2. Integrate consent components into profile settings
-3. Test consent flow and SMS verification
-4. Submit documentation to Twilio for A2P 10DLC registration
-5. Update environment variables with Twilio credentials
-
-The system provides complete TCPA compliance with audit trails, user control, and professional documentation for Twilio approval.
+(Currently no active tasks)
