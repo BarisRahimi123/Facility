@@ -74,8 +74,8 @@ export default function TopBar() {
   };
 
   const getUserDisplay = () => {
-    if (userLoading) return { name: 'Loading...', email: '', avatar: '' };
-    if (!user) return { name: 'Guest', email: '', avatar: '' };
+    if (userLoading) return { name: 'Loading...', email: '', avatar: '…' };
+    if (!user) return { name: 'Guest', email: '', avatar: 'G' };
     
     return {
       name: user.full_name || 'User',
@@ -133,7 +133,7 @@ export default function TopBar() {
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 px-3">
+                <Button variant="ghost" className="relative h-9 px-3" aria-label="User menu">
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "flex h-8 w-8 items-center justify-center rounded-full",

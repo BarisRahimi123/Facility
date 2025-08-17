@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Building2, Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -21,10 +21,14 @@ function SignInForm() {
   const [error, setError] = useState('');
   const router = useRouter();
   
-  // Clear any stale auth state on sign-in page load
-  useState(() => {
+  // Clear any stale auth state on sign-in page mount
+  useEffect(() => {
     clearAuthCache();
-  });
+    // Also ensure Supabase session memory is reset by fetching and ignoring
+    // This helps avoid stuck "Signing in..." when prior session cookies linger
+    const supabase = createClient();
+    supabase.auth.getSession().finally(() => {});
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,9 +48,9 @@ function SignInForm() {
       }
 
       if (data.user) {
-        // Use window.location for full page reload to ensure auth state is properly loaded
-        await new Promise(resolve => setTimeout(resolve, 100));
-        window.location.href = '/facilities-map';
+        // Full reload ensures cookies are applied and contexts rehydrate properly
+        await new Promise(resolve => setTimeout(resolve, 150));
+        window.location.replace('/facilities-map');
         return;
       }
 

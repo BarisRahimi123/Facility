@@ -173,11 +173,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSessionChecked(true);
         await refreshUser();
       } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setLoading(false);
-        setSessionChecked(false);
-        // Clear cached user data
+        // Clear state and cache immediately to avoid stuck loading/icon states
         clearAuthCache();
+        setUser(null);
+        setSessionChecked(false);
+        setLoading(false);
       } else if (event === 'TOKEN_REFRESHED' && session?.user) {
         // Only refresh if necessary
         if (user && user.id === session.user.id) {

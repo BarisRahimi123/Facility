@@ -17,7 +17,7 @@ export async function POST() {
     const cookieStore = cookies();
     const allCookies = cookieStore.getAll();
     
-    // Clear Supabase auth cookies
+    // Prepare response
     const response = NextResponse.json(
       { success: true, message: 'Signed out successfully' },
       { status: 200 }
@@ -25,8 +25,20 @@ export async function POST() {
     
     // Delete all auth-related cookies
     allCookies.forEach(cookie => {
-      if (cookie.name.includes('supabase') || cookie.name.includes('auth')) {
-        response.cookies.delete(cookie.name);
+      const name = cookie.name;
+      // Supabase sets cookies with names like: sb-<project-ref>-auth-token and others
+      const shouldDelete =
+        name.startsWith('sb-') ||
+        name.includes('supabase') ||
+        name.includes('auth');
+
+      if (shouldDelete) {
+        try {
+          response.cookies.delete(name);
+        } catch (err) {
+          // Fallback: explicitly expire cookie
+          response.cookies.set({ name, value: '', maxAge: 0 });
+        }
       }
     });
     

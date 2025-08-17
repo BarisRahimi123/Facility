@@ -57,7 +57,7 @@ export default function Sidebar() {
         throw new Error('Sign-out failed');
       }
 
-      // Clear all auth cache
+      // Clear all auth cache immediately to avoid stale UI
       clearAuthCache();
 
       toast({
