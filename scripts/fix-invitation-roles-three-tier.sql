@@ -171,3 +171,4 @@ BEGIN
     RAISE NOTICE 'Role hierarchy: master_admin -> sub_admin -> staff';
 END
 $$;
+

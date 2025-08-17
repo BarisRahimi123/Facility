@@ -13,8 +13,8 @@ export async function POST() {
       console.error('Supabase signOut error:', error);
     }
     
-    // Clear all auth-related cookies
-    const cookieStore = cookies();
+    // Clear all auth-related cookies (must await cookies() in App Router)
+    const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     
     // Prepare response

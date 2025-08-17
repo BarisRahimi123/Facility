@@ -39,3 +39,4 @@ curl -X POST http://localhost:3000/api/test-email \
 echo ""
 echo "✅ Check your email! If you see 'success: true', SendGrid is working!"
 
+

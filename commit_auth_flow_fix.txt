@@ -1,0 +1,7 @@
+[Cursor] Auth sign-in/out stability + profile icon loading fix
+
+- Sign-in page: clear caches on mount via useEffect; use window.location.replace for reliable reload
+- Sign-out API: aggressively clear Supabase cookies (sb-*, supabase, auth) with delete/expire fallback
+- AuthContext: clear cache/state on SIGNED_OUT to avoid stuck loading and avatar spinner
+- TopBar: better avatar placeholders during loading/null user
+- Sidebar: ensure cache clearing on sign-out paths

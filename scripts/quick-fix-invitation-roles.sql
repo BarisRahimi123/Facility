@@ -42,3 +42,4 @@ BEGIN
     RAISE NOTICE 'Now supports: master_admin -> sub_admin -> staff hierarchy';
 END
 $$;
+

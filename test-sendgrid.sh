@@ -23,3 +23,4 @@ echo "2. Verify your sender email"
 echo "3. Update .env.local"
 echo "4. Restart your dev server"
 
+

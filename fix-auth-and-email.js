@@ -160,3 +160,4 @@ console.log('3. Test SendGrid: ./test-sendgrid.sh');
 console.log('4. Test Sign-out: ./test-signout.sh');
 console.log('\n📚 Documentation: SENDGRID_SETUP_GUIDE.md');
 
+
