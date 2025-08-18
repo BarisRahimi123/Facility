@@ -36,6 +36,8 @@ export async function getAllFacilities(): Promise<Facility[]> {
     // Use service role client to bypass authentication issues
     const serviceClient = getServiceRoleClient();
     
+    console.log('🔍 Fetching all facilities...');
+    
     // Get all facilities without filtering for now
     const { data, error } = await serviceClient
       .from('facilities')
@@ -43,8 +45,14 @@ export async function getAllFacilities(): Promise<Facility[]> {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching facilities:', error);
+      console.error('❌ Error fetching facilities:', error);
       return [];
+    }
+
+    console.log(`✅ Found ${data?.length || 0} facilities`);
+    if (data && data.length > 0) {
+      console.log('📋 Facility names:', data.map(f => f.name));
+      console.log('🏢 First facility org:', data[0].organization_id);
     }
 
     return data || [];
@@ -119,6 +127,12 @@ export async function createFacility(formData: CreateFacilityFormData) {
       updated_at: new Date().toISOString()
     };
 
+    console.log('📝 Creating facility with data:', {
+      name: facilityData.name,
+      organization_id: facilityData.organization_id,
+      created_by: facilityData.created_by
+    });
+
     const { data, error } = await serviceClient
       .from('facilities')
       .insert([facilityData])
@@ -126,9 +140,15 @@ export async function createFacility(formData: CreateFacilityFormData) {
       .single();
 
     if (error) {
-      console.error('Error creating facility:', error);
+      console.error('❌ Error creating facility:', error);
       return { error: error.message };
     }
+
+    console.log('✅ Facility created successfully:', {
+      id: data.id,
+      name: data.name,
+      organization_id: data.organization_id
+    });
 
     revalidatePath('/facilities');
     return { data };
