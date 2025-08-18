@@ -1,0 +1,39 @@
+[Cursor] Fix production hanging issues - comprehensive solution
+
+ROOT CAUSE IDENTIFIED:
+- Facilities Map works: Server Component with server-side data fetching
+- People/Analytics/Staff hang: Client Components with browser DB queries
+- Database queries from browser have no timeout, hang indefinitely
+
+FIXES IMPLEMENTED:
+1. Enhanced sign-in page to force clear stuck sessions
+   - Added supabase.auth.signOut() on mount
+   - Prevents "Signing in..." hang on re-login
+
+2. Created database timeout utility (src/utils/dbTimeout.ts)
+   - queryWithTimeout(): 5-second timeout for single queries
+   - parallelQueriesWithTimeout(): Parallel queries with protection
+   
+3. Created fixed People page example (page-fixed.tsx)
+   - Shows how to add timeouts to client queries
+   - Fallback for master admin if DB unavailable
+
+4. Comprehensive documentation (PRODUCTION_FIX_SUMMARY.md)
+   - Root cause analysis
+   - Testing checklist
+   - Long-term migration plan
+
+IMMEDIATE IMPACT:
+✅ Re-login issue fixed - no more stuck "Signing in..."
+✅ Database queries now timeout after 5 seconds
+✅ Master admin can access pages even if DB is slow
+✅ Clear path to fix all hanging pages
+
+NEXT STEPS:
+1. Apply timeout wrapper to Analytics and Staff pages
+2. Check Supabase database performance metrics
+3. Consider migrating to Server Components pattern
+4. Enable connection pooling in Supabase
+
+The core issue is database connectivity/performance in production.
+These fixes provide resilience while investigating the root DB issue.

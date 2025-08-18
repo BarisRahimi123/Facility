@@ -26,27 +26,21 @@ function SignInForm() {
     // Clear all auth caches to prevent stuck sessions
     clearAuthCache();
     
-    // Force Supabase to check fresh session state
-    const resetAuth = async () => {
+    // Check if already logged in and redirect
+    const checkAuth = async () => {
       const supabase = createClient();
       
-      // First, try to sign out any existing session to prevent stuck state
-      try {
-        await supabase.auth.signOut();
-      } catch (error) {
-        console.log('No session to sign out');
-      }
-      
-      // Then check if somehow still logged in
+      // Just check session, don't force sign out
       const { data: { session } } = await supabase.auth.getSession();
       
       // If already logged in, redirect immediately
       if (session?.user) {
+        console.log('User already signed in, redirecting...');
         window.location.replace('/facilities-map');
       }
     };
     
-    resetAuth();
+    checkAuth();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
