@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { UserPlus, Mail, Shield, Building, Briefcase, Phone, User, Crown, MapPin } from 'lucide-react';
 import { sendInvitationEmail } from '@/lib/email';
+import { sendUserInvitation } from '@/app/actions/invitations';
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -184,7 +185,7 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         setTimeout(() => reject(new Error('Frontend timeout after 15 seconds')), 15000);
       });
 
-      console.log('📡 Making API request to /api/invitations...');
+      console.log('📡 Calling server action directly...');
       
       const requestData = {
         email: formData.email,
@@ -196,22 +197,8 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
       
       console.log('📤 Request data:', requestData);
       
-      // Try API route instead of server action for better reliability
-      const invitationPromise = fetch('/api/invitations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData)
-      }).then(async response => {
-        console.log('📥 API response received, status:', response.status);
-        const data = await response.json();
-        console.log('📦 Response data:', data);
-        return data;
-      }).catch(error => {
-        console.error('❌ Fetch error:', error);
-        throw error;
-      });
+      // Use server action with timeout
+      const invitationPromise = sendUserInvitation(requestData);
 
       console.log('🏁 Starting Promise.race...');
       const result = await Promise.race([invitationPromise, timeoutPromise]);
