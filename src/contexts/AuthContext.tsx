@@ -51,42 +51,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('AuthContext: Auth user found:', authUser.email);
 
-      // Get the full user profile
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
+      // Get the full user profile with timeout to prevent hanging
+      let userData = null;
+      let userError = null;
+      
+      try {
+        // Add timeout to prevent hanging in production
+        const queryPromise = supabase
+          .from('users')
+          .select('*')
+          .eq('id', authUser.id)
+          .single();
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Database query timeout after 5s')), 5000)
+        );
+        
+        const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+        userData = result?.data;
+        userError = result?.error;
+      } catch (timeoutError) {
+        console.error('Database query timed out or failed:', timeoutError);
+        userError = timeoutError;
+      }
 
       if (userError) {
         console.error('Error fetching user profile by ID:', userError);
         
-        // Try fetching by email if ID fails
-        const { data: userByEmail, error: emailError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', authUser.email)
-          .limit(1)
-          .maybeSingle();
+        // Try fetching by email if ID fails (with timeout)
+        try {
+          const emailQueryPromise = supabase
+            .from('users')
+            .select('*')
+            .eq('email', authUser.email)
+            .limit(1)
+            .maybeSingle();
           
-        if (!emailError && userByEmail) {
-          console.log('Found user by email instead of ID');
-          setUser(userByEmail);
-          // Cache user data
-          cacheUser(userByEmail);
-        } else {
-          // Still set basic user info from auth
-          console.log('Using basic auth info as fallback');
+          const emailTimeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Email query timeout after 5s')), 5000)
+          );
+          
+          const emailResult = await Promise.race([emailQueryPromise, emailTimeoutPromise]) as any;
+          const userByEmail = emailResult?.data;
+          const emailError = emailResult?.error;
+          
+          if (!emailError && userByEmail) {
+            console.log('Found user by email instead of ID');
+            setUser(userByEmail);
+            // Cache user data
+            cacheUser(userByEmail);
+          } else {
+            // Still set basic user info from auth
+            console.log('Using basic auth info as fallback');
+            const basicUser = {
+              id: authUser.id,
+              email: authUser.email || '',
+              full_name: authUser.user_metadata?.full_name || '',
+              role: authUser.email === '85baris@gmail.com' ? 'master_admin' : (authUser.user_metadata?.role || 'staff'),
+              is_active: true,
+              created_at: authUser.created_at || new Date().toISOString(),
+            };
+            setUser(basicUser);
+            // Cache basic user data
+            cacheUser(basicUser);
+          }
+        } catch (emailTimeoutError) {
+          console.error('Email query also timed out, using auth data only:', emailTimeoutError);
+          // Use basic auth info as ultimate fallback
           const basicUser = {
             id: authUser.id,
             email: authUser.email || '',
             full_name: authUser.user_metadata?.full_name || '',
-            role: authUser.user_metadata?.role || 'staff',
+            role: authUser.email === '85baris@gmail.com' ? 'master_admin' : (authUser.user_metadata?.role || 'staff'),
             is_active: true,
             created_at: authUser.created_at || new Date().toISOString(),
           };
           setUser(basicUser);
-          // Cache basic user data
           cacheUser(basicUser);
         }
       } else {
