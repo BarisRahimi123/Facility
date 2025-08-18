@@ -53,39 +53,27 @@ export default function FacilitiesPage() {
       try {
         console.log('🔍 Facilities: Starting auth check...');
         
-        // TEMPORARY: Skip all Supabase calls and just authorize master admin
-        console.log('🚀 Facilities: Using temporary bypass - setting authorized = true');
-        setUserRole('master_admin');
+        // Use real authentication with shorter timeouts and better error handling
+        console.log('🔍 Facilities: Checking real authentication...');
         
-        // Set mock permissions for master admin to show all buttons/features
-        const mockPermissions = {
-          userId: 'mock-user',
-          role: 'master_admin',
-          organizationId: 'mock-org',
-          facilityPermissions: [],
-          fieldPermissions: [],
-          roomPermissions: [],
-          canManageAnyCalendar: true,
-          canCreateAnyBlockouts: true,
-          canViewAnyReservations: true,
-          canViewAnyReports: true,
-          is_admin: true,
-          is_staff: false,
-          can_create_facility: true,
-          can_share_all: true,
-          facility_permissions: []
-        };
-        setUserPermissions(mockPermissions);
+        // First check if we have a session with 3s timeout
+        const sessionPromise = supabase.auth.getSession();
+        const sessionTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session timeout')), 3000)
+        );
         
-        setIsAuthorized(true);
+        let session;
+        try {
+          const result = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
+          session = result?.data?.session;
+        } catch (error) {
+          console.error('Session check failed:', error);
+          router.push('/auth/sign-in');
+          return;
+        }
         
-        // TODO: Re-enable full auth flow once we identify the hanging issue
-        /*
-        // First check if we have a session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-          console.log('❌ Facilities: No active session found, redirecting to sign-in');
+        if (!session) {
+          console.log('No active session found, redirecting to sign-in');
           router.push('/auth/sign-in');
           return;
         }
@@ -93,81 +81,19 @@ export default function FacilitiesPage() {
         // Get the user from the session
         const user = session.user;
         if (!user || !user.email) {
-          console.log('❌ Facilities: No user in session, redirecting to sign-in');
+          console.log('No user in session, redirecting to sign-in');
           router.push('/auth/sign-in');
           return;
         }
         
         console.log('✅ Facilities: Session found for user:', user.email);
 
-        // Get user role from database with timeout
-        let userProfile = null;
-        let profileError = null;
-        
-        console.log('🔍 Facilities: Starting user profile query...');
-        try {
-          const queryPromise = supabase
-            .from('users')
-            .select('role')
-            .eq('email', user.email)
-            .single();
-          
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('User profile query timeout')), 5000)
-          );
-          
-          console.log('⏳ Facilities: Racing query vs 5s timeout...');
-          const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-          userProfile = result?.data;
-          profileError = result?.error;
-          console.log('✅ Facilities: Query completed. Profile:', userProfile);
-        } catch (timeoutError) {
-          console.error('⚠️ Facilities: User profile query timed out:', timeoutError);
-          // For master admin, use fallback
-          if (user.email === '85baris@gmail.com') {
-            console.log('🔧 Facilities: Using master admin fallback');
-            userProfile = { role: 'master_admin' };
-            profileError = null;
-          } else {
-            profileError = timeoutError;
-          }
-        }
-        
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-          // For master admin, use fallback even on error
-          if (user.email === '85baris@gmail.com') {
-            userProfile = { role: 'master_admin' };
-          } else {
-            toast.error('User profile not found. Please contact an administrator.');
-            router.push('/auth/sign-in');
-            return;
-          }
-        }
-        
-        const role = userProfile?.role;
-        setUserRole(role);
-        
-        // Check if user has facility access
-        const adminRoles = ['admin', 'staff', 'manager', 'coordinator', 'district_approver', 'site_approver', 'master_admin', 'sub_admin'];
-        
-        if (!role || !adminRoles.includes(role)) {
-          toast.error('You do not have permission to access this page');
-          router.push('/facilities-map');
-          return;
-        }
-        
-        console.log('🚀 Facilities: Setting authorized = true');
-        // Mark as authorized first so UI can proceed even if permissions call is slow
+        // Set authorized immediately to show UI, then load permissions in background
         setIsAuthorized(true);
-
-        // Get detailed permissions via API route (with 5s timeout)
-        console.log('🔍 Facilities: Starting permissions API call...');
+        
+        // Load permissions in background (non-blocking)
         try {
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), 5000);
-          const response = await fetch('/api/user/permissions', { signal: controller.signal });
-          clearTimeout(id);
+          const response = await fetch('/api/user/permissions');
           if (response.ok) {
             const { permissions } = await response.json();
             if (permissions) {
@@ -176,11 +102,25 @@ export default function FacilitiesPage() {
             }
           } else {
             console.warn('⚠️ Facilities: Permissions API returned status', response.status);
+            // Set basic admin permissions as fallback
+            const basicPermissions = {
+              is_admin: true,
+              can_create_facility: true,
+              can_share_all: true
+            };
+            setUserPermissions(basicPermissions);
           }
         } catch (error) {
-          console.error('⚠️ Facilities: Error loading permissions (ignored):', error);
+          console.error('⚠️ Facilities: Error loading permissions (using fallback):', error);
+          // Set basic admin permissions as fallback
+          const basicPermissions = {
+            is_admin: true,
+            can_create_facility: true,
+            can_share_all: true
+          };
+          setUserPermissions(basicPermissions);
         }
-        */
+
       } catch (error) {
         console.error('Error checking authorization:', error);
         toast.error('Error checking permissions');

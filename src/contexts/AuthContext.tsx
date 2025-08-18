@@ -169,30 +169,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('AuthContext: Checking initial session...');
         
-        // TEMPORARY: Skip Supabase session check and use mock user for development
-        console.log('🚀 AuthContext: Using temporary bypass - creating mock user');
-        const mockUser: User = {
-          id: 'mock-user-id',
-          email: '85baris@gmail.com',
-          name: 'Baris Rahimi',
-          role: 'master_admin',
-          organization_id: 'mock-org',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        };
+        // Use real session check with better error handling and shorter timeouts
+        console.log('🔍 AuthContext: Checking real session with 3s timeout...');
         
-        setUser(mockUser);
-        cacheUser(mockUser);
-        setSessionChecked(true);
-        setLoading(false);
-        return;
-        
-        // TODO: Re-enable session checking once Supabase client issue is fixed
-        /*
-        // Add timeout to getSession as well
+        // Use shorter timeout and better error handling
         const sessionPromise = supabase.auth.getSession();
         const sessionTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+          setTimeout(() => reject(new Error('Session check timeout')), 3000)
         );
         
         const sessionResult = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
@@ -244,7 +227,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearAuthCache();
           setLoading(false);
         }
-        */
+
       } catch (error) {
         console.error('AuthContext: Session check failed:', error);
         
@@ -280,13 +263,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       checkInitialSession();
     }
 
-    // TEMPORARY: Skip auth state change listener to prevent loops and timeouts
-    console.log('🚀 AuthContext: Bypassing auth state change listener');
-    const subscription = { unsubscribe: () => {} }; // Mock subscription
-    
-    // TODO: Re-enable auth state change listener once Supabase client issue is fixed
-    /*
-    // Listen for auth changes
+    // Listen for auth changes with better error handling
+    console.log('🔍 AuthContext: Setting up auth state change listener...');
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
@@ -315,7 +293,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     });
-    */
 
     return () => {
       mounted = false;
