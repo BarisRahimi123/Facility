@@ -33,7 +33,8 @@ import { Organization } from '@/types/organization';
 
 export interface CreateUserData {
   email: string;
-  full_name: string;
+  name?: string; // Support both naming conventions
+  full_name?: string;
   role: UserRole;
   phone?: string;
   is_active: boolean;
@@ -48,7 +49,8 @@ export interface CreateUserData {
 export interface User {
   id: string;
   email: string;
-  full_name: string;
+  name?: string; // Database might use 'name'
+  full_name?: string; // Or 'full_name' - we support both
   role: UserRole;
   phone?: string;
   is_active: boolean;
