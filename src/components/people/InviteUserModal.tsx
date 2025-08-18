@@ -138,10 +138,22 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
     setLoading(true);
 
     try {
+      console.log('🔐 Checking authentication...');
       const supabase = createClient();
+      
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) {
+        console.error('❌ User auth error:', userError);
+        throw new Error('Authentication failed: ' + userError.message);
+      }
+      
+      if (!user) {
+        console.error('❌ No user found');
+        throw new Error('Not authenticated');
+      }
+      
+      console.log('✅ User authenticated:', user.email);
 
       console.log('Sending invitation:', {
         email: formData.email,
@@ -175,14 +187,22 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         };
       }
 
-      // Call the server action to send invitation
-      const result = await sendUserInvitation({
+      // Call the server action to send invitation with timeout
+      console.log('🚀 Calling sendUserInvitation server action...');
+      
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Frontend timeout after 15 seconds')), 15000);
+      });
+
+      const invitationPromise = sendUserInvitation({
         email: formData.email,
         role: formData.role,
         facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
         organization_id: null,
         metadata: metadata
       });
+
+      const result = await Promise.race([invitationPromise, timeoutPromise]);
 
       if (!result.success) {
         console.error('Invitation error:', result.error);
@@ -235,7 +255,17 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
     } catch (error: any) {
       console.error('Error sending invitation:', error);
       setLoading(false);
-      toast.error(error.message || 'Failed to send invitation');
+      
+      if (error.message && error.message.includes('timeout')) {
+        toast.error('Request timed out. Please check your connection and try again.');
+      } else if (error.message && error.message.includes('Failed to fetch')) {
+        toast.error('Network error. Please check your connection and try again.');
+      } else {
+        toast.error(error.message || 'Failed to send invitation');
+      }
+    } finally {
+      // Ensure loading is always set to false
+      setLoading(false);
     }
   };
 
