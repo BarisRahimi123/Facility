@@ -83,8 +83,8 @@ export default function NewBuildingPage() {
       toast.dismiss(loadingToast);
       toast.success('Building created successfully');
 
-      // Redirect back to facility page immediately after success
-      router.push(`/facility/${facilityId}`);
+      // Use window.location.href for full page reload to ensure buildings are loaded
+      window.location.href = `/facility/${facilityId}`;
     } catch (error) {
       console.error('Error creating building:', error);
       toast.dismiss(loadingToast);
@@ -97,21 +97,21 @@ export default function NewBuildingPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
-        {/* Glassmorphic Breadcrumb Navigation */}
-        <nav className="flex mb-8 bg-gray-900/50 backdrop-blur-xl border border-gray-700/50 rounded-xl p-4" aria-label="Breadcrumb">
+        {/* Theme-aware Breadcrumb Navigation */}
+        <nav className="flex mb-8 bg-card/50 backdrop-blur-xl border border-border rounded-xl p-4" aria-label="Breadcrumb">
           <ol className="inline-flex items-center space-x-1 md:space-x-3">
             <li className="inline-flex items-center">
-              <Link href="/facilities" className="inline-flex items-center text-sm font-medium text-gray-300 hover:text-purple-400 transition-colors">
+              <Link href="/facilities" className="inline-flex items-center text-sm font-medium text-foreground hover:text-primary transition-colors">
                 <Home className="w-4 h-4 mr-2" />
                 Facilities
               </Link>
             </li>
             <li>
               <div className="flex items-center">
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 <Link 
                   href={`/facility/${facilityId}`}
-                  className="ml-1 text-sm font-medium text-gray-300 hover:text-purple-400 md:ml-2 transition-colors"
+                  className="ml-1 text-sm font-medium text-foreground hover:text-primary md:ml-2 transition-colors"
                 >
                   {isLoadingFacility ? 'Loading...' : (facility?.name || 'Facility')}
                 </Link>
@@ -119,10 +119,10 @@ export default function NewBuildingPage() {
             </li>
             <li>
               <div className="flex items-center">
-                <ChevronRight className="w-4 h-4 text-gray-600" />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 <Link 
                   href={`/facility/${facilityId}/buildings`}
-                  className="ml-1 text-sm font-medium text-gray-300 hover:text-purple-400 md:ml-2 transition-colors"
+                  className="ml-1 text-sm font-medium text-foreground hover:text-primary md:ml-2 transition-colors"
                 >
                   Buildings
                 </Link>
@@ -130,8 +130,8 @@ export default function NewBuildingPage() {
             </li>
             <li>
               <div className="flex items-center">
-                <ChevronRight className="w-4 h-4 text-gray-600" />
-                <span className="ml-1 text-sm font-medium text-gray-400 md:ml-2">
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <span className="ml-1 text-sm font-medium text-muted-foreground md:ml-2">
                   New Building
                 </span>
               </div>
@@ -140,49 +140,49 @@ export default function NewBuildingPage() {
         </nav>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Add New Building</h1>
-          <p className="text-gray-400 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Add New Building</h1>
+          <p className="text-muted-foreground mt-2">
             Create a new building in {isLoadingFacility ? 'this facility' : (facility?.name || 'this facility')}
           </p>
         </div>
 
-        <Card className="bg-gray-900/50 border-gray-800 shadow-sm">
-          <CardHeader className="border-b border-gray-800">
-            <CardTitle className="text-xl font-semibold text-white">Building Information</CardTitle>
+        <Card className="bg-card border-border shadow-sm">
+          <CardHeader className="border-b border-border">
+            <CardTitle className="text-xl font-semibold text-card-foreground">Building Information</CardTitle>
           </CardHeader>
           <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-300 font-medium">Building Name</Label>
+                <Label htmlFor="name" className="text-card-foreground font-medium">Building Name</Label>
                 <Input
                   id="name"
                   name="name"
                   placeholder="Enter building name"
                   required
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                  className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="buildingNumber" className="text-gray-300 font-medium">Building Number</Label>
+                <Label htmlFor="buildingNumber" className="text-card-foreground font-medium">Building Number</Label>
                 <Input
                   id="buildingNumber"
                   name="building_number"
                   placeholder="Enter building number"
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                  className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="buildingType" className="text-gray-300 font-medium">Building Type</Label>
+                <Label htmlFor="buildingType" className="text-card-foreground font-medium">Building Type</Label>
                 <Select name="building_type" required>
-                  <SelectTrigger className="bg-gray-800/50 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500 data-[placeholder]:text-gray-500">
+                  <SelectTrigger className="bg-input border-border text-foreground focus:border-ring focus:ring-ring/20 data-[placeholder]:text-muted-foreground">
                     <SelectValue placeholder="Select building type" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 border-gray-700">
+                  <SelectContent className="bg-card border-border">
                     {Object.entries(BuildingTypes).map(([key, value]) => (
-                      <SelectItem key={key} value={value} className="text-white hover:bg-gray-700 focus:bg-gray-700">
+                      <SelectItem key={key} value={value} className="text-card-foreground hover:bg-accent focus:bg-accent">
                         {key.charAt(0) + key.slice(1).toLowerCase().replace(/_/g, ' ')}
                       </SelectItem>
                     ))}
@@ -191,28 +191,28 @@ export default function NewBuildingPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="constructionDate" className="text-gray-300 font-medium">Construction Date</Label>
+                <Label htmlFor="constructionDate" className="text-card-foreground font-medium">Construction Date</Label>
                 <Input
                   id="constructionDate"
                   name="construction_date"
                   type="date"
                   required
-                  className="bg-gray-800/50 border-gray-700 text-white focus:border-purple-500 focus:ring-purple-500"
+                  className="bg-input border-border text-foreground focus:border-ring focus:ring-ring/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="dsaNumber" className="text-gray-300 font-medium">DSA Number</Label>
+                <Label htmlFor="dsaNumber" className="text-card-foreground font-medium">DSA Number</Label>
                 <Input
                   id="dsaNumber"
                   name="dsa_number"
                   placeholder="Enter DSA number"
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                  className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="squareFootage" className="text-gray-300 font-medium">Square Footage</Label>
+                <Label htmlFor="squareFootage" className="text-card-foreground font-medium">Square Footage</Label>
                 <Input
                   id="squareFootage"
                   name="square_footage"
@@ -220,12 +220,12 @@ export default function NewBuildingPage() {
                   min="0"
                   placeholder="Enter square footage"
                   required
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                  className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="numberOfRooms" className="text-gray-300 font-medium">Number of Rooms</Label>
+                <Label htmlFor="numberOfRooms" className="text-card-foreground font-medium">Number of Rooms</Label>
                 <Input
                   id="numberOfRooms"
                   name="number_of_rooms"
@@ -233,19 +233,19 @@ export default function NewBuildingPage() {
                   min="0"
                   placeholder="Enter number of rooms"
                   required
-                  className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                  className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes" className="text-gray-300 font-medium">Notes</Label>
+              <Label htmlFor="notes" className="text-card-foreground font-medium">Notes</Label>
               <Textarea
                 id="notes"
                 name="notes"
                 placeholder="Enter any additional notes about the building"
                 rows={4}
-                className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-purple-500 focus:ring-purple-500"
+                className="bg-input border-border text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/20"
               />
             </div>
 
@@ -255,14 +255,14 @@ export default function NewBuildingPage() {
                 variant="outline"
                 onClick={() => router.back()}
                 disabled={isSubmitting}
-                className="border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+                className="border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
               >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white border-0 rounded-xl px-8 py-3"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground border-0 rounded-xl px-8 py-3"
               >
                 {isSubmitting ? 'Creating...' : 'Create Building'}
               </Button>

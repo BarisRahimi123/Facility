@@ -214,6 +214,36 @@ export default function FacilityOverviewPage() {
   };
   const [isLoading, setIsLoading] = useState(true);
   const [hasFetched, setHasFetched] = useState(false);
+  
+  // Reset hasFetched when facilityId changes
+  useEffect(() => {
+    setHasFetched(false);
+  }, [facilityId]);
+  
+  // Function to manually refresh buildings
+  const refreshBuildings = async () => {
+    try {
+      console.log('🔄 Manual refresh: Loading buildings...');
+      const buildingsData = await getBuildingsByFacilityId(facilityId);
+      setBuildings(buildingsData || []);
+      console.log('✅ Manual refresh: Loaded', buildingsData?.length || 0, 'buildings');
+    } catch (error) {
+      console.error('❌ Manual refresh: Error loading buildings:', error);
+    }
+  };
+  
+  // Listen for focus events to refresh data when user returns to tab
+  useEffect(() => {
+    const handleFocus = () => {
+      // Refresh buildings when user returns to the tab
+      if (facilityId && hasFetched) {
+        refreshBuildings();
+      }
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [facilityId, hasFetched]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);

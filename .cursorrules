@@ -292,3 +292,34 @@ If needed, you can further use the `web_scraper.py` file to scrape the web page 
 - **Test facility successfully created** (ID: 02cecb1a-384b-4c97-9aa7-e880014e36bb)
 - **All facilities stored at production URL**: https://ahntaamtsypranvnofxy.supabase.co
 - **Form submission works end-to-end**
+
+## NEW TASK: Building Creation Modal & Display Fixes 
+
+### Problem: RESOLVED ✅
+1. Building creation modal stuck in dark mode while app is in light mode
+2. Buildings not showing up after creation in facility detail page
+
+### Analysis  
+1. **Modal Theme Issue**: Building creation page had hardcoded dark theme colors
+2. **Display Issue**: hasFetched state prevented facility page from reloading data after navigation
+
+### Implementation Status: COMPLETED ✅
+[X] Fixed building creation modal dark mode styling to use semantic CSS variables
+[X] Replaced all hardcoded colors (bg-gray-900, text-white, border-gray-700) with theme-aware variables
+[X] Updated breadcrumb navigation to use bg-card/50, text-foreground, border-border
+[X] Fixed all form inputs to use bg-input, border-border, text-foreground, focus:border-ring
+[X] Updated buttons to use bg-primary, hover:bg-primary/90, text-primary-foreground
+[X] Fixed buildings not showing after creation with hasFetched reset and manual refresh
+[X] Added window.location.href redirect for full page reload after building creation
+[X] Added focus event listener to refresh buildings when user returns to tab
+
+### Key Changes Made
+- src/app/(app)/facility/[facilityId]/buildings/new/page.tsx: Complete theme-aware styling
+- src/app/(app)/facility/[facilityId]/page.tsx: Added hasFetched reset and manual refresh logic
+- All semantic CSS variables used: bg-background, text-foreground, bg-card, border-border, etc.
+
+### Status: COMPLETED ✅
+- ✅ Building creation modal now works in both light and dark modes
+- ✅ Buildings show up immediately after creation
+- ✅ Manual refresh mechanism added for reliability
+- ✅ Theme compatibility ensured throughout the form
