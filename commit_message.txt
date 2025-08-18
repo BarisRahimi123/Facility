@@ -1,7 +1,35 @@
-[Cursor] Fix facilities permissions + sign-out + SendGrid helpers
+[Cursor] CRITICAL: Fix production authentication middleware
 
-- Facilities: add robust permissions loading via /api/user/permissions and back-compat snake_case fields (facility_permissions, is_admin, is_staff, can_share_all, can_create_facility).
-- Facilities page: guard optional facility_permissions and use API route instead of direct server action import.
-- Auth: centralize sign-out via /api/auth/signout and update TopBar/Sidebar to call API + clear auth cache.
-- Email: add SendGrid troubleshooting docs and test scripts.
-- Misc: add clearAuthCache util and shell scripts to help configure SendGrid quickly.
+This fixes the production authentication issue where users couldn't access
+protected pages (facilities, people, analytics, staff dashboard).
+
+Root Cause:
+- Middleware was bypassing auth in development but had NO production logic
+- Protected routes were accessible without any session validation
+- Missing proper cookie handling and session refresh
+
+Changes:
+1. middleware.ts:
+   - Added proper Supabase session checking for all requests
+   - Defined public paths (auth pages, landing, API routes)
+   - Defined protected paths requiring authentication
+   - Implemented session refresh via cookie management
+   - Added redirect to sign-in for unauthenticated access
+   - Added production debug logging
+
+2. next.config.js:
+   - Added SUPABASE_SERVICE_ROLE_KEY to env section
+   - Temporarily disabled removeConsole for production debugging
+
+3. Documentation:
+   - Created PRODUCTION_AUTH_FIX.md with deployment instructions
+   - Listed required Vercel environment variables
+   - Included testing and debugging steps
+
+IMPORTANT: After deploying, verify these env vars in Vercel:
+- NEXT_PUBLIC_SUPABASE_URL
+- NEXT_PUBLIC_SUPABASE_ANON_KEY  
+- SUPABASE_SERVICE_ROLE_KEY
+- NEXT_PUBLIC_APP_URL (must match production domain)
+
+This is a critical security fix that properly protects all admin routes.

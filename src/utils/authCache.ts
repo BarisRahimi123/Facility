@@ -13,11 +13,16 @@ export function clearAuthCache() {
     // Clear user cache
     localStorage.removeItem('facilitycore_user');
     
-    // Clear any Supabase-specific items
+    // Clear ALL Supabase-specific items more aggressively
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && (key.includes('supabase') || key.includes('auth'))) {
+      if (key && (
+        key.includes('supabase') || 
+        key.includes('auth') || 
+        key.includes('sb-') ||
+        key.includes('session')
+      )) {
         keysToRemove.push(key);
       }
     }
@@ -27,7 +32,19 @@ export function clearAuthCache() {
     // Also clear session storage
     sessionStorage.clear();
     
-    console.log('Auth cache cleared');
+    // Clear cookies that might be accessible via JavaScript
+    if (document.cookie) {
+      document.cookie.split(";").forEach((c) => {
+        const eqPos = c.indexOf("=");
+        const name = eqPos > -1 ? c.substring(0, eqPos).trim() : c.trim();
+        if (name.includes('supabase') || name.includes('auth') || name.includes('sb-')) {
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+          document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname}`;
+        }
+      });
+    }
+    
+    console.log('Auth cache cleared completely');
   } catch (error) {
     console.error('Error clearing auth cache:', error);
   }
@@ -64,5 +81,6 @@ export function cacheUser(user: any) {
     console.error('Error caching user:', error);
   }
 }
+
 
 

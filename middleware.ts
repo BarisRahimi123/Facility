@@ -121,11 +121,6 @@ export async function middleware(request: NextRequest) {
     // Get the session - this will also refresh it if needed
     const { data: { session }, error } = await supabase.auth.getSession()
     
-    // Log for debugging (will be removed later)
-    if (process.env.NODE_ENV === 'production') {
-      console.log(`[Middleware] Path: ${pathname}, Session: ${session ? 'Valid' : 'None'}, Error: ${error?.message || 'None'}`)
-    }
-    
     // If no session and trying to access protected route, redirect to sign-in
     if (!session) {
       // Protected paths that require authentication
@@ -149,7 +144,6 @@ export async function middleware(request: NextRequest) {
       )
       
       if (isProtectedPath) {
-        console.log(`[Middleware] No session for protected path: ${pathname}, redirecting to sign-in`)
         const redirectUrl = new URL('/auth/sign-in', request.url)
         redirectUrl.searchParams.set('redirectTo', pathname)
         return NextResponse.redirect(redirectUrl)

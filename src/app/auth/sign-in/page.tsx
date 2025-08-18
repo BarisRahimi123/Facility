@@ -23,11 +23,22 @@ function SignInForm() {
   
   // Clear any stale auth state on sign-in page mount
   useEffect(() => {
+    // Clear all auth caches to prevent stuck sessions
     clearAuthCache();
-    // Also ensure Supabase session memory is reset by fetching and ignoring
-    // This helps avoid stuck "Signing in..." when prior session cookies linger
-    const supabase = createClient();
-    supabase.auth.getSession().finally(() => {});
+    
+    // Force Supabase to check fresh session state
+    const resetAuth = async () => {
+      const supabase = createClient();
+      // Get current session to see if user is already logged in
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // If already logged in, redirect immediately
+      if (session?.user) {
+        window.location.replace('/facilities-map');
+      }
+    };
+    
+    resetAuth();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -85,11 +96,7 @@ function SignInForm() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Sign in to your account to continue
               </p>
-              <div className="mt-2 text-xs text-muted-foreground space-x-2">
-                <Link href="/auth/debug" className="text-primary hover:underline">Debug</Link>
-                <span>•</span>
-                <Link href="/auth/test-login" className="text-primary hover:underline">Test Login</Link>
-              </div>
+
             </div>
 
             <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
