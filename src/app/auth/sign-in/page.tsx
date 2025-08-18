@@ -29,7 +29,15 @@ function SignInForm() {
     // Force Supabase to check fresh session state
     const resetAuth = async () => {
       const supabase = createClient();
-      // Get current session to see if user is already logged in
+      
+      // First, try to sign out any existing session to prevent stuck state
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.log('No session to sign out');
+      }
+      
+      // Then check if somehow still logged in
       const { data: { session } } = await supabase.auth.getSession();
       
       // If already logged in, redirect immediately
