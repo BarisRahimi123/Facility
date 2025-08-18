@@ -22,22 +22,36 @@ export default function NewFacilityPage() {
     const form = e.currentTarget;
     const formData = new FormData(form);
     
+    // Log form data for debugging
+    console.log('📝 Submitting facility with data:');
+    formData.forEach((value, key) => {
+      console.log(`  ${key}:`, value);
+    });
+    
     try {
       setIsSubmitting(true);
       
       // Show loading toast
       const loadingToast = toast.loading('Creating facility...');
       
-      await createFacility(formData);
+      const result = await createFacility(formData);
       
       // Dismiss loading toast
       toast.dismiss(loadingToast);
       
+      // Check if there's an error in the result
+      if (result && 'error' in result && result.error) {
+        console.error('❌ Server returned error:', result.error);
+        toast.error(result.error);
+        return;
+      }
+      
+      console.log('✅ Facility created successfully:', result);
       toast.success('Facility created successfully');
       router.push('/facilities');
       router.refresh();
     } catch (error) {
-      console.error('Error creating facility:', error);
+      console.error('❌ Error creating facility:', error);
       
       let errorMessage = 'Failed to create facility';
       

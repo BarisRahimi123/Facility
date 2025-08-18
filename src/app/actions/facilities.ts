@@ -55,14 +55,18 @@ export async function getAllFacilities(): Promise<Facility[]> {
 }
 
 export async function createFacility(formData: CreateFacilityFormData) {
+  console.log('🏗️ createFacility called with:', Object.keys(formData));
+  
   const supabase = await createServerSupabaseClient();
   const serviceClient = getServiceRoleClient();
   
   // Get current user with organization
   const { data: { user }, error: authError } = await supabase.auth.getUser();
+  console.log('👤 Auth check:', user ? `User: ${user.email}` : 'No user', authError ? `Error: ${authError.message}` : '');
+  
   if (authError || !user) {
-    console.error('Auth error in createFacility:', authError);
-    return { error: 'User not authenticated' };
+    console.error('❌ Auth error in createFacility:', authError);
+    return { error: 'User not authenticated. Please sign in and try again.' };
   }
 
   // Try to get user profile, with fallback for master admin
