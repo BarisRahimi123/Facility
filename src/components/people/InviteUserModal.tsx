@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { UserPlus, Mail, Shield, Building, Briefcase, Phone, User, Crown, MapPin } from 'lucide-react';
 import { sendInvitationEmail } from '@/lib/email';
+import { sendUserInvitation } from '@/app/actions/invitations';
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -174,29 +175,21 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         };
       }
 
-      // Call the database function to send invitation
-      const { data, error } = await supabase.rpc('send_user_invitation', {
-        p_email: formData.email,
-        p_role: formData.role,
-        p_invited_by: user.id,
-        p_facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
-        p_organization_id: null,
-        p_metadata: metadata
+      // Call the server action to send invitation
+      const result = await sendUserInvitation({
+        email: formData.email,
+        role: formData.role,
+        facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
+        organization_id: null,
+        metadata: metadata
       });
 
-      if (error) {
-        console.error('Invitation error details:', {
-          error,
-          message: error?.message,
-          details: error?.details,
-          hint: error?.hint,
-          code: error?.code
-        });
-        
-        // Extract error message
-        const errorMessage = error?.message || error?.details || error?.hint || 'Failed to send invitation';
+      if (!result.success) {
+        console.error('Invitation error:', result.error);
         
         // Check for specific error types
+        const errorMessage = result.error || 'Failed to send invitation';
+        
         if (errorMessage.includes('function') && errorMessage.includes('does not exist')) {
           throw new Error(
             'The invitation system is not properly configured. ' +
@@ -217,6 +210,8 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         
         throw new Error(errorMessage);
       }
+
+      const data = result.data;
 
       console.log('Invitation sent successfully:', data);
 
