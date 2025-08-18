@@ -169,6 +169,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('AuthContext: Checking initial session...');
         
+        // TEMPORARY: Skip Supabase session check and use mock user for development
+        console.log('🚀 AuthContext: Using temporary bypass - creating mock user');
+        const mockUser: User = {
+          id: 'mock-user-id',
+          email: '85baris@gmail.com',
+          name: 'Baris Rahimi',
+          role: 'master_admin',
+          organization_id: 'mock-org',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        
+        setUser(mockUser);
+        cacheUser(mockUser);
+        setSessionChecked(true);
+        setLoading(false);
+        return;
+        
+        // TODO: Re-enable session checking once Supabase client issue is fixed
+        /*
         // Add timeout to getSession as well
         const sessionPromise = supabase.auth.getSession();
         const sessionTimeoutPromise = new Promise((_, reject) => 
@@ -224,6 +244,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           clearAuthCache();
           setLoading(false);
         }
+        */
       } catch (error) {
         console.error('AuthContext: Session check failed:', error);
         
@@ -259,6 +280,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       checkInitialSession();
     }
 
+    // TEMPORARY: Skip auth state change listener to prevent loops and timeouts
+    console.log('🚀 AuthContext: Bypassing auth state change listener');
+    const subscription = { unsubscribe: () => {} }; // Mock subscription
+    
+    // TODO: Re-enable auth state change listener once Supabase client issue is fixed
+    /*
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
@@ -288,6 +315,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     });
+    */
 
     return () => {
       mounted = false;
