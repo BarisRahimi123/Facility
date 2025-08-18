@@ -205,30 +205,37 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
       console.log('🎯 Promise.race completed with result:', result);
 
       if (!result.success) {
-        console.error('Invitation error:', result.error);
+        console.error('❌ Invitation error:', result.error);
+        setLoading(false); // Stop loading immediately on error
         
         // Check for specific error types
         const errorMessage = result.error || 'Failed to send invitation';
         
         if (errorMessage.includes('function') && errorMessage.includes('does not exist')) {
-          throw new Error(
+          toast.error(
             'The invitation system is not properly configured. ' +
             'Please apply the fix in Supabase SQL Editor: scripts/quick-fix-invitation-roles.sql'
           );
+          return;
         } else if (errorMessage.includes('already exists')) {
-          throw new Error('A user with this email address already exists');
+          toast.error('❌ A user with this email address already exists in the system');
+          return;
         } else if (errorMessage.includes('already been sent')) {
-          throw new Error('An invitation has already been sent to this email address');
+          toast.error('⚠️ An invitation has already been sent to this email address');
+          return;
         } else if (errorMessage.includes('permission')) {
-          throw new Error('You do not have permission to invite this type of user. Please apply the role fix in Supabase.');
+          toast.error('❌ You do not have permission to invite this type of user. Please apply the role fix in Supabase.');
+          return;
         } else if (errorMessage.includes('ambiguous')) {
-          throw new Error(
+          toast.error(
             'Database configuration error. Please apply the fix: ' +
             'Go to Supabase SQL Editor and run the contents of scripts/quick-fix-invitation-roles.sql'
           );
+          return;
         }
         
-        throw new Error(errorMessage);
+        toast.error(errorMessage);
+        return;
       }
 
       const data = result.data;

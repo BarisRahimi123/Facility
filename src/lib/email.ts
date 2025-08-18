@@ -1,19 +1,22 @@
 import sgMail from '@sendgrid/mail';
 
-// Initialize SendGrid with API key (if available)
-const apiKey = process.env.SENDGRID_API_KEY;
-let sendGridConfigured = false;
-
-if (apiKey) {
+// Function to initialize SendGrid (called when needed)
+function initializeSendGrid() {
+  const apiKey = process.env.SENDGRID_API_KEY;
+  
+  if (!apiKey) {
+    console.log('📧 SendGrid API key not found - emails will be logged to console');
+    return false;
+  }
+  
   if (!apiKey.startsWith('SG.')) {
     console.warn('⚠️ Invalid SendGrid API key format. API key should start with "SG."');
-  } else {
-    sgMail.setApiKey(apiKey);
-    sendGridConfigured = true;
-    console.log('✅ SendGrid configured successfully');
+    return false;
   }
-} else {
-  console.log('📧 SendGrid not configured - emails will be logged to console');
+  
+  sgMail.setApiKey(apiKey);
+  console.log('✅ SendGrid configured successfully with key:', apiKey.substring(0, 10) + '...');
+  return true;
 }
 
 const DEFAULT_FROM_EMAIL = process.env.SENDGRID_FROM_EMAIL || 'info@facilitycore.ai';
@@ -39,6 +42,9 @@ export async function sendEmail({
   replyTo 
 }: EmailOptions) {
   try {
+    // Initialize SendGrid when needed
+    const sendGridConfigured = initializeSendGrid();
+    
     // If SendGrid is not configured, log email to console
     if (!sendGridConfigured) {
       console.log('📧 EMAIL (SendGrid not configured):');
