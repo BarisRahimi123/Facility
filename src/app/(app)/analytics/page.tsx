@@ -135,12 +135,29 @@ export default function AnalyticsPage() {
           return;
         }
 
-        // Get user role from database
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', user.email)
-          .single();
+        // Get user role from database with timeout
+        let userProfile = null;
+        
+        try {
+          const queryPromise = supabase
+            .from('users')
+            .select('role')
+            .eq('email', user.email)
+            .single();
+          
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('User profile query timeout')), 5000)
+          );
+          
+          const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+          userProfile = result?.data;
+        } catch (timeoutError) {
+          console.error('Analytics page - User profile query timed out:', timeoutError);
+          // For master admin, use fallback
+          if (user.email === '85baris@gmail.com') {
+            userProfile = { role: 'master_admin' };
+          }
+        }
         
         const role = userProfile?.role;
         setUserRole(role);

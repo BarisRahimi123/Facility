@@ -61,19 +61,45 @@ export default function FacilitiesPage() {
           return;
         }
 
-        // Get user role from database
-        const { data: userProfile, error: profileError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', user.email)
-          .single();
+        // Get user role from database with timeout
+        let userProfile = null;
+        let profileError = null;
+        
+        try {
+          const queryPromise = supabase
+            .from('users')
+            .select('role')
+            .eq('email', user.email)
+            .single();
+          
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('User profile query timeout')), 5000)
+          );
+          
+          const result = await Promise.race([queryPromise, timeoutPromise]) as any;
+          userProfile = result?.data;
+          profileError = result?.error;
+        } catch (timeoutError) {
+          console.error('User profile query timed out:', timeoutError);
+          // For master admin, use fallback
+          if (user.email === '85baris@gmail.com') {
+            userProfile = { role: 'master_admin' };
+            profileError = null;
+          } else {
+            profileError = timeoutError;
+          }
+        }
         
         if (profileError) {
           console.error('Error fetching user profile:', profileError);
-          // If user doesn't exist in users table, redirect to sign-in
-          toast.error('User profile not found. Please contact an administrator.');
-          router.push('/auth/sign-in');
-          return;
+          // For master admin, use fallback even on error
+          if (user.email === '85baris@gmail.com') {
+            userProfile = { role: 'master_admin' };
+          } else {
+            toast.error('User profile not found. Please contact an administrator.');
+            router.push('/auth/sign-in');
+            return;
+          }
         }
         
         const role = userProfile?.role;
