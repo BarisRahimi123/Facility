@@ -1,5 +1,6 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client';
+// IMPORTANT: Do NOT statically import server-only modules (like next/headers) here,
+// because this file is imported by client components. Use dynamic imports inside
+// functions so the server-only code stays out of the client bundle.
 
 export interface StaffPermissions {
   manage_calendar: boolean;
@@ -31,8 +32,8 @@ export interface UserPermissionsSummary {
 export async function getUserPermissions(): Promise<UserPermissionsSummary | null> {
   try {
     const supabase = typeof window === 'undefined'
-      ? await createServerSupabaseClient()
-      : createBrowserSupabaseClient();
+      ? await (await import('@/lib/supabase/server')).createServerSupabaseClient()
+      : (await import('@/lib/supabase/client')).createClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -101,8 +102,8 @@ export async function getUserPermissions(): Promise<UserPermissionsSummary | nul
 export async function checkFacilityPermission(facilityId: string, permission: keyof StaffPermissions): Promise<boolean> {
   try {
     const supabase = typeof window === 'undefined'
-      ? await createServerSupabaseClient()
-      : createBrowserSupabaseClient();
+      ? await (await import('@/lib/supabase/server')).createServerSupabaseClient()
+      : (await import('@/lib/supabase/client')).createClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -152,8 +153,8 @@ export async function checkFacilityPermission(facilityId: string, permission: ke
 export async function getStaffAssignedFacilities(): Promise<string[]> {
   try {
     const supabase = typeof window === 'undefined'
-      ? await createServerSupabaseClient()
-      : createBrowserSupabaseClient();
+      ? await (await import('@/lib/supabase/server')).createServerSupabaseClient()
+      : (await import('@/lib/supabase/client')).createClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
