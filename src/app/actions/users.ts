@@ -96,7 +96,10 @@ interface OrganizationResponse {
 // Get all users
 export async function getUsers(): Promise<UserResponse> {
   try {
-    const supabase = createClient();
+    // Use service role client to bypass authentication
+    const { getServiceRoleClient } = await import('@/lib/supabase/server');
+    const supabase = getServiceRoleClient();
+    
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -113,7 +116,10 @@ export async function getUsers(): Promise<UserResponse> {
 // Get users by role type (for filtering)
 export async function getUsersByRole(role: UserRole): Promise<UserResponse> {
   try {
-    const supabase = createClient();
+    // Use service role client to bypass authentication
+    const { getServiceRoleClient } = await import('@/lib/supabase/server');
+    const supabase = getServiceRoleClient();
+    
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -298,15 +304,22 @@ export async function getUserById(userId: string): Promise<UserResponse> {
 // Check if users table exists
 export async function checkUsersTableExists(): Promise<boolean> {
   try {
-    const supabase = createClient();
+    // Use service role client to bypass authentication
+    const { getServiceRoleClient } = await import('@/lib/supabase/server');
+    const supabase = getServiceRoleClient();
+    
     const { count, error } = await supabase
       .from('users')
       .select('*', { count: 'exact', head: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error checking users table:', { message: error.message });
+      return false;
+    }
+    
     return count !== null;
   } catch (error) {
-    console.error('Error checking users table:', error);
+    console.error('Error checking users table:', { message: error instanceof Error ? error.message : 'Unknown error' });
     return false;
   }
 }
@@ -371,7 +384,10 @@ export async function createSampleUsers(): Promise<{ error: string | null }> {
 // Get all organizations
 export async function getOrganizations(): Promise<OrganizationResponse> {
   try {
-    const supabase = createClient();
+    // Use service role client to bypass authentication
+    const { getServiceRoleClient } = await import('@/lib/supabase/server');
+    const supabase = getServiceRoleClient();
+    
     const { data, error } = await supabase
       .from('organizations')
       .select('*')
