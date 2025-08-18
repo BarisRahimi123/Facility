@@ -51,49 +51,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       console.log('AuthContext: Auth user found:', authUser.email);
 
-      // Get the full user profile with timeout to prevent hanging
+      // Get the full user profile with aggressive timeout to prevent hanging
       let userData = null;
       let userError = null;
       
       try {
-        // Add timeout to prevent hanging in production
-        const queryPromise = supabase
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
+        console.log('AuthContext: Starting database query with timeout...');
         
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Database query timeout after 5s')), 5000)
-        );
+        const databaseOperation = async () => {
+          const result = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', authUser.id)
+            .single();
+          console.log('AuthContext: Database query completed');
+          return result;
+        };
         
-        const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-        userData = result?.data;
-        userError = result?.error;
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            console.error('AuthContext: Database query timeout after 3s');
+            reject(new Error('Database query timeout after 3s'));
+          }, 3000); // Reduced to 3 seconds for faster fallback
+        });
+        
+        const { data, error } = await Promise.race([databaseOperation(), timeoutPromise]) as any;
+        userData = data;
+        userError = error;
+        console.log('AuthContext: Query result processed');
       } catch (timeoutError) {
-        console.error('Database query timed out or failed:', timeoutError);
+        console.error('AuthContext: Database query timed out or failed:', timeoutError);
         userError = timeoutError;
       }
 
       if (userError) {
         console.error('Error fetching user profile by ID:', userError);
         
-        // Try fetching by email if ID fails (with timeout)
+        // Try fetching by email if ID fails (with aggressive timeout)
         try {
-          const emailQueryPromise = supabase
-            .from('users')
-            .select('*')
-            .eq('email', authUser.email)
-            .limit(1)
-            .maybeSingle();
+          console.log('AuthContext: Trying email query with timeout...');
           
-          const emailTimeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Email query timeout after 5s')), 5000)
-          );
+          const emailOperation = async () => {
+            const result = await supabase
+              .from('users')
+              .select('*')
+              .eq('email', authUser.email)
+              .limit(1)
+              .maybeSingle();
+            console.log('AuthContext: Email query completed');
+            return result;
+          };
           
-          const emailResult = await Promise.race([emailQueryPromise, emailTimeoutPromise]) as any;
-          const userByEmail = emailResult?.data;
-          const emailError = emailResult?.error;
+          const emailTimeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+              console.error('AuthContext: Email query timeout after 3s');
+              reject(new Error('Email query timeout after 3s'));
+            }, 3000); // Reduced to 3 seconds
+          });
+          
+          const { data: userByEmail, error: emailError } = await Promise.race([emailOperation(), emailTimeoutPromise]) as any;
           
           if (!emailError && userByEmail) {
             console.log('Found user by email instead of ID');
@@ -247,4 +263,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}  
+}              

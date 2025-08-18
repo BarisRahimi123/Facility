@@ -12,6 +12,7 @@ import AddUserModal from '@/components/people/AddUserModal';
 import AddOrganizationModal from '@/components/people/AddOrganizationModal';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
+import { getUserRoleWithTimeout } from '@/utils/databaseTimeout';
 import { InviteUserModal } from '@/components/people/InviteUserModal';
 import { EditRoleModal } from '@/components/people/EditRoleModal';
 import { UserRole } from '@/types/user';
@@ -62,22 +63,15 @@ export default function PeoplePage() {
           return;
         }
 
-        // Get user role from database
-        const { data: userProfile, error: profileError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', user.email)
-          .single();
+        // Get user role from database with timeout protection
+        const role = await getUserRoleWithTimeout(supabase, user);
         
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-          // If user doesn't exist in users table, redirect to sign-in
-          toast.error('User profile not found. Please contact an administrator.');
+        if (!role) {
+          console.error('Error fetching user profile: timeout or database error');
+          toast.error('Unable to verify permissions. Please try again.');
           router.push('/auth/sign-in');
           return;
         }
-        
-        const role = userProfile?.role;
         setUserRole(role);
         
         // Check if user has admin privileges - updated for three-tier system
@@ -912,4 +906,4 @@ export default function PeoplePage() {
       </div>
     </div>
   );
-}  
+}    
