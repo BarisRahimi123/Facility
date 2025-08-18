@@ -189,20 +189,39 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
 
       // Call the server action to send invitation with timeout
       console.log('🚀 Calling sendUserInvitation server action...');
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Frontend timeout after 15 seconds')), 15000);
-      });
-
-      const invitationPromise = sendUserInvitation({
+      console.log('📋 Invitation data prepared:', {
         email: formData.email,
         role: formData.role,
         facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
         organization_id: null,
         metadata: metadata
       });
+      
+      console.log('⏰ Setting up timeout promises...');
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Frontend timeout after 15 seconds')), 15000);
+      });
 
+      console.log('📡 Creating invitation promise...');
+      
+      // Try API route instead of server action for better reliability
+      const invitationPromise = fetch('/api/invitations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          role: formData.role,
+          facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
+          organization_id: null,
+          metadata: metadata
+        })
+      }).then(response => response.json());
+
+      console.log('🏁 Starting Promise.race...');
       const result = await Promise.race([invitationPromise, timeoutPromise]);
+      console.log('🎯 Promise.race completed with result:', result);
 
       if (!result.success) {
         console.error('Invitation error:', result.error);
