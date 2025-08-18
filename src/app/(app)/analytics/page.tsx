@@ -171,6 +171,7 @@ export default function AnalyticsPage() {
           return;
         }
         
+        // Mark as authorized immediately so UI can render
         setIsAuthorized(true);
       } catch (error) {
         console.error('Error checking authorization:', error);

@@ -119,6 +119,7 @@ export default function PeoplePage() {
         const canInviteUsers = role === 'master_admin' || role === 'sub_admin';
         setCanInvite(canInviteUsers);
         
+        // Mark as authorized immediately so UI can render
         setIsAuthorized(true);
       } catch (error) {
         console.error('Error checking authorization:', error);
