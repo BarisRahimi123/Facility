@@ -1,61 +1,32 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import type { Database } from '@/lib/database.types'
 
 // Paths that don't require authentication
 const publicPaths = [
   '/',
-  '/dashboard',
-  '/auth',
+  '/landing',
+  '/pricing',
   '/auth/sign-in',
-  '/auth/sign-in-simple',
-  '/auth/sign-in-new',
   '/auth/sign-up',
-  '/auth/signup',
   '/auth/reset-password',
   '/auth/update-password',
   '/auth/callback',
+  '/auth/verify-email',
   '/auth/accept-invitation',
-  '/(auth)',
-  '/(auth)/sign-in',
-  '/(auth)/sign-up',
-  '/(auth)/reset-password',
-  '/(auth)/update-password',
-  '/test-auth-route',
-  '/auth-debug',
-  '/auth-test',
-  '/api/auth/test-login',
-  '/api/test-db-connection',
-  '/api/forms/submit',
-  '/api/forms/share',
-  '/api/tokens/validate',
-  '/api/tokens/generate',
-  '/api/issues',
-  '/api/chat',
-  '/api/email/test',
-  '/api/plans',
-  '/api/plans/folders',
-  '/api/settings/email',
-  '/api/settings/sms',
-  '/api/settings/notifications',
-  '/api/settings/workflow',
-  '/api/tasks',
-  '/api/contractors',
-  '/supabase-test',
-  '/test-auth',
-  '/test-auth-mock',
-  '/test-people',
-  '/test-simple',
-  '/test-simple-page',
-  '/test-profile',
-  '/profile'
-]
-
-// API routes that should bypass middleware
-const API_ROUTES = [
+  '/auth/force-signout',
+  '/sms-consent',
+  '/contractor-form',
+  '/report',
+  '/maintenance/report',
   '/api/auth',
-  '/api/webhooks',
+  '/api/test-email',
+  '/api/test-sms',
+  '/api/sms/consent',
+  '/api/share',
+  '/api/issues',
+  '/api/contractors',
 ]
 
 // Assets and static content that should bypass authentication
@@ -65,12 +36,18 @@ const STATIC_PATHS = [
   '/images',
   '/fonts',
   '/assets',
+  '/public',
+  '/uploads',
+  '/animations',
 ]
 
 // Helper function to check if path is public
 function isPublicPath(pathname: string): boolean {
+  // Check exact matches and prefix matches
   return publicPaths.some(path => 
-    pathname === path || pathname.startsWith(path + '/')
+    pathname === path || 
+    pathname.startsWith(path + '/') ||
+    pathname.startsWith(path + '?')
   )
 }
 
@@ -79,46 +56,122 @@ function isStaticPath(pathname: string): boolean {
   return STATIC_PATHS.some(path => pathname.startsWith(path))
 }
 
-// Helper function to check if path is API route
-function isApiRoute(pathname: string): boolean {
-  return API_ROUTES.some(route => pathname.startsWith(route))
-}
-
-// Temporarily disable all authentication checks for development
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-
+  
   // Skip middleware for static assets
   if (isStaticPath(pathname)) {
     return NextResponse.next()
   }
-
-  // Skip middleware for API routes
-  if (isApiRoute(pathname)) {
+  
+  // Skip middleware for public paths
+  if (isPublicPath(pathname)) {
     return NextResponse.next()
   }
 
-  // For development: Allow all requests to pass through
-  // TODO: Enable proper auth checking when ready
-  if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next()
-  }
+  // Create response object
+  const response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  // Future: Add proper authentication logic here
-  // Example pattern for when auth is enabled:
-  /*
-  if (!isPublicPath(pathname)) {
-    // Check authentication
-    const response = NextResponse.next()
-    // Add auth logic here
+  // Get Supabase environment variables
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('[Middleware] Missing Supabase environment variables')
+    // In production, redirect to sign-in if env vars are missing
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.redirect(new URL('/auth/sign-in', request.url))
+    }
     return response
   }
-  */
 
-  return NextResponse.next()
+  // Create Supabase client with cookie handling
+  const supabase = createServerClient<Database>(
+    supabaseUrl,
+    supabaseAnonKey,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+          })
+        },
+        remove(name: string, options: CookieOptions) {
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+            maxAge: 0,
+          })
+        },
+      },
+    }
+  )
+
+  try {
+    // Get the session - this will also refresh it if needed
+    const { data: { session }, error } = await supabase.auth.getSession()
+    
+    // Log for debugging (will be removed later)
+    if (process.env.NODE_ENV === 'production') {
+      console.log(`[Middleware] Path: ${pathname}, Session: ${session ? 'Valid' : 'None'}, Error: ${error?.message || 'None'}`)
+    }
+    
+    // If no session and trying to access protected route, redirect to sign-in
+    if (!session) {
+      // Protected paths that require authentication
+      const protectedPaths = [
+        '/facilities',
+        '/facility',
+        '/buildings',
+        '/people',
+        '/analytics',
+        '/staff',
+        '/maintenance',
+        '/settings',
+        '/profile',
+        '/user-dashboard',
+        '/facilities-map',
+        '/admin',
+      ]
+      
+      const isProtectedPath = protectedPaths.some(path => 
+        pathname === path || pathname.startsWith(path + '/')
+      )
+      
+      if (isProtectedPath) {
+        console.log(`[Middleware] No session for protected path: ${pathname}, redirecting to sign-in`)
+        const redirectUrl = new URL('/auth/sign-in', request.url)
+        redirectUrl.searchParams.set('redirectTo', pathname)
+        return NextResponse.redirect(redirectUrl)
+      }
+    }
+    
+    // If session exists, refresh auth cookies in the response
+    if (session) {
+      // The cookies are already set in the response object via the set() method above
+      // This ensures the session stays fresh
+    }
+    
+  } catch (error) {
+    console.error('[Middleware] Error checking session:', error)
+    // In case of error, allow the request to continue
+    // The individual pages will handle auth checks
+  }
+
+  return response
 }
 
-// Configure which routes to run middleware on (Next.js 15 pattern)
+// Configure which routes to run middleware on
 export const config = {
   matcher: [
     /*
@@ -126,8 +179,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public assets (images, etc.)
+     * - public assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|images|fonts|assets).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js)$).*)',
   ],
-} 
+}

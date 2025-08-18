@@ -1,52 +1,7 @@
-[Cursor] Fix authentication loading and permission checking issues
+[Cursor] Fix facilities permissions + sign-out + SendGrid helpers
 
-## 🐛 Bug Fixes & Performance Improvements
-
-### Authentication State Management
-- Added sessionChecked flag to prevent duplicate authentication checks
-- Implemented intelligent cache hit detection to avoid unnecessary API calls
-- Only refreshes user data when cache misses or user ID mismatches
-- Fixed infinite loading loop after first login
-
-### Loading State Optimization
-- Sidebar shows navigation immediately when cached user exists
-- Loading spinner only displays for initial auth check, not cached sessions
-- Prevents loading state from bouncing between true/false
-- Shows menu items instantly on subsequent page loads
-
-### Auth Cache Management
-- Created centralized authCache utility with three core functions:
-  - clearAuthCache() - Safely clears all auth-related storage
-  - getCachedUser() - Retrieves cached user data with error handling
-  - cacheUser() - Saves user data to localStorage
-- Consistent cache handling across all components
-- Prevents stale data issues between login sessions
-
-### Sign-in/Sign-out Flow Improvements
-- Sign-in page clears stale auth cache on load
-- Sign-out properly clears all authentication data
-- Fixed issue where auth state persisted incorrectly between sessions
-- Improved redirect handling with proper cache cleanup
-
-### Event Handling Enhancements
-- Skip INITIAL_SESSION event to avoid duplicate session checks
-- Only refresh on TOKEN_REFRESHED when user actually changes
-- Better cleanup on component unmount to prevent memory leaks
-- Fixed race conditions in auth state changes
-
-### Invitation System
-- Enhanced error logging in InviteUserModal for better debugging
-- Improved error message extraction from Supabase responses
-- Added detailed error context for troubleshooting
-
-## 📊 Performance Impact
-- Reduced authentication API calls by ~70%
-- Instant UI display for cached sessions (0ms vs 500-1000ms)
-- Eliminated sidebar navigation flickering
-- Smooth page transitions without permission check delays
-
-## 🔧 Technical Details
-- Files modified: AuthContext, Sidebar, SignInPage, InviteUserModal
-- New utility: src/utils/authCache.ts
-- Improved useEffect dependencies to prevent circular updates
-- Better separation of hydration and session checking logic
+- Facilities: add robust permissions loading via /api/user/permissions and back-compat snake_case fields (facility_permissions, is_admin, is_staff, can_share_all, can_create_facility).
+- Facilities page: guard optional facility_permissions and use API route instead of direct server action import.
+- Auth: centralize sign-out via /api/auth/signout and update TopBar/Sidebar to call API + clear auth cache.
+- Email: add SendGrid troubleshooting docs and test scripts.
+- Misc: add clearAuthCache util and shell scripts to help configure SendGrid quickly.

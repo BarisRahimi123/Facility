@@ -35,6 +35,7 @@ const nextConfig = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
   },
   images: {
     remotePatterns: [
@@ -86,7 +87,8 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    // Temporarily disable console removal in production for debugging
+    removeConsole: false, // process.env.NODE_ENV === 'production',
   },
   logging: {
     fetches: {
