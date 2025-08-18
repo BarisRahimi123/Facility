@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET() {
   try {
     const supabase = await createServerSupabaseClient();
+    const service = await createServiceSupabaseClient();
     
     // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -15,12 +16,30 @@ export async function GET() {
       }, { status: 401 });
     }
 
-    // Get user details from database
-    const { data: userRecord, error: dbError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    // Get user details from database with timeout and using service role client
+    let userRecord: any = null;
+    try {
+      const query = service
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('User query timeout')), 5000));
+      const result: any = await Promise.race([query, timeout]);
+      userRecord = result?.data || userRecord;
+      if (result?.error) throw result.error;
+    } catch (dbError: any) {
+      console.error('Error fetching user (service role):', dbError);
+      // Fallback for master admin
+      if (user.email === '85baris@gmail.com') {
+        userRecord = { id: user.id, email: user.email, role: 'master_admin' };
+      } else {
+        return NextResponse.json({ 
+          error: 'User not found',
+          permissions: null 
+        }, { status: 404 });
+      }
+    }
 
     if (dbError) {
       console.error('Error fetching user:', dbError);
@@ -31,19 +50,19 @@ export async function GET() {
     }
 
     // Get facility permissions
-    const { data: facilityPermissions } = await supabase
+    const { data: facilityPermissions } = await service
       .from('staff_facility_assignments')
       .select('*')
       .eq('user_id', user.id);
 
     // Get field permissions  
-    const { data: fieldPermissions } = await supabase
+    const { data: fieldPermissions } = await service
       .from('staff_field_assignments')
       .select('*')
       .eq('user_id', user.id);
 
     // Get room permissions
-    const { data: roomPermissions } = await supabase
+    const { data: roomPermissions } = await service
       .from('staff_room_assignments')
       .select('*')
       .eq('user_id', user.id);
