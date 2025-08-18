@@ -56,6 +56,27 @@ export default function FacilitiesPage() {
         // TEMPORARY: Skip all Supabase calls and just authorize master admin
         console.log('🚀 Facilities: Using temporary bypass - setting authorized = true');
         setUserRole('master_admin');
+        
+        // Set mock permissions for master admin to show all buttons/features
+        const mockPermissions = {
+          userId: 'mock-user',
+          role: 'master_admin',
+          organizationId: 'mock-org',
+          facilityPermissions: [],
+          fieldPermissions: [],
+          roomPermissions: [],
+          canManageAnyCalendar: true,
+          canCreateAnyBlockouts: true,
+          canViewAnyReservations: true,
+          canViewAnyReports: true,
+          is_admin: true,
+          is_staff: false,
+          can_create_facility: true,
+          can_share_all: true,
+          facility_permissions: []
+        };
+        setUserPermissions(mockPermissions);
+        
         setIsAuthorized(true);
         
         // TODO: Re-enable full auth flow once we identify the hanging issue
