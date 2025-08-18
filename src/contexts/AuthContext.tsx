@@ -166,30 +166,91 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkInitialSession = async () => {
       if (sessionChecked) return; // Prevent duplicate checks
       
-      console.log('AuthContext: Checking initial session...');
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!mounted) return;
-      
-      setSessionChecked(true);
-      
-      if (session) {
-        console.log('AuthContext: Session found');
-        // Only refresh if we don't have cached user or if cached user ID doesn't match
-        const cachedUser = getCachedUser();
+      try {
+        console.log('AuthContext: Checking initial session...');
         
-        if (!cachedUser || cachedUser.id !== session.user.id) {
-          console.log('AuthContext: Refreshing user data (cache miss or mismatch)');
-          await refreshUser();
+        // Add timeout to getSession as well
+        const sessionPromise = supabase.auth.getSession();
+        const sessionTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
+        );
+        
+        const sessionResult = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
+        const session = sessionResult?.data?.session;
+        
+        if (!mounted) return;
+        
+        setSessionChecked(true);
+        
+        if (session) {
+          console.log('AuthContext: Session found');
+          // Only refresh if we don't have cached user or if cached user ID doesn't match
+          const cachedUser = getCachedUser();
+          
+          if (!cachedUser || cachedUser.id !== session.user.id) {
+            console.log('AuthContext: Refreshing user data (cache miss or mismatch)');
+            
+            // Add timeout to refreshUser call - this is the critical fix
+            const refreshPromise = refreshUser();
+            const refreshTimeoutPromise = new Promise((resolve) => 
+              setTimeout(() => {
+                console.error('RefreshUser timed out after 8s, using fallback');
+                // Create fallback user for master admin
+                if (session.user.email === '85baris@gmail.com') {
+                  const fallbackUser = {
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    full_name: session.user.user_metadata?.full_name || 'Master Admin',
+                    role: 'master_admin',
+                    is_active: true,
+                    created_at: session.user.created_at || new Date().toISOString(),
+                  };
+                  setUser(fallbackUser);
+                  cacheUser(fallbackUser);
+                }
+                setLoading(false); // CRITICAL: Always set loading to false
+                resolve(null);
+              }, 8000)
+            );
+            
+            await Promise.race([refreshPromise, refreshTimeoutPromise]);
+          } else {
+            console.log('AuthContext: Using cached user (cache hit)');
+            setLoading(false);
+          }
         } else {
-          console.log('AuthContext: Using cached user (cache hit)');
+          console.log('AuthContext: No session found');
+          setUser(null);
+          clearAuthCache();
           setLoading(false);
         }
-      } else {
-        console.log('AuthContext: No session found');
-        setUser(null);
-        clearAuthCache();
-        setLoading(false);
+      } catch (error) {
+        console.error('AuthContext: Session check failed:', error);
+        
+        // Emergency fallback for master admin
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user?.email === '85baris@gmail.com') {
+            console.log('Emergency fallback for master admin');
+            const emergencyUser = {
+              id: session.user.id,
+              email: session.user.email,
+              full_name: 'Master Admin',
+              role: 'master_admin',
+              is_active: true,
+              created_at: session.user.created_at || new Date().toISOString(),
+            };
+            setUser(emergencyUser);
+            cacheUser(emergencyUser);
+          } else {
+            setUser(null);
+          }
+        } catch (emergencyError) {
+          console.error('Emergency fallback failed:', emergencyError);
+          setUser(null);
+        }
+        
+        setLoading(false); // ALWAYS set loading to false
       }
     };
 
