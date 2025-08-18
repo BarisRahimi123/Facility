@@ -67,9 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setTimeout(() => reject(new Error('Database query timeout after 5s')), 5000)
         );
         
-        const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-        userData = result.data;
-        userError = result.error;
+        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+        userData = data;
+        userError = error;
       } catch (timeoutError) {
         console.error('Database query timed out or failed:', timeoutError);
         userError = timeoutError;
@@ -91,9 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setTimeout(() => reject(new Error('Email query timeout after 5s')), 5000)
           );
           
-          const emailResult = await Promise.race([emailQueryPromise, emailTimeoutPromise]) as any;
-          const userByEmail = emailResult.data;
-          const emailError = emailResult.error;
+          const { data: userByEmail, error: emailError } = await Promise.race([emailQueryPromise, emailTimeoutPromise]) as any;
           
           if (!emailError && userByEmail) {
             console.log('Found user by email instead of ID');
@@ -247,4 +245,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}      
+}          
