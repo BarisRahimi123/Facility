@@ -8,6 +8,7 @@ import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { BuildingTypes } from '@/types/building';
+import { mapLegacyRole } from '@/types/user';
 
 // Mock data for buildings
 const mockBuildings: Building[] = [
@@ -910,6 +911,83 @@ export async function getBuildings(): Promise<Building[]> {
     console.error('Unexpected error in getBuildings:', error);
     throw error;
   }
+}
+
+export async function getBuildingsByFacilityId(facilityId: string): Promise<Building[]> {
+  const supabase = await createServerSupabaseClient();
+  const serviceClient = getServiceRoleClient();
+  
+  console.log(`🏗️ getBuildingsByFacilityId called for facility: ${facilityId}`);
+  
+  // Get current user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    console.error('❌ Auth error in getBuildingsByFacilityId:', authError);
+    return [];
+  }
+
+  console.log(`👤 User authenticated: ${user.email}`);
+
+  // Try to get user profile, with fallback for master admin
+  let userProfile;
+  const { data: profile, error: profileError } = await serviceClient
+    .from('users')
+    .select('role, organization_id')
+    .eq('email', user.email)
+    .single();
+    
+  if (profileError || !profile) {
+    console.error('⚠️ Profile error:', profileError);
+    // Fallback for master admin
+    if (user.email === '85baris@gmail.com') {
+      console.log('🔧 Using master admin fallback for building access');
+      userProfile = {
+        role: 'master_admin',
+        organization_id: 'default-org'
+      };
+    } else {
+      console.error('❌ User profile not found for:', user.email);
+      return [];
+    }
+  } else {
+    userProfile = profile;
+  }
+
+  const userRole = mapLegacyRole(userProfile.role);
+  console.log(`🔐 User role: ${userRole}, org: ${userProfile.organization_id}`);
+
+  // Get facility first to check access
+  const { data: facility, error: facilityError } = await serviceClient
+    .from('facilities')
+    .select('organization_id')
+    .eq('id', facilityId)
+    .single();
+
+  if (facilityError) {
+    console.error('❌ Error fetching facility for building access check:', facilityError);
+    return [];
+  }
+
+  // Check organization access for non-master admins
+  if (userRole !== 'master_admin' && facility.organization_id !== userProfile.organization_id) {
+    console.error('🚫 User does not have access to this facility\'s buildings');
+    return [];
+  }
+
+  // Get buildings
+  const { data, error } = await serviceClient
+    .from('buildings')
+    .select('*')
+    .eq('facility_id', facilityId)
+    .order('name');
+
+  if (error) {
+    console.error('❌ Error fetching buildings:', error);
+    return [];
+  }
+
+  console.log(`✅ Found ${data?.length || 0} buildings for facility ${facilityId}`);
+  return data || [];
 }
 
 export async function getBuilding(id: string): Promise<Building | null> {

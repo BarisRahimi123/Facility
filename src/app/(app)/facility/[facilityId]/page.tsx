@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getFacilityById, deleteFacility } from '@/app/actions/facilities';
+import { getBuildingsByFacilityId } from '@/app/actions/buildings';
 import { Facility } from '@/types/facility';
 import {
   Card,
@@ -25,7 +26,7 @@ import { MapPin, Calendar, Users, Building2, AlertTriangle, Square, Plus, Activi
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { BuildingService } from '@/lib/services/building.service';
+
 import { Building } from '@/types/building';
 import toast from 'react-hot-toast';
 import { getDocuments } from '@/app/actions/documents';
@@ -255,7 +256,7 @@ export default function FacilityOverviewPage() {
           (async () => {
         try {
           const buildingsStartTime = Date.now();
-              const data = await BuildingService.getBuildingsByFacilityId(facilityId);
+              const data = await getBuildingsByFacilityId(facilityId);
           console.log(`Buildings loaded in ${Date.now() - buildingsStartTime}ms`);
               return data || [];
             } catch (error) {
@@ -330,7 +331,7 @@ export default function FacilityOverviewPage() {
       console.log(`🔍 loadBuildings: Refreshing buildings for facility ${facilityId}...`);
       console.log(`🔍 loadBuildings: facilityId type: ${typeof facilityId}, value: "${facilityId}"`);
       
-      const buildingsData = await BuildingService.getBuildingsByFacilityId(facilityId);
+      const buildingsData = await getBuildingsByFacilityId(facilityId);
       
       console.log(`🔍 loadBuildings: Raw response from BuildingService:`, buildingsData);
       console.log(`🔍 loadBuildings: Response type: ${typeof buildingsData}, isArray: ${Array.isArray(buildingsData)}`);
