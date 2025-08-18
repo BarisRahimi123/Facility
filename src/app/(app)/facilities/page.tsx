@@ -13,7 +13,19 @@ import { getAllFacilities } from '@/app/actions/facilities';
 import ShareFacilityModal from '@/components/facilities/ShareFacilityModal';
 import { createFacilityInvitation, ShareRequest } from '@/app/actions/facilitySharing';
 import { createClient } from '@/lib/supabase/client';
-import { getUserPermissions, UserPermissionsSummary } from '@/app/actions/staffPermissions';
+// Note: getUserPermissions is a server action - call it directly, don't import the type
+type UserPermissionsSummary = {
+  userId: string;
+  role: string | null;
+  organizationId: string | null;
+  facilityPermissions: any[];
+  fieldPermissions: any[];
+  roomPermissions: any[];
+  canManageAnyCalendar: boolean;
+  canCreateAnyBlockouts: boolean;
+  canViewAnyReservations: boolean;
+  canViewAnyReports: boolean;
+};
 
 export default function FacilitiesPage() {
   const router = useRouter();
@@ -76,12 +88,18 @@ export default function FacilitiesPage() {
           return;
         }
         
-        // Get detailed permissions
-        // Use client-safe permissions call; on Vercel server actions require cookies
-        const permissions = await getUserPermissions();
-        if (permissions) {
-          setUserPermissions(permissions);
-          console.log('User permissions loaded:', permissions);
+        // Get detailed permissions via API route
+        try {
+          const response = await fetch('/api/user/permissions');
+          if (response.ok) {
+            const { permissions } = await response.json();
+            if (permissions) {
+              setUserPermissions(permissions);
+              console.log('User permissions loaded:', permissions);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading permissions:', error);
         }
         
         setIsAuthorized(true);
@@ -131,7 +149,7 @@ export default function FacilitiesPage() {
   const handleShareFacility = (facility?: Facility) => {
     // Check if user can share facilities
     if (!userPermissions?.can_share_all && facility) {
-      const facilityPermission = userPermissions?.facility_permissions.find(
+      const facilityPermission = (userPermissions as any)?.facility_permissions?.find(
         fp => fp.facility_id === facility.id
       );
       if (!facilityPermission?.can_share) {
@@ -165,7 +183,7 @@ export default function FacilitiesPage() {
       return { can_edit: true, can_delete: true, can_share: true };
     }
     
-    const facilityPermission = userPermissions?.facility_permissions.find(
+    const facilityPermission = (userPermissions as any)?.facility_permissions?.find(
       fp => fp.facility_id === facilityId
     );
     

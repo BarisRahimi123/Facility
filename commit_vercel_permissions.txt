@@ -1,0 +1,4 @@
+[Cursor] Fix permissions check on Vercel (SSR/CSR-aware Supabase client)
+
+- Use createServerSupabaseClient() on server and browser client on client side
+- Prevent hanging 'Checking permissions...' in protected pages on Vercel

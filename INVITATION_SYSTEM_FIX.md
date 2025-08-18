@@ -103,3 +103,4 @@ The correct three-tier hierarchy is:
 - `scripts/fix-invitation-roles-three-tier.sql` - Complete fix with all functions
 - `scripts/test-invitation-system.sql` - Diagnostic queries to test the system
 
+

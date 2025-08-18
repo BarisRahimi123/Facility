@@ -1,0 +1,3 @@
+[Cursor] Fix build error: avoid static import of next/headers via dynamic client selection
+
+- Use dynamic imports inside staffPermissions.ts to keep server-only code out of client bundle

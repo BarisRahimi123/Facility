@@ -1,0 +1,4 @@
+[Cursor] Await cookies() in signout route + commit remaining changes
+
+- Fix: await cookies() in /api/auth/signout to satisfy Next.js dynamic APIs requirement
+- Chore: commit remaining docs/scripts/env changes and deletions
