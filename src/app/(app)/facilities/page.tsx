@@ -114,21 +114,27 @@ export default function FacilitiesPage() {
           return;
         }
         
-        // Get detailed permissions via API route
+        // Mark as authorized first so UI can proceed even if permissions call is slow
+        setIsAuthorized(true);
+
+        // Get detailed permissions via API route (with 5s timeout)
         try {
-          const response = await fetch('/api/user/permissions');
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), 5000);
+          const response = await fetch('/api/user/permissions', { signal: controller.signal });
+          clearTimeout(id);
           if (response.ok) {
             const { permissions } = await response.json();
             if (permissions) {
               setUserPermissions(permissions);
               console.log('User permissions loaded:', permissions);
             }
+          } else {
+            console.warn('Permissions API returned status', response.status);
           }
         } catch (error) {
-          console.error('Error loading permissions:', error);
+          console.error('Error loading permissions (ignored):', error);
         }
-        
-        setIsAuthorized(true);
       } catch (error) {
         console.error('Error checking authorization:', error);
         toast.error('Error checking permissions');
