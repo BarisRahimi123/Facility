@@ -215,10 +215,13 @@ export default function FacilitiesPage() {
 
   async function loadFacilities() {
     try {
+      console.log('🔍 Facilities: Loading facilities data...');
       const data = await getAllFacilities();
+      console.log('✅ Facilities: Loaded facilities:', data?.length || 0, 'facilities');
+      console.log('📋 Facilities: Facility names:', data?.map(f => f.name) || []);
       setFacilities(data);
     } catch (error) {
-      console.error('Error loading facilities:', error);
+      console.error('❌ Facilities: Error loading facilities:', error);
       toast.error('Failed to load facilities');
     } finally {
       setIsLoading(false);
