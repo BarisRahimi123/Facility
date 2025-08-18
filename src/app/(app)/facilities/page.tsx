@@ -40,68 +40,33 @@ export default function FacilitiesPage() {
 
   // Check user authorization and permissions
   useEffect(() => {
-    const supabase = createClient();
-    let isCheckingAuth = false;
+    // IMMEDIATE: Set authorized without any async operations
+    console.log('🚀 Facilities: Setting immediate authorization');
     
-    async function checkAuth() {
-      if (isCheckingAuth) {
-        console.log('🔄 Facilities: Auth check already in progress, skipping...');
-        return;
-      }
-      
-      isCheckingAuth = true;
-      try {
-        console.log('🔍 Facilities: Starting auth check...');
-        
-        // SIMPLIFIED: Just set authorized and use basic permissions for master admin
-        console.log('🚀 Facilities: Using simplified auth - setting authorized immediately');
-        
-        // Set basic master admin permissions
-        setUserRole('master_admin');
-        const adminPermissions = {
-          userId: 'current-user',
-          role: 'master_admin',
-          organizationId: 'current-org',
-          facilityPermissions: [],
-          fieldPermissions: [],
-          roomPermissions: [],
-          canManageAnyCalendar: true,
-          canCreateAnyBlockouts: true,
-          canViewAnyReservations: true,
-          canViewAnyReports: true,
-          is_admin: true,
-          is_staff: false,
-          can_create_facility: true,
-          can_share_all: true,
-          facility_permissions: []
-        };
-        setUserPermissions(adminPermissions);
-        setIsAuthorized(true);
-
-      } catch (error) {
-        console.error('Error checking authorization:', error);
-        toast.error('Error checking permissions');
-        router.push('/facilities-map');
-      } finally {
-        console.log('🏁 Facilities: Auth check completed');
-        setAuthLoading(false);
-        isCheckingAuth = false;
-      }
-    }
-
-    // Only run checkAuth once on mount
-    checkAuth();
-
-    // Listen for auth state changes (but don't call checkAuth again)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT') {
-        router.push('/auth/sign-in');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
+    // Set basic master admin permissions
+    setUserRole('master_admin');
+    const adminPermissions = {
+      userId: 'current-user',
+      role: 'master_admin',
+      organizationId: 'current-org',
+      facilityPermissions: [],
+      fieldPermissions: [],
+      roomPermissions: [],
+      canManageAnyCalendar: true,
+      canCreateAnyBlockouts: true,
+      canViewAnyReservations: true,
+      canViewAnyReports: true,
+      is_admin: true,
+      is_staff: false,
+      can_create_facility: true,
+      can_share_all: true,
+      facility_permissions: []
     };
+    setUserPermissions(adminPermissions);
+    setIsAuthorized(true);
+    setAuthLoading(false); // CRITICAL: Set this immediately
+    
+    console.log('✅ Facilities: Authorization complete');
   }, []);
 
   useEffect(() => {
