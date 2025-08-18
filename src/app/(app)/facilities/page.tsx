@@ -56,10 +56,10 @@ export default function FacilitiesPage() {
         // Use real authentication with shorter timeouts and better error handling
         console.log('🔍 Facilities: Checking real authentication...');
         
-        // First check if we have a session with 3s timeout
+        // Check for session with longer timeout and better fallback
         const sessionPromise = supabase.auth.getSession();
         const sessionTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session timeout')), 3000)
+          setTimeout(() => reject(new Error('Session timeout')), 8000)
         );
         
         let session;
@@ -67,9 +67,25 @@ export default function FacilitiesPage() {
           const result = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
           session = result?.data?.session;
         } catch (error) {
-          console.error('Session check failed:', error);
-          router.push('/auth/sign-in');
-          return;
+          console.warn('⚠️ Facilities: Session check failed, checking for signed-in user');
+          
+          // Try alternative auth check
+          try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              console.log('✅ Facilities: Found authenticated user via getUser()');
+              // Create a mock session object
+              session = { user };
+            } else {
+              console.error('No authenticated user found');
+              router.push('/auth/sign-in');
+              return;
+            }
+          } catch (userError) {
+            console.error('Auth check completely failed:', userError);
+            router.push('/auth/sign-in');
+            return;
+          }
         }
         
         if (!session) {

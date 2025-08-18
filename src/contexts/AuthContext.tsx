@@ -172,14 +172,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Use real session check with better error handling and shorter timeouts
         console.log('🔍 AuthContext: Checking real session with 3s timeout...');
         
-        // Use shorter timeout and better error handling
-        const sessionPromise = supabase.auth.getSession();
-        const sessionTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session check timeout')), 3000)
-        );
-        
-        const sessionResult = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
-        const session = sessionResult?.data?.session;
+        // Try session check with 8s timeout and fallback to cached user
+        let session = null;
+        try {
+          const sessionPromise = supabase.auth.getSession();
+          const sessionTimeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 8000)
+          );
+          
+          const sessionResult = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
+          session = sessionResult?.data?.session;
+          console.log('✅ AuthContext: Session check completed');
+        } catch (timeoutError) {
+          console.warn('⚠️ AuthContext: Session check timed out, using cached user');
+          
+          // Use cached user if available instead of kicking user out
+          const cachedUser = getCachedUser();
+          if (cachedUser) {
+            console.log('🔧 AuthContext: Using cached user:', cachedUser.email);
+            setUser(cachedUser);
+            setSessionChecked(true);
+            setLoading(false);
+            return;
+          }
+          
+          // If no cached user, redirect to sign-in
+          console.log('❌ AuthContext: No cached user, redirecting to sign-in');
+          throw timeoutError;
+        }
         
         if (!mounted) return;
         

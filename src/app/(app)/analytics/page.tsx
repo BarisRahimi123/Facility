@@ -129,7 +129,7 @@ export default function AnalyticsPage() {
       try {
         console.log('🔍 Analytics: Starting auth check...');
         
-        // TEMPORARY: Skip all Supabase calls and just authorize master admin
+        // TEMPORARY: Keep bypass for Analytics page to focus on facility creation fix  
         console.log('🚀 Analytics: Using temporary bypass - setting authorized = true');
         setUserRole('master_admin');
         setIsAuthorized(true);

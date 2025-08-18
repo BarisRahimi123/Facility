@@ -47,7 +47,7 @@ export default function PeoplePage() {
       try {
         console.log('🔍 People: Starting auth check...');
         
-        // TEMPORARY: Skip all Supabase calls and just authorize master admin
+        // TEMPORARY: Keep bypass for People page to focus on facility creation fix
         console.log('🚀 People: Using temporary bypass - setting authorized = true');
         setUserRole('master_admin');
         setCanInvite(true);
