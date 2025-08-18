@@ -151,6 +151,14 @@ const createDemoData = (): StaffDashboardData => {
 // Client-side function to get staff dashboard data
 async function getStaffDashboardData(): Promise<{ data: StaffDashboardData | null; error: string | null }> {
   try {
+    console.log('🔍 Staff: Starting dashboard data load...');
+    
+    // TEMPORARY: Skip Supabase calls and return empty data (will show demo mode)
+    console.log('🚀 Staff: Using temporary bypass - returning empty data for demo mode');
+    return { data: null, error: null }; // This will trigger demo mode
+    
+    // TODO: Re-enable full data loading once we identify the hanging issue
+    /*
     const supabase = createClient();
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -351,6 +359,7 @@ async function getStaffDashboardData(): Promise<{ data: StaffDashboardData | nul
     };
 
     return { data: dashboardData, error: null };
+    */
   } catch (error) {
     console.error('Error in getStaffDashboardData:', error);
     return { data: null, error: 'Failed to fetch dashboard data' };
