@@ -68,8 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         );
         
         const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-        userData = result?.data;
-        userError = result?.error;
+        userData = result.data;
+        userError = result.error;
       } catch (timeoutError) {
         console.error('Database query timed out or failed:', timeoutError);
         userError = timeoutError;
@@ -92,8 +92,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           );
           
           const emailResult = await Promise.race([emailQueryPromise, emailTimeoutPromise]) as any;
-          const userByEmail = emailResult?.data;
-          const emailError = emailResult?.error;
+          const userByEmail = emailResult.data;
+          const emailError = emailResult.error;
           
           if (!emailError && userByEmail) {
             console.log('Found user by email instead of ID');
@@ -247,4 +247,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}  
+}      
