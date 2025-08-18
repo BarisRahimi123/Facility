@@ -9,10 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { createClient } from '@/lib/supabase/client';
 import { UserPlus, Mail, Shield, Building, Briefcase, Phone, User, Crown, MapPin } from 'lucide-react';
 import { sendInvitationEmail } from '@/lib/email';
-import { sendUserInvitation } from '@/app/actions/invitations';
 
 interface InviteUserModalProps {
   isOpen: boolean;
@@ -138,27 +136,11 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
     setLoading(true);
 
     try {
-      console.log('🔐 Checking authentication...');
-      const supabase = createClient();
-      
-      // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error('❌ User auth error:', userError);
-        throw new Error('Authentication failed: ' + userError.message);
-      }
-      
-      if (!user) {
-        console.error('❌ No user found');
-        throw new Error('Not authenticated');
-      }
-      
-      console.log('✅ User authenticated:', user.email);
+      console.log('🚀 Starting invitation process...');
 
-      console.log('Sending invitation:', {
+      console.log('📋 Sending invitation:', {
         email: formData.email,
-        role: formData.role,
-        invitedBy: user.id
+        role: formData.role
       });
 
       // Prepare metadata based on role
@@ -202,7 +184,17 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         setTimeout(() => reject(new Error('Frontend timeout after 15 seconds')), 15000);
       });
 
-      console.log('📡 Creating invitation promise...');
+      console.log('📡 Making API request to /api/invitations...');
+      
+      const requestData = {
+        email: formData.email,
+        role: formData.role,
+        facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
+        organization_id: null,
+        metadata: metadata
+      };
+      
+      console.log('📤 Request data:', requestData);
       
       // Try API route instead of server action for better reliability
       const invitationPromise = fetch('/api/invitations', {
@@ -210,14 +202,16 @@ export function InviteUserModal({ isOpen, onClose, currentUserRole, onInviteSent
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: formData.email,
-          role: formData.role,
-          facility_id: formData.facility_id && formData.facility_id !== 'none' ? formData.facility_id : null,
-          organization_id: null,
-          metadata: metadata
-        })
-      }).then(response => response.json());
+        body: JSON.stringify(requestData)
+      }).then(async response => {
+        console.log('📥 API response received, status:', response.status);
+        const data = await response.json();
+        console.log('📦 Response data:', data);
+        return data;
+      }).catch(error => {
+        console.error('❌ Fetch error:', error);
+        throw error;
+      });
 
       console.log('🏁 Starting Promise.race...');
       const result = await Promise.race([invitationPromise, timeoutPromise]);
