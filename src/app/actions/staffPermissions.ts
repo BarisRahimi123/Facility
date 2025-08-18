@@ -1,6 +1,5 @@
-'use server';
-
-import { createClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client';
 
 export interface StaffPermissions {
   manage_calendar: boolean;
@@ -31,7 +30,9 @@ export interface UserPermissionsSummary {
 
 export async function getUserPermissions(): Promise<UserPermissionsSummary | null> {
   try {
-    const supabase = await createClient();
+    const supabase = typeof window === 'undefined'
+      ? await createServerSupabaseClient()
+      : createBrowserSupabaseClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -99,7 +100,9 @@ export async function getUserPermissions(): Promise<UserPermissionsSummary | nul
 
 export async function checkFacilityPermission(facilityId: string, permission: keyof StaffPermissions): Promise<boolean> {
   try {
-    const supabase = await createClient();
+    const supabase = typeof window === 'undefined'
+      ? await createServerSupabaseClient()
+      : createBrowserSupabaseClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -148,7 +151,9 @@ export async function checkFacilityPermission(facilityId: string, permission: ke
 
 export async function getStaffAssignedFacilities(): Promise<string[]> {
   try {
-    const supabase = await createClient();
+    const supabase = typeof window === 'undefined'
+      ? await createServerSupabaseClient()
+      : createBrowserSupabaseClient();
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();

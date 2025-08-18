@@ -77,6 +77,7 @@ export default function FacilitiesPage() {
         }
         
         // Get detailed permissions
+        // Use client-safe permissions call; on Vercel server actions require cookies
         const permissions = await getUserPermissions();
         if (permissions) {
           setUserPermissions(permissions);
