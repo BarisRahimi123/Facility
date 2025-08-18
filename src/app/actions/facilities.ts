@@ -61,14 +61,39 @@ export async function createFacility(formData: CreateFacilityFormData) {
   // Get current user with organization
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
+    console.error('Auth error in createFacility:', authError);
     return { error: 'User not authenticated' };
   }
 
-  const { data: userProfile } = await supabase
+  // Try to get user profile, with fallback for master admin
+  let userProfile;
+  const { data: profile, error: profileError } = await serviceClient
     .from('users')
     .select('role, organization_id')
-    .eq('id', user.id)
+    .eq('email', user.email)
     .single();
+    
+  if (profileError || !profile) {
+    console.error('Profile error:', profileError);
+    // Fallback for master admin
+    if (user.email === '85baris@gmail.com') {
+      console.log('Using master admin fallback for facility creation');
+      // Get the first organization or create a default one
+      const { data: orgs } = await serviceClient
+        .from('organizations')
+        .select('id')
+        .limit(1);
+      
+      userProfile = {
+        role: 'master_admin',
+        organization_id: orgs?.[0]?.id || 'default-org'
+      };
+    } else {
+      return { error: 'User profile not found' };
+    }
+  } else {
+    userProfile = profile;
+  }
 
   if (!userProfile?.organization_id) {
     return { error: 'User must belong to an organization' };
