@@ -13,6 +13,7 @@ import { getAllFacilities } from '@/app/actions/facilities';
 import ShareFacilityModal from '@/components/facilities/ShareFacilityModal';
 import { createFacilityInvitation, ShareRequest } from '@/app/actions/facilitySharing';
 import { createClient } from '@/lib/supabase/client';
+import { getUserRoleWithTimeout } from '@/utils/databaseTimeout';
 // Note: getUserPermissions is a server action - call it directly, don't import the type
 type UserPermissionsSummary = {
   userId: string;
@@ -61,22 +62,15 @@ export default function FacilitiesPage() {
           return;
         }
 
-        // Get user role from database
-        const { data: userProfile, error: profileError } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', user.email)
-          .single();
+        // Get user role from database with timeout protection
+        const role = await getUserRoleWithTimeout(supabase, user);
         
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-          // If user doesn't exist in users table, redirect to sign-in
-          toast.error('User profile not found. Please contact an administrator.');
+        if (!role) {
+          console.error('Error fetching user profile: timeout or database error');
+          toast.error('Unable to verify permissions. Please try again.');
           router.push('/auth/sign-in');
           return;
         }
-        
-        const role = userProfile?.role;
         setUserRole(role);
         
         // Check if user has facility access
@@ -396,4 +390,4 @@ export default function FacilitiesPage() {
       />
     </div>
   );
-}  
+}    

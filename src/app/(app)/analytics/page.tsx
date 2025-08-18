@@ -15,6 +15,7 @@ import { calculateCapacityByCode } from '@/utils/capacityCalculator';
 import { getBuildings, getRooms } from '@/app/actions/buildings';
 import { getFacilitiesForAnalytics } from '@/app/actions/facilities';
 import { createClient } from '@/lib/supabase/client';
+import { getUserRoleWithTimeout } from '@/utils/databaseTimeout';
 import { toast } from 'sonner';
 
 // Analytics data based on what we actually have implemented
@@ -135,14 +136,15 @@ export default function AnalyticsPage() {
           return;
         }
 
-        // Get user role from database
-        const { data: userProfile } = await supabase
-          .from('users')
-          .select('role')
-          .eq('email', user.email)
-          .single();
+        // Get user role from database with timeout protection
+        const role = await getUserRoleWithTimeout(supabase, user);
         
-        const role = userProfile?.role;
+        if (!role) {
+          console.error('Error fetching user profile: timeout or database error');
+          toast.error('Unable to verify permissions. Please try again.');
+          router.push('/auth/sign-in');
+          return;
+        }
         setUserRole(role);
         
         // Check if user has admin privileges
@@ -1078,4 +1080,4 @@ function StatusCard({
       <span className="text-lg font-bold text-card-foreground">{value}</span>
     </div>
   );
-}  
+}    

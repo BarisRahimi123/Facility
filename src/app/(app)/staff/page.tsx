@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { createClient } from '@/lib/supabase/client';
+import { withTimeout } from '@/utils/databaseTimeout';
 import type { StaffDashboardData, FacilityWithFields, FieldWithBlockouts, RoomWithBlockouts } from '@/types/staff';
 import StaffCalendarView from '@/components/staff/StaffCalendarView';
 import CreateBlockoutModal from '@/components/staff/CreateBlockoutModal';
@@ -158,119 +159,77 @@ async function getStaffDashboardData(): Promise<{ data: StaffDashboardData | nul
       return { data: null, error: 'User not authenticated' };
     }
 
-    // Get staff assignments with facility and field data
-    const { data: assignments, error: assignmentsError } = await supabase
-      .from('staff_facility_assignments')
-      .select(`
-        *,
-        facilities (
-          id,
-          name,
-          address,
-          facility_type,
-          status,
+    // Get staff assignments with facility and field data (with timeout)
+    const assignmentsResult = await withTimeout(
+      supabase
+        .from('staff_facility_assignments')
+        .select(`
+          *,
+          facilities (
+            id,
+            name,
+            address,
+            facility_type,
+            status,
+            fields (
+              id,
+              name,
+              type,
+              status,
+              hourly_rate
+            )
+          )
+        `)
+        .eq('user_id', user.id),
+      5000,
+      'Staff facility assignments query'
+    );
+
+    if (assignmentsResult.error) {
+      return { data: null, error: assignmentsResult.timedOut ? 'Database query timed out' : assignmentsResult.error.message };
+    }
+    
+    const assignments = assignmentsResult.data;
+
+    // Get field assignments (with timeout)
+    const fieldAssignmentsResult = await withTimeout(
+      supabase
+        .from('staff_field_assignments')
+        .select(`
+          *,
           fields (
             id,
             name,
             type,
             status,
-            hourly_rate
-          )
-        )
-      `)
-      .eq('user_id', user.id);
-
-    if (assignmentsError) {
-      return { data: null, error: assignmentsError.message };
-    }
-
-    // Get field assignments
-    const { data: fieldAssignments, error: fieldAssignmentsError } = await supabase
-      .from('staff_field_assignments')
-      .select(`
-        *,
-        fields (
-          id,
-          name,
-          type,
-          status,
-          hourly_rate,
-          facility_id,
-          facilities (
-            name
-          )
-        )
-      `)
-      .eq('user_id', user.id);
-
-    if (fieldAssignmentsError) {
-      console.error('Error fetching field assignments:', fieldAssignmentsError);
-    }
-
-    // Get room assignments
-    const { data: roomAssignments, error: roomAssignmentsError } = await supabase
-      .from('staff_room_assignments')
-      .select(`
-        *,
-        rooms (
-          id,
-          room_number,
-          type,
-          building_id,
-          buildings (
-            name,
+            hourly_rate,
             facility_id,
             facilities (
               name
             )
           )
-        )
-      `)
-      .eq('user_id', user.id);
-
-    if (roomAssignmentsError) {
-      console.error('Error fetching room assignments:', roomAssignmentsError.message || 'Unknown error');
-      // Don't fail the entire page load, just continue without room assignments
-    }
-
-    // Get upcoming field blockouts for assigned fields
-    const fieldIds = fieldAssignments?.map((a: any) => a.field_id) || [];
-    let fieldBlockouts: any[] = [];
-    if (fieldIds.length > 0) {
-      const { data: fieldBlockoutsData, error: fieldBlockoutsError } = await supabase
-        .from('field_blockout_dates')
-        .select(`
-          *,
-          fields (
-            id,
-            name,
-            facility_id
-          )
         `)
-        .in('field_id', fieldIds)
-        .eq('status', 'active')
-        .gte('start_date', new Date().toISOString().split('T')[0])
-        .order('start_date', { ascending: true })
-        .limit(10);
+        .eq('user_id', user.id),
+      5000,
+      'Staff field assignments query'
+    );
 
-      if (fieldBlockoutsError) {
-        console.error('Error fetching field blockouts:', fieldBlockoutsError);
-      } else {
-        fieldBlockouts = fieldBlockoutsData || [];
-      }
+    if (fieldAssignmentsResult.error) {
+      console.error('Error fetching field assignments:', fieldAssignmentsResult.timedOut ? 'Query timed out' : fieldAssignmentsResult.error);
     }
+    
+    const fieldAssignments = fieldAssignmentsResult.data;
 
-    // Get upcoming room blockouts for assigned rooms
-    const roomIds = roomAssignments?.map((a: any) => a.room_id) || [];
-    let roomBlockouts: any[] = [];
-    if (roomIds.length > 0) {
-      const { data: roomBlockoutsData, error: roomBlockoutsError } = await supabase
-        .from('room_blockout_dates')
+    // Get room assignments (with timeout)
+    const roomAssignmentsResult = await withTimeout(
+      supabase
+        .from('staff_room_assignments')
         .select(`
           *,
           rooms (
             id,
-            number,
+            room_number,
+            type,
             building_id,
             buildings (
               name,
@@ -281,16 +240,84 @@ async function getStaffDashboardData(): Promise<{ data: StaffDashboardData | nul
             )
           )
         `)
-        .in('room_id', roomIds)
-        .eq('status', 'active')
-        .gte('start_date', new Date().toISOString().split('T')[0])
-        .order('start_date', { ascending: true })
-        .limit(10);
+        .eq('user_id', user.id),
+      5000,
+      'Staff room assignments query'
+    );
 
-      if (roomBlockoutsError) {
-        console.error('Error fetching room blockouts:', roomBlockoutsError);
+    if (roomAssignmentsResult.error) {
+      console.error('Error fetching room assignments:', roomAssignmentsResult.timedOut ? 'Query timed out' : roomAssignmentsResult.error.message || 'Unknown error');
+      // Don't fail the entire page load, just continue without room assignments
+    }
+    
+    const roomAssignments = roomAssignmentsResult.data;
+
+    // Get upcoming field blockouts for assigned fields
+    const fieldIds = fieldAssignments?.map((a: any) => a.field_id) || [];
+    let fieldBlockouts: any[] = [];
+    if (fieldIds.length > 0) {
+      const fieldBlockoutsResult = await withTimeout(
+        supabase
+          .from('field_blockout_dates')
+          .select(`
+            *,
+            fields (
+              id,
+              name,
+              facility_id
+            )
+          `)
+          .in('field_id', fieldIds)
+          .eq('status', 'active')
+          .gte('start_date', new Date().toISOString().split('T')[0])
+          .order('start_date', { ascending: true })
+          .limit(10),
+        5000,
+        'Field blockouts query'
+      );
+
+      if (fieldBlockoutsResult.error) {
+        console.error('Error fetching field blockouts:', fieldBlockoutsResult.timedOut ? 'Query timed out' : fieldBlockoutsResult.error);
       } else {
-        roomBlockouts = roomBlockoutsData || [];
+        fieldBlockouts = fieldBlockoutsResult.data || [];
+      }
+    }
+
+    // Get upcoming room blockouts for assigned rooms
+    const roomIds = roomAssignments?.map((a: any) => a.room_id) || [];
+    let roomBlockouts: any[] = [];
+    if (roomIds.length > 0) {
+      const roomBlockoutsResult = await withTimeout(
+        supabase
+          .from('room_blockout_dates')
+          .select(`
+            *,
+            rooms (
+              id,
+              number,
+              building_id,
+              buildings (
+                name,
+                facility_id,
+                facilities (
+                  name
+                )
+              )
+            )
+          `)
+          .in('room_id', roomIds)
+          .eq('status', 'active')
+          .gte('start_date', new Date().toISOString().split('T')[0])
+          .order('start_date', { ascending: true })
+          .limit(10),
+        5000,
+        'Room blockouts query'
+      );
+
+      if (roomBlockoutsResult.error) {
+        console.error('Error fetching room blockouts:', roomBlockoutsResult.timedOut ? 'Query timed out' : roomBlockoutsResult.error);
+      } else {
+        roomBlockouts = roomBlockoutsResult.data || [];
       }
     }
 
@@ -902,4 +929,4 @@ export default function StaffDashboard() {
       </div>
     </div>
   );
-} 
+}  
