@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -98,7 +98,7 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
     taxAmount: 0,
     depositAmount: 0
   });
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading } = useAuth();
   const { toast } = useToast();
 
   const fieldTypeEmoji = {
@@ -229,10 +229,10 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
     if (user && !userLoading) {
       setReservationData(prev => ({
         ...prev,
-        contactName: user.name || '',
+        contactName: user.full_name || '',
         contactEmail: user.email || '',
         contactPhone: user.phone || '',
-        organization: (user.type === 'external' || user.type === 'vendor') ? user.company : ''
+        organization: user.company || ''
       }));
     }
   }, [user, userLoading]);
@@ -254,10 +254,10 @@ export function FieldDetailModal({ field, isOpen, onClose, onReserveField }: Fie
             setReservationData(prev => ({
               ...savedData.reservationData,
               // Update contact info with authenticated user data
-              contactName: user.name || savedData.reservationData.contactName,
+              contactName: user.full_name || savedData.reservationData.contactName,
               contactEmail: user.email || savedData.reservationData.contactEmail,
               contactPhone: user.phone || savedData.reservationData.contactPhone,
-              organization: (user.type === 'external' || user.type === 'vendor') ? user.company : savedData.reservationData.organization
+              organization: user.company || savedData.reservationData.organization
             }));
           }
           

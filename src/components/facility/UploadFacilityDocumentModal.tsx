@@ -9,10 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Upload, X, FileText } from 'lucide-react';
 import { uploadDocument } from '@/app/actions/documents';
+import { getFolders, type DocumentFolder } from '@/app/actions/documentFolders';
 import toast from 'react-hot-toast';
+import { useEffect } from 'react';
 
 interface UploadFacilityDocumentModalProps {
   facilityId: string;
+  folderId?: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -25,14 +28,34 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: UploadFacilityDocumentModalProps) {
+export function UploadFacilityDocumentModal({ facilityId, folderId, onClose, onSuccess }: UploadFacilityDocumentModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [documentName, setDocumentName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('General');
   const [tags, setTags] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState(folderId || 'unorganized');
+  const [folders, setFolders] = useState<DocumentFolder[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Update selected folder when prop changes (e.g., when navigating to different folder)
+  useEffect(() => {
+    setSelectedFolderId(folderId || 'unorganized');
+  }, [folderId]);
+
+  // Load folders for the facility
+  useEffect(() => {
+    async function loadFolders() {
+      try {
+        const folderList = await getFolders(facilityId, 'facility');
+        setFolders(folderList);
+      } catch (error) {
+        console.error('Error loading folders:', error);
+      }
+    }
+    loadFolders();
+  }, [facilityId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -73,6 +96,7 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
 
     console.log('Uploading document:', {
       facilityId,
+      folderId,
       documentName,
       fileName: selectedFile.name,
       fileSize: selectedFile.size,
@@ -89,6 +113,10 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
       formData.append('category', category);
       formData.append('tags', tags);
       formData.append('file', selectedFile);
+      // Only append folder_id if it's a valid UUID (not 'unorganized' or empty)
+      if (selectedFolderId && selectedFolderId !== 'unorganized' && selectedFolderId.trim() !== '') {
+        formData.append('folder_id', selectedFolderId);
+      }
 
       const result = await uploadDocument(formData);
       
@@ -113,6 +141,9 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
       <DialogContent className="sm:max-w-[500px] bg-background border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Upload Document</DialogTitle>
+          <DialogDescription className="text-muted-foreground">
+            Select a file and details. Choose a folder or leave unorganized.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* File Upload Area */}
@@ -203,6 +234,32 @@ export function UploadFacilityDocumentModal({ facilityId, onClose, onSuccess }: 
                   <SelectItem value="Other" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">Other</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="folder" className="text-foreground">Folder</Label>
+              <Select value={selectedFolderId} onValueChange={setSelectedFolderId}>
+                <SelectTrigger className="bg-input border-border text-foreground">
+                  <SelectValue placeholder="Select a folder (optional)" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="unorganized" className="text-popover-foreground focus:bg-accent focus:text-accent-foreground">
+                    No folder (Unorganized)
+                  </SelectItem>
+                  {folders.map((folder) => (
+                    <SelectItem 
+                      key={folder.id} 
+                      value={folder.id}
+                      className="text-popover-foreground focus:bg-accent focus:text-accent-foreground"
+                    >
+                      {folder.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Document will be uploaded to the selected folder
+              </p>
             </div>
 
             <div>

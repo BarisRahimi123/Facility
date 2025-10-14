@@ -9,7 +9,7 @@ import AssignUserModal from '@/components/common/AssignUserModal';
 import { getPOAssignments, assignPurchaseOrder } from '@/services/users';
 import type { POAssignment } from '@/types/users';
 import { toast } from 'react-hot-toast';
-import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PurchaseOrderViewProps {
   purchaseOrder: PurchaseOrder;
@@ -31,7 +31,7 @@ const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignments, setAssignments] = useState<POAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { user: currentUser } = useUser();
+  const { user: currentUser } = useAuth();
 
   // Load assignments when the component mounts
   useEffect(() => {

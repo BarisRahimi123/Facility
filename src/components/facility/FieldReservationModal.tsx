@@ -12,7 +12,7 @@ import { Calendar as CalendarIcon, Clock, Users, AlertCircle, CheckCircle, XCirc
 import { Field, Reservation, FieldBlackoutDate, CreateReservationRequest } from '@/types/field';
 import { FieldAvailabilityService, AvailabilityCheck } from '@/lib/fieldAvailability';
 import { useToast } from '@/components/ui/use-toast';
-import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types/user';
 import Link from 'next/link';
 
@@ -45,7 +45,7 @@ export function FieldReservationModal({
   const [isLoading, setIsLoading] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const { toast } = useToast();
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading } = useAuth();
 
   // Check if user can waive fees
   const canWaiveFees = user && ['master_admin', 'district_approver', 'staff', 'manager', 'coordinator'].includes((user as any).role);
@@ -73,10 +73,10 @@ export function FieldReservationModal({
     if (user && !userLoading) {
       setFormData(prev => ({
         ...prev,
-        contactName: user.name || '',
+        contactName: user.full_name || '',
         contactEmail: user.email || '',
         contactPhone: user.phone || '',
-        organization: (user.type === 'external' || user.type === 'vendor') ? user.company : ''
+        organization: user.company || ''
       }));
     }
   }, [user, userLoading]);

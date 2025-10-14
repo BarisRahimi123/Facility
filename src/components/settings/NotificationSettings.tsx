@@ -99,11 +99,17 @@ export default function NotificationSettings() {
   const [loading, setLoading] = useState(false);
   const [testPhone, setTestPhone] = useState('');
   const [testSMSLoading, setTestSMSLoading] = useState(false);
+  const [twilioStatus, setTwilioStatus] = useState<{ configured: boolean; fromNumber?: string | null } | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     loadNotificationSettings();
     loadSMSSettings();
+    // Load Twilio status for quick visibility
+    fetch('/api/test-sms')
+      .then(res => res.json())
+      .then(data => setTwilioStatus({ configured: !!data.configured, fromNumber: data.fromNumber }))
+      .catch(() => setTwilioStatus(null));
   }, []);
 
   const loadNotificationSettings = async () => {
@@ -277,7 +283,7 @@ export default function NotificationSettings() {
 
     try {
       setTestSMSLoading(true);
-      const response = await fetch('/api/sms/test', {
+      const response = await fetch('/api/test-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: testPhone }),
@@ -485,6 +491,16 @@ export default function NotificationSettings() {
               SMS Configuration
             </h3>
             <p className="text-sm text-gray-500">Configure Twilio SMS settings for notifications</p>
+            {twilioStatus && (
+              <div className="mt-2 inline-flex items-center gap-2 text-sm">
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full border ${twilioStatus.configured ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                  {twilioStatus.configured ? 'Configured' : 'Not configured'}
+                </span>
+                {twilioStatus.fromNumber && (
+                  <span className="text-gray-500">From: <span className="font-mono">{twilioStatus.fromNumber}</span></span>
+                )}
+              </div>
+            )}
           </div>
           <Switch
             checked={smsConfig.enabled}

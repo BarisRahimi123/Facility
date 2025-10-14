@@ -2,14 +2,26 @@
 
 const nextConfig = {
   reactStrictMode: true,
+  serverActions: {
+    bodySizeLimit: '50mb', // Increased from default 1mb to support larger file uploads
+  },
   webpack: (config, { isServer }) => {
-    // Fix for entryCSSFiles error
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-      };
-    }
+    // Ensure Node-only modules are not bundled for the browser
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      canvas: false,
+      path: false,
+      http: false,
+      https: false,
+      url: false,
+      zlib: false,
+    };
+    // Explicitly alias canvas to false to avoid pdfjs NodeCanvasFactory requiring it
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      canvas: false,
+    };
     
     config.module.rules.push({
       test: /\.json$/,

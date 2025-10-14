@@ -34,7 +34,7 @@ import {
 import { format, addDays, isBefore, isAfter, isSameDay } from 'date-fns';
 import { Field, FieldBlackoutDate } from '@/types/field';
 import { Room } from '@/types/building';
-import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
 import { v4 as uuidv4 } from 'uuid';
@@ -102,7 +102,7 @@ export function FacilityRentalModal({
   onReserve,
   fieldBlockouts = []
 }: FacilityRentalModalProps) {
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading } = useAuth();
   const { toast } = useToast();
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [showCart, setShowCart] = useState(false);
@@ -121,10 +121,10 @@ export function FacilityRentalModal({
     duration: 2,
     recurring: 'none' as 'none' | 'weekly' | 'monthly' | 'yearly',
     recurringOccurrences: 1,
-    contactName: user?.name || '',
+    contactName: user?.full_name || '',
     contactEmail: user?.email || '',
     contactPhone: user?.phone || '',
-    organization: user?.type === 'external' ? user.company : ''
+    organization: user?.company || ''
   });
   
   // Checkout form data
@@ -234,10 +234,10 @@ export function FacilityRentalModal({
     if (user && !userLoading) {
       setReservationData(prev => ({
         ...prev,
-        contactName: user.name || '',
+        contactName: user.full_name || '',
         contactEmail: user.email || '',
         contactPhone: user.phone || '',
-        organization: (user.type === 'external' || user.type === 'vendor') ? user.company : ''
+        organization: user.company || ''
       }));
     }
   }, [user, userLoading]);

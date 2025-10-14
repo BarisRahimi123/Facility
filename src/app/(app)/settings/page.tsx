@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Lazy load components
 const EmailSettings = lazy(() => import('@/components/settings/EmailSettings'));
+const SMSSettings = lazy(() => import('@/components/settings/SMSSettings'));
 const NotificationSettings = lazy(() => import('@/components/settings/NotificationSettings'));
 
 // Loading fallback component
@@ -23,8 +24,6 @@ const SettingsLoadingFallback = () => (
 );
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState('email');
-
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-6">Settings</h1>
@@ -32,10 +31,10 @@ export default function SettingsPage() {
       <Tabs 
         defaultValue="email" 
         className="space-y-6"
-        onValueChange={(value) => setActiveTab(value)}
       >
         <TabsList>
           <TabsTrigger value="email">Email</TabsTrigger>
+          <TabsTrigger value="sms">SMS</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
@@ -43,21 +42,25 @@ export default function SettingsPage() {
 
         <TabsContent value="email" className="space-y-6">
           <div className="max-w-4xl">
-            {activeTab === 'email' && (
-              <Suspense fallback={<SettingsLoadingFallback />}>
-                <EmailSettings />
-              </Suspense>
-            )}
+            <Suspense fallback={<SettingsLoadingFallback />}>
+              <EmailSettings />
+            </Suspense>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="sms" className="space-y-6">
+          <div className="max-w-4xl">
+            <Suspense fallback={<SettingsLoadingFallback />}>
+              <SMSSettings />
+            </Suspense>
           </div>
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
           <div className="max-w-4xl">
-            {activeTab === 'notifications' && (
-              <Suspense fallback={<SettingsLoadingFallback />}>
-                <NotificationSettings />
-              </Suspense>
-            )}
+            <Suspense fallback={<SettingsLoadingFallback />}>
+              <NotificationSettings />
+            </Suspense>
           </div>
         </TabsContent>
 

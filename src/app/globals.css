@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* React PDF Styles */
+.react-pdf__Page__textContent {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  overflow: hidden !important;
+  opacity: 0.2;
+  line-height: 1;
+}
+
+.react-pdf__Page__annotations {
+  position: absolute !important;
+  left: 0 !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+.react-pdf__Page__canvas {
+  display: block;
+  user-select: none;
+}
+
 /* Import Inter Font */
 @import url('@fontsource/inter/400.css');
 @import url('@fontsource/inter/500.css');

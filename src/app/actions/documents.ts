@@ -43,32 +43,56 @@ export async function getDocuments(entityId: string, entityType: 'building' | 'f
 }
 
 export async function uploadDocument(formData: FormData) {
-  const serviceRoleClient = getServiceRoleSupabase();
-  
-  const buildingId = formData.get('buildingId') as string;
-  const facilityId = formData.get('facilityId') as string;
-  const name = formData.get('name') as string;
-  const description = formData.get('description') as string;
-  const category = formData.get('category') as string;
-  const tags = formData.get('tags') as string;
-  const file = formData.get('file') as File;
+  try {
+    const serviceRoleClient = getServiceRoleSupabase();
+    
+    const buildingId = formData.get('building_id') as string || formData.get('buildingId') as string;
+    const facilityId = formData.get('facility_id') as string || formData.get('facilityId') as string;
+    const name = formData.get('name') as string;
+    const description = formData.get('description') as string;
+    const category = formData.get('category') as string;
+    const tags = formData.get('tags') as string;
+    const version = formData.get('version') as string;
+    const folderId = formData.get('folder_id') as string;
+    const file = formData.get('file') as File;
 
-  const entityId = buildingId || facilityId;
-  const entityType = buildingId ? 'building' : 'facility';
+    console.log('Upload folder_id:', folderId, 'Type:', typeof folderId);
 
-  console.log('Upload request:', {
-    entityType,
-    entityId,
-    name,
-    fileName: file?.name,
-    fileSize: file?.size,
-    fileType: file?.type
-  });
+    const entityId = buildingId || facilityId;
+    const entityType = buildingId ? 'building' : 'facility';
 
-  if (!entityId || !name || !file) {
-    console.error('Missing required fields:', { entityId, name, file: !!file });
-    return { error: 'Missing required fields' };
-  }
+    // Validate folder_id if provided
+    if (folderId && folderId.trim() !== '') {
+      try {
+        const { data: folderExists, error: folderError } = await serviceRoleClient
+          .from('document_folders')
+          .select('id')
+          .eq('id', folderId)
+          .single();
+        
+        if (folderError || !folderExists) {
+          console.error('Invalid folder_id:', folderId, folderError);
+          return { error: 'Invalid folder selected' };
+        }
+      } catch (folderCheckError) {
+        console.error('Error checking folder:', folderCheckError);
+        // Continue without folder validation
+      }
+    }
+
+    console.log('Upload request:', {
+      entityType,
+      entityId,
+      name,
+      fileName: file?.name,
+      fileSize: file?.size,
+      fileType: file?.type
+    });
+
+    if (!entityId || !name || !file) {
+      console.error('Missing required fields:', { entityId, name, file: !!file });
+      return { error: 'Missing required fields' };
+    }
 
   // Validate file type
   if (!file.type) {
@@ -111,6 +135,8 @@ export async function uploadDocument(formData: FormData) {
     file_url: publicUrl,
     description: description || null,
     category: category || 'General',
+    version: version || null,
+    folder_id: (folderId && folderId.trim() !== '') ? folderId : null,
     tags: tags ? tags.split(',').map(t => t.trim()) : [],
     uploaded_by: null // Using null for mock user
   };
@@ -147,6 +173,10 @@ export async function uploadDocument(formData: FormData) {
 
   revalidatePath('/');
   return { data };
+  } catch (error) {
+    console.error('Upload document exception:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to upload document. Please try again.' };
+  }
 }
 
 export async function updateDocument(formData: FormData) {

@@ -170,35 +170,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('AuthContext: Checking initial session...');
         
         // Use real session check with better error handling and shorter timeouts
-        console.log('🔍 AuthContext: Checking real session with 3s timeout...');
+        console.log('🔍 AuthContext: Checking real session with 2s timeout...');
         
-        // Try session check with 8s timeout and fallback to cached user
+        // Quick session check with shorter timeout and better fallback
         let session = null;
         try {
+          // Use a 2-second timeout for very fast UX
           const sessionPromise = supabase.auth.getSession();
           const sessionTimeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Session check timeout')), 8000)
+            setTimeout(() => reject(new Error('Session check timeout')), 2000)
           );
           
           const sessionResult = await Promise.race([sessionPromise, sessionTimeoutPromise]) as any;
           session = sessionResult?.data?.session;
           console.log('✅ AuthContext: Session check completed');
-        } catch (timeoutError) {
-          console.warn('⚠️ AuthContext: Session check timed out, using cached user');
+        } catch (error) {
+          console.warn('⚠️ AuthContext: Session check failed:', error.message);
           
-          // Use cached user if available instead of kicking user out
+          // For timeouts or network errors, use cached user if available
           const cachedUser = getCachedUser();
           if (cachedUser) {
-            console.log('🔧 AuthContext: Using cached user:', cachedUser.email);
+            console.log('🔧 AuthContext: Using cached user during session check failure');
             setUser(cachedUser);
             setSessionChecked(true);
             setLoading(false);
+            
+            // Try to refresh user data in background without blocking UI
+            setTimeout(() => {
+              refreshUser().catch(err => console.log('Background refresh failed:', err));
+            }, 1000);
             return;
           }
           
-          // If no cached user, redirect to sign-in
-          console.log('❌ AuthContext: No cached user, redirecting to sign-in');
-          throw timeoutError;
+          // If no cached user, continue with null session (don't throw error)
+          console.log('❌ AuthContext: No cached user, continuing with null session');
+          session = null;
         }
         
         if (!mounted) return;
@@ -318,7 +324,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [hydrated, sessionChecked, user]);
+  }, [hydrated, sessionChecked]);
 
   return (
     <AuthContext.Provider value={{ user, loading, error, refreshUser }}>

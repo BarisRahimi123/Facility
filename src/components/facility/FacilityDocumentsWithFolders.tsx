@@ -37,6 +37,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { UploadFacilityDocumentModal } from './UploadFacilityDocumentModal';
 import { EditDocumentModal } from '../building/EditDocumentModal';
 import { CreateFolderModal } from './CreateFolderModal';
+import { PDFViewerEmbed } from '@/components/ui/PDFViewerEmbed';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -126,6 +127,8 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
   const [selectedFolder, setSelectedFolder] = useState<DocumentFolder | null>(null);
+  // Embedded PDF viewer state
+  const [viewingPDF, setViewingPDF] = useState<{ url: string; name: string } | null>(null);
   
   // Navigation state
   const [currentFolder, setCurrentFolder] = useState<DocumentFolder | null>(null);
@@ -135,6 +138,23 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
   const [isLoading, setIsLoading] = useState(true);
 
   const { toast } = useToast();
+
+  // Helper function to check if file is PDF
+  const isPDF = (fileType: string, fileName: string, fileUrl?: string) => {
+    const t = (fileType || '').toLowerCase();
+    const n = (fileName || '').toLowerCase();
+    const u = (fileUrl || '').toLowerCase();
+    return t.includes('pdf') || n.endsWith('.pdf') || /\.pdf(\?|$)/.test(u);
+  };
+
+  // Handle document viewing - use PDF viewer for PDFs, external link for others
+  const handleViewDocument = (doc: Document) => {
+    if (isPDF(doc.file_type, doc.file_name, doc.file_url)) {
+      setViewingPDF({ url: doc.file_url, name: doc.name });
+    } else {
+      window.open(doc.file_url, '_blank');
+    }
+  };
 
   // Load folders and documents based on current location
   useEffect(() => {
@@ -382,6 +402,12 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
             <p className="text-muted-foreground mt-2">Loading...</p>
           </div>
         </div>
+      ) : viewingPDF ? (
+        <PDFViewerEmbed
+          fileUrl={viewingPDF.url}
+          fileName={viewingPDF.name}
+          onClose={() => setViewingPDF(null)}
+        />
       ) : (
         <div className="space-y-6">
           {/* Folders */}
@@ -477,7 +503,11 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
               </h3>
               <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
                 {filteredDocuments.map((doc) => (
-                  <Card key={doc.id} className="bg-card/50 border-border hover:bg-card transition-all duration-200 hover:shadow-sm group">
+                  <Card 
+                    key={doc.id} 
+                    className={`bg-card/50 border-border hover:bg-card transition-all duration-200 hover:shadow-sm group ${isPDF(doc.file_type, doc.file_name, doc.file_url) ? 'cursor-pointer' : ''}`}
+                    onClick={() => isPDF(doc.file_type, doc.file_name, doc.file_url) && handleViewDocument(doc)}
+                  >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -534,10 +564,10 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
                           <DropdownMenuContent align="end" className="bg-popover border-border">
                             <DropdownMenuItem 
                               className="text-foreground focus:bg-accent focus:text-accent-foreground"
-                              onClick={() => window.open(doc.file_url, '_blank')}
+                              onClick={(e) => { e.stopPropagation(); handleViewDocument(doc); }}
                             >
                               <Eye className="w-4 h-4 mr-2" />
-                              View
+                              {isPDF(doc.file_type, doc.file_name) ? 'View PDF' : 'View'}
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               className="text-foreground focus:bg-accent focus:text-accent-foreground"
@@ -622,6 +652,7 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
       {showUploadModal && (
         <UploadFacilityDocumentModal
           facilityId={facilityId}
+          folderId={currentFolder?.id}
           onClose={() => setShowUploadModal(false)}
           onSuccess={() => {
             setShowUploadModal(false);
@@ -684,6 +715,8 @@ export function FacilityDocumentsWithFolders({ facilityId, documents, onDocument
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Embedded viewer is handled above via viewingPDF */}
     </div>
   );
 }

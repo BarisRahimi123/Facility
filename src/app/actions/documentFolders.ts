@@ -16,6 +16,8 @@ export interface DocumentFolder {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  document_count?: number;
+  subfolder_count?: number;
 }
 
 export interface CreateFolderData {
@@ -46,6 +48,32 @@ export async function getFolders(entityId: string, entityType: 'building' | 'fac
     return [];
   }
 
+  // Add document counts for each folder
+  if (data && data.length > 0) {
+    const foldersWithCounts = await Promise.all(
+      data.map(async (folder) => {
+        // Count documents in this folder
+        const { count: docCount } = await serviceRoleClient
+          .from('documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('folder_id', folder.id);
+        
+        // Count subfolders
+        const { count: subfolderCount } = await serviceRoleClient
+          .from('document_folders')
+          .select('*', { count: 'exact', head: true })
+          .eq('parent_folder_id', folder.id);
+        
+        return {
+          ...folder,
+          document_count: docCount || 0,
+          subfolder_count: subfolderCount || 0,
+        };
+      })
+    );
+    return foldersWithCounts;
+  }
+
   return data || [];
 }
 
@@ -61,6 +89,32 @@ export async function getSubfolders(parentFolderId: string) {
   if (error) {
     console.error('Error fetching subfolders:', error);
     return [];
+  }
+
+  // Add document counts for each subfolder
+  if (data && data.length > 0) {
+    const subfoldersWithCounts = await Promise.all(
+      data.map(async (folder) => {
+        // Count documents in this folder
+        const { count: docCount } = await serviceRoleClient
+          .from('documents')
+          .select('*', { count: 'exact', head: true })
+          .eq('folder_id', folder.id);
+        
+        // Count subfolders
+        const { count: subfolderCount } = await serviceRoleClient
+          .from('document_folders')
+          .select('*', { count: 'exact', head: true })
+          .eq('parent_folder_id', folder.id);
+        
+        return {
+          ...folder,
+          document_count: docCount || 0,
+          subfolder_count: subfolderCount || 0,
+        };
+      })
+    );
+    return subfoldersWithCounts;
   }
 
   return data || [];

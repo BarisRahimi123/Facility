@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,8 @@ import EditSystemModal from '@/components/building/EditSystemModal';
 import AddRenovationModal from '@/components/building/AddRenovationModal';
 import EditRenovationModal from '@/components/building/EditRenovationModal';
 import EditBuildingModal from '@/components/building/EditBuildingModal';
-import DocumentsList from '@/components/documents/DocumentsList';
+import { BuildingDocumentsWithFoldersSimple } from '@/components/building/BuildingDocumentsWithFoldersSimple';
+import { getDocuments } from '@/app/actions/documents';
 import { BuildingPhotos } from '@/components/building/BuildingPhotos';
 import ComplianceCalculator from '@/components/building/ComplianceCalculator';
 import { deleteRoom, deleteBuildingSystem, deleteRenovation } from '@/app/actions/buildings';
@@ -111,10 +112,37 @@ export default function BuildingDetailClient({
   const [isDeleting, setIsDeleting] = useState(false);
   const [studentCount, setStudentCount] = useState(300); // Default value for demo
   const [staffCount, setStaffCount] = useState(25); // Default value for demo
+  
+  // Documents state
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(true);
 
   // Room staff assignment modal state
   const [assigningStaffRoom, setAssigningStaffRoom] = useState<any>(null);
   const [isRoomStaffAssignModalOpen, setIsRoomStaffAssignModalOpen] = useState(false);
+
+  // Load documents function
+  const loadDocuments = async () => {
+    setIsLoadingDocuments(true);
+    try {
+      const documentsData = await getDocuments(buildingId, 'building');
+      setDocuments(documentsData);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load building documents',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  // Load documents on component mount
+  React.useEffect(() => {
+    loadDocuments();
+  }, [buildingId]);
 
   // Maintenance modal state
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
@@ -1109,7 +1137,20 @@ export default function BuildingDetailClient({
         </TabsContent>
 
         <TabsContent value="documents">
-          <DocumentsList buildingId={buildingId} />
+          {isLoadingDocuments ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-muted-foreground mt-2">Loading documents...</p>
+              </div>
+            </div>
+          ) : (
+            <BuildingDocumentsWithFoldersSimple
+              buildingId={buildingId}
+              documents={documents}
+              onDocumentsChange={loadDocuments}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="calendar">
