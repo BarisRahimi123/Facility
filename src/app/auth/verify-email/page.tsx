@@ -96,7 +96,7 @@ export default function VerifyEmailPage() {
                 <CheckCircle className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-gray-300">
                   <p className="font-medium">Check your inbox</p>
-                  <p className="text-gray-400">The email should arrive within a few minutes</p>
+                  <p className="text-gray-400">The email should arrive within 2-3 minutes</p>
                 </div>
               </div>
               
@@ -104,7 +104,7 @@ export default function VerifyEmailPage() {
                 <AlertCircle className="w-5 h-5 text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-gray-300">
                   <p className="font-medium">Check your spam folder</p>
-                  <p className="text-gray-400">Sometimes verification emails end up in spam</p>
+                  <p className="text-gray-400">Sometimes verification emails end up in spam or promotional folders</p>
                 </div>
               </div>
             </div>
@@ -159,4 +159,4 @@ export default function VerifyEmailPage() {
       </div>
     </div>
   );
-} 
+}   
